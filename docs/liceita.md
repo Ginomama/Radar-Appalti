@@ -123,6 +123,65 @@ Tre domande, in ordine di impatto:
 Portare questo documento e `docs/fonti-dati.md`: contengono l'inventario esatto di cosa
 si tratta e da dove viene, che è il 90% del lavoro preparatorio.
 
+## 7. R28 — il nome del responsabile: cosa cambia, e cosa serve deciderne
+
+Misurato il **7 settembre 2026**, dopo che il primo lotto ha dato 18 PEC inviate, 18
+consegnate e **zero risposte**. Le consegne sono confermate: il messaggio arriva, e si
+ferma dopo. La spiegazione più probabile è il destinatario, non il testo.
+
+Ci sono tre strade per arrivare a chi decide invece che al protocollo. Sono state
+misurate tutte e tre prima di scegliere, perché due su tre non funzionano.
+
+| Strada | Copertura sul nostro bacino (18.707 enti) | Dati personali? |
+|---|---|---|
+| PEC di un ufficio informatico **diversa** da quella dell'ente | **2,7%** (514 enti) | no |
+| **Nome** dell'ufficio informatico, da mettere nell'oggetto | 97,3% — ma il 95% è la stessa dicitura di legge | no |
+| **Nome e recapito del responsabile** (RTD) | **92,7%**, di cui 99,6% con email | **sì** |
+
+**Fatto subito, senza gate:** le prime due. `ingestion/uffici.py` carica gli uffici da
+IndicePA tenendo **solo le colonne organizzative** — `nome_resp`, `cogn_resp`,
+`mail_resp` e `tel_resp` sono escluse esplicitamente nel codice, non per dimenticanza.
+`genera_pec.py` mette il nome dell'ufficio in testa all'oggetto, che è la riga che legge
+chi smista. È gratis e si misura sul prossimo lotto.
+
+Onestamente: è un miglioramento piccolo. Il 95% degli enti dichiara *«Ufficio per la
+transizione al Digitale»*, che ogni PA ha dovuto istituire per il CAD — corretto ma non
+distintivo, e chi smista lo sa.
+
+### La terza strada è l'unica che sposterebbe davvero l'ago, ed è una decisione tua
+
+Il dataset `responsabili-della-transizione-al-digitale` di IndicePA dà nome, cognome e
+email personale del RTD per il **92,7%** dei nostri enti. È pubblicato in open data con
+licenza CC BY 4.0, e la pubblicazione è **obbligatoria per legge** (CAD, art. 17): non è
+un dato sfuggito, è un recapito che la norma vuole conoscibile proprio perché quel
+responsabile sia raggiungibile.
+
+Questo però riguarda la *fonte*, non lo *scopo*. Restano da decidere tre cose, e sono
+esattamente le domande del §6:
+
+1. **Base giuridica.** Per un contatto commerciale la strada normale è il legittimo
+   interesse (art. 6.1.f GDPR), che richiede una valutazione scritta di bilanciamento:
+   l'interesse nostro contro l'aspettativa ragionevole di quella persona. Il fatto che
+   la sua funzione istituzionale sia proprio ricevere proposte sulla transizione
+   digitale gioca a favore, ma va scritto, non dato per buono.
+2. **Informativa (art. 14).** Dato raccolto non dall'interessato: l'informativa va
+   fornita, con le esenzioni del comma 5 da verificare. In pratica: un paragrafo nella
+   PEC e una pagina raggiungibile.
+3. **Minimizzazione.** Serve l'email personale, o basta nominare la persona scrivendo
+   comunque alla PEC istituzionale? La seconda ottiene quasi lo stesso effetto di
+   smistamento con un trattamento molto più leggero, ed è probabilmente la risposta
+   giusta.
+
+**Cosa è stato fatto nel frattempo:** il dataset è stato scaricato per contare la
+copertura e **cancellato subito dopo**. Nessun nome è su disco, nessuna colonna
+personale è nello schema. La misura c'è, il trattamento no.
+
+**Cosa serve per procedere:** una risposta alle tre domande sopra. Se la risposta è la
+via 3 (nominare la persona nella PEC istituzionale, senza conservarne l'email), il
+lavoro tecnico è di circa un'ora e il trattamento resta minimo.
+
+---
+
 ---
 
 ## Riepilogo operativo

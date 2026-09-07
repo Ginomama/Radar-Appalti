@@ -241,3 +241,33 @@ SELECT
     sum(valore_vendita) FILTER (WHERE vendita_il IS NOT NULL) AS valore_vinto
 FROM radar.invio
 GROUP BY lotto;
+
+
+-- --------------------------------------------------- R13: irrobustimento
+-- Misurato il 2026-09-07 con ingestion/sicurezza.py. Due cose vere, nessuna
+-- delle quali si vede aprendo la console di Supabase.
+--
+-- 1. radar.esito era nata (R17) senza RLS, mentre tutte le altre ce l'hanno.
+--    E' esattamente il modo in cui queste cose si degradano: non si spegne
+--    una protezione, si crea una tabella nuova e ci si dimentica.
+ALTER TABLE radar.esito ENABLE ROW LEVEL SECURITY;
+
+-- 2. Il trabocchetto meno visibile. Una vista, per default, legge coi diritti
+--    di CHI L'HA CREATA — qui 'postgres', che ha bypassrls. Quindi si accende
+--    RLS su tutte le tabelle, si e' convinti di essere a posto, e una singola
+--    vista esposta continua a servire tutto a chiunque. security_invoker la
+--    fa leggere coi diritti di chi la chiama.
+--
+--    Non cambia niente per noi: la DSN e' 'postgres', che RLS lo scavalca
+--    comunque. Serve il giorno in cui qualcosa legge con la chiave anon.
+ALTER VIEW radar.v_scadenze       SET (security_invoker = on);
+ALTER VIEW radar.v_scadenze_90gg  SET (security_invoker = on);
+ALTER VIEW radar.v_lead_90gg      SET (security_invoker = on);
+ALTER VIEW radar.v_ente_apertura  SET (security_invoker = on);
+ALTER VIEW radar.v_funnel         SET (security_invoker = on);
+
+-- Nessuna policy, di proposito: RLS attivo senza policy significa che non
+-- legge nessuno tranne chi ha bypassrls. Finche' l'unico accesso e' la chiave
+-- di servizio, e' la configurazione piu' restrittiva possibile. Le policy
+-- serviranno il giorno in cui si esporra' qualcosa, non prima: scriverle ora
+-- vorrebbe dire indovinare a chi dare accesso.

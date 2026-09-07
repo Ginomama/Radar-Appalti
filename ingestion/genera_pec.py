@@ -21,6 +21,7 @@ Dipendenza: psycopg.
 import argparse
 import os
 import re
+import sqlite3
 import unicodedata
 from datetime import datetime
 
@@ -33,9 +34,9 @@ OUT = os.path.join(QUI, "..", "docs", "pec")
 MITTENTE = {
     "nome": "Leonardo Foschi",
     "insegna": "FlowLine",          # nome commerciale; togliere se non usato
-    "piva": "IT00000000000",
-    "telefono": "000 0000000",
-    "email": "contatto@esempio.it",
+    "piva": "02612600441",
+    "telefono": "3468278078",
+    "email": "leonardo.foschi@flowline.it",
 }
 
 # Categorie che FlowLine sa davvero servire. Fuori licenze (rivendita),
@@ -105,6 +106,59 @@ def euro(v):
 # insistenza sullo stesso protocollo, sopra e' un contatto nuovo e legittimo.
 MESI_SILENZIO = 6
 
+# Lo storico degli uffici sta in SQLite: su Supabase vanno solo i derivati.
+DB_LOCALE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "radar.db")
+
+
+def ufficio_di(cf_ente):
+    """L'ufficio informatico dell'ente, se IndicePA ne dichiara uno (R28).
+
+    PERCHE'. 18 PEC partite, 18 consegnate, 0 risposte. Il messaggio arriva e
+    si ferma: al protocollo generale, che smista per competenza e non ha
+    ragione di dare corsia a un'offerta non richiesta. Nominare l'ufficio
+    nell'oggetto non e' cortesia, e' istruzione di smistamento — l'unica leva
+    che abbiamo su cosa succede alla PEC dopo che e' entrata.
+
+    QUANTO VALE, misurato il 2026-09-07 su 18.707 enti:
+      - 97,3% ha un ufficio informatico dichiarato -> si puo' nominare
+      - ma il 95% di quei nomi e' "Ufficio per la transizione al Digitale",
+        che ogni PA ha dovuto istituire per il CAD: e' corretto, non e'
+        distintivo
+      -  2,7% ha una PEC d'ufficio DIVERSA da quella che gia' usiamo -> e
+        solo li' si puo' cambiare davvero destinatario
+
+    Quindi e' un miglioramento piccolo e gratuito, non la soluzione. La cosa
+    che sposterebbe l'ago e' il nome del responsabile (il 92,7% ce l'ha, col
+    recapito), ed e' dato personale: passa da docs/liceita.md, non da qui.
+
+    Restituisce (nome_ufficio, pec_ufficio) — la PEC solo se diversa da
+    quella dell'ente, altrimenti None: cambiare destinatario per riscrivere
+    lo stesso indirizzo confonderebbe e basta.
+    """
+    if not cf_ente:
+        return None, None
+    try:
+        cx = sqlite3.connect(f"file:{DB_LOCALE}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return None, None
+    try:
+        r = cx.execute(
+            "SELECT u.des_ou, u.pec, e.pec FROM ente_contatti e "
+            "JOIN ufficio u ON u.cod_amm = e.cod_amm "
+            "WHERE e.cf_ente = ? ORDER BY (u.pec IS NULL), u.punti DESC "
+            "LIMIT 1", (cf_ente,)).fetchone()
+    except sqlite3.Error:
+        # La tabella 'ufficio' puo' non esistere (uffici.py mai lanciato):
+        # non e' un errore, si scrive al protocollo come prima.
+        return None, None
+    finally:
+        cx.close()
+    if not r:
+        return None, None
+    des, pec_uf, pec_ente = r
+    diversa = pec_uf if (pec_uf and pec_uf != (pec_ente or "").strip().lower()) else None
+    return (des or "").strip() or None, diversa
+
 
 def gia_contattati(cur, lotto_corrente):
     """Le PEC gia' presenti in un ALTRO lotto, con lotto e stato.
@@ -128,7 +182,8 @@ def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
     q = """
         SELECT ente, provincia, pec, categoria, cig,
                data_termine_contrattuale, giorni_alla_scadenza,
-               importo_aggiudicazione, fornitore_uscente, oggetto_lotto
+               importo_aggiudicazione, fornitore_uscente, oggetto_lotto,
+               cf_ente
         FROM radar.v_scadenze
         WHERE fornitore_persona_fisica = 0
           AND tipologia_amm = 'Pubbliche Amministrazioni'
@@ -168,6 +223,12 @@ def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
 
 def componi(contratti):
     ente, pec = contratti[0][0], contratti[0][2]
+    # R28: se l'ente dichiara un ufficio informatico, lo si nomina — e se
+    # quell'ufficio ha una PEC sua, e' li' che si scrive.
+    cf = contratti[0][10] if len(contratti[0]) > 10 else None
+    uff, pec_uff = ufficio_di(cf)
+    if pec_uff:
+        pec = pec_uff
     # La provincia piu' frequente del gruppo, non quella del contratto piu'
     # grosso: un ente regionale ha contratti sparsi su piu' province, e
     # prendere il primo dava "COMUNE DI FERMO - ANCONA".
@@ -207,8 +268,20 @@ def componi(contratti):
     insegna = (f"\nche opera con il nome commerciale {MITTENTE['insegna']},"
                if MITTENTE.get("insegna") else "")
 
-    corpo = f"""Spett.le {ente}
+    # L'ufficio va nell'oggetto: e' la riga che legge chi smista, e nel corpo
+    # sarebbe gia' troppo tardi.
+    if uff:
+        # L'ufficio in testa, e il resto accorciato: un oggetto PEC oltre i
+        # ~120 caratteri viene troncato dai client, e verrebbe tagliato via
+        # proprio il CIG che rende il messaggio verificabile. Meglio dire
+        # meno ma per intero.
+        oggetto = f"{uff[:52]} — " + oggetto.replace(
+            "Richiesta iscrizione elenco operatori economici — servizi "
+            "informatici", "iscrizione elenco operatori economici, servizi IT")
+    a_chi = f"\nAlla cortese attenzione di: {uff}\n" if uff else ""
 
+    corpo = f"""Spett.le {ente}
+{a_chi}
 il sottoscritto {MITTENTE['nome']},{insegna}
 operatore economico attivo nei servizi di automazione dei processi e
 integrazione di sistemi informativi, chiede di essere inserito fra gli

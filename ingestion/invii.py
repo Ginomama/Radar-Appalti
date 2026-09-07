@@ -19,6 +19,7 @@ Uso:
     python invii.py --offerta 5 --valore 18000
     python invii.py --vendita 5 --valore 16500
     python invii.py --persa 7 --motivo gia-fornitore
+    python invii.py --consegnata tutte       # ricevute lette a mano in casella
     python invii.py --funnel                 # il funnel del lotto
     python invii.py --funnel --tutti         # tutti i lotti insieme
     python invii.py --non-consegnata 9
@@ -138,6 +139,35 @@ def eur(v):
     if not v:
         return "—"
     return f"{v / 1000:,.0f} k€" if v >= 1000 else f"{v:,.0f} €"
+
+
+def consegna_a_mano(cur, lotto, progressivi, quando=None):
+    """Segna consegnate delle PEC guardando le ricevute nella casella.
+
+    Esiste perche' pec_imap.py oggi non riesce a leggere la casella (Avast
+    intercetta la 993, vedi diagnosi_tls.py) mentre le ricevute di avvenuta
+    consegna arrivano regolarmente: il fatto e' certo, manca solo il modo di
+    portarlo nel database. Senza questo, il funnel direbbe "0 consegnate" e
+    farebbe sembrare tecnico un problema che tecnico non e'.
+
+    NON tocca lo stato: la consegna e' un fatto del gestore PEC, la risposta
+    e' un fatto dell'ente. Confonderli farebbe sparire la distinzione fra
+    "non l'hanno ricevuta" e "l'hanno ricevuta e ignorata", che e' esattamente
+    quello che qui interessa sapere.
+
+    La data di default e' quella dell'invio, non oggi: una ricevuta di
+    avvenuta consegna arriva in minuti, e datarla al giorno in cui la si
+    trascrive falserebbe i tempi del funnel.
+    """
+    cur.execute(
+        "UPDATE radar.invio SET consegnata_il = "
+        "     coalesce(%s::timestamp, inviata_il::timestamp), "
+        "     errore_consegna = NULL "
+        "WHERE lotto = %s AND progressivo = ANY(%s) "
+        "  AND inviata_il IS NOT NULL "
+        "RETURNING progressivo, ente",
+        (quando, lotto, list(progressivi)))
+    return cur.fetchall()
 
 
 def funnel(cur, lotto=None):
@@ -301,6 +331,12 @@ def main():
                     help="il funnel completo, dai destinatari al fatturato")
     ap.add_argument("--tutti", action="store_true",
                     help="con --funnel: tutti i lotti insieme")
+    ap.add_argument("--consegnata", metavar="N[,N|N-N]|tutte",
+                    help="registra la consegna letta nella casella PEC "
+                         "(non cambia lo stato)")
+    ap.add_argument("--quando", metavar="AAAA-MM-GG",
+                    help="con --consegnata: la data della ricevuta "
+                         "(default: il giorno dell'invio)")
     ap.add_argument("--non-consegnata", metavar="N[,N]")
     ap.add_argument("--chiusa", metavar="N[,N]")
     ap.add_argument("--scadute", action="store_true",
@@ -335,6 +371,22 @@ def main():
                         print(f"  nessun destinatario con quei numeri nel "
                               f"lotto '{a.lotto}'")
                     fatto = True
+
+            if a.consegnata:
+                if a.consegnata.strip().lower() in ("tutte", "tutti"):
+                    cur.execute("SELECT progressivo FROM radar.invio "
+                                "WHERE lotto = %s AND inviata_il IS NOT NULL",
+                                (a.lotto,))
+                    prog = [r[0] for r in cur.fetchall()]
+                else:
+                    prog = numeri(a.consegnata)
+                tocc = consegna_a_mano(cur, a.lotto, prog, a.quando)
+                for p, ente in tocc:
+                    print(f"  {p:2d}. {(ente or '?')[:48]:50s} -> consegnata")
+                if not tocc:
+                    print("  nessuna PEC inviata con quei numeri: la consegna "
+                          "si registra solo su quelle gia' partite")
+                fatto = True
 
             if a.scadute:
                 cur.execute(

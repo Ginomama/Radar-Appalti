@@ -379,10 +379,32 @@ minimo garantito, non un totale.
 È l'unica via lecita rimasta al sotto soglia: i portali regionali lo vietano nel
 robots.txt. Dataset presente nel catalogo ANAC, mai ispezionato.
 
-### R13 — Revisione sicurezza prima di qualunque esposizione · alta · ~1h
+### R13 — Revisione sicurezza · ✅ FATTO 2026-09-07
 
-RLS è attivo senza policy e lo schema `radar` è fuori da PostgREST. Da riverificare se
-mai si esporrà un'API o una dashboard pubblica.
+`ingestion/sicurezza.py`. Sette controlli sullo schema `radar`, esce 1 se c'è qualcosa da
+sistemare. Non una lettura a occhio: queste impostazioni non si vedono aprendo la console
+di Supabase, e **si degradano da sole** — non spegnendo una protezione, ma creando una
+tabella nuova e dimenticandosene.
+
+Che è esattamente quello che era successo, e che il primo giro ha trovato:
+
+**`radar.esito` era nata senza RLS** (R17), mentre tutte le altre sei ce l'avevano.
+
+**Tutte e cinque le viste scavalcavano RLS.** Questo è il trabocchetto vero, ed è
+invisibile: una vista Postgres, per default, legge coi diritti di **chi l'ha creata** —
+qui `postgres`, che ha `bypassrls`. Si sarebbe potuto accendere RLS su ogni tabella,
+sentirsi al sicuro, ed esporre una singola vista che continuava a servire tutto a
+chiunque. Risolto con `security_invoker = on` su tutte e cinque.
+
+Il resto è pulito: nessun privilegio ad `anon` o `public`, nessuna estensione che possa
+chiamare l'esterno, nessuna colonna con dati personali fra quelle escluse da R3.
+
+Le policy restano **volutamente assenti**: RLS attivo senza policy significa che non legge
+nessuno tranne chi ha `bypassrls`, ed è la configurazione più restrittiva possibile finché
+l'unico accesso è la chiave di servizio. Scriverle adesso vorrebbe dire indovinare a chi
+dare accesso.
+
+Da rilanciare prima di ogni esposizione, e dopo ogni migrazione che crea tabelle.
 
 ---
 
@@ -623,16 +645,49 @@ Due note tecniche:
 Funziona anche da riga di comando: `python scheda.py "comune di jesi"`, o `--cerca` per
 elencare gli enti che somigliano.
 
-### R28 — Nome del RUP e del responsabile transizione digitale · media · ~4h
+### R28 — Arrivare a chi decide, non al protocollo · ✅ FATTO 2026-09-07 (in parte)
 
-Era R1.4, rimandato in attesa di validare il canale PEC. Se dopo i primi venti
-invii il tasso di risposta è zero, questa diventa **la** priorità: significa che
-la PEC al protocollo non arriva a chi decide. I dataset `aoo` e `uo` di IndicePA
-contengono i responsabili per ufficio.
+Sbloccato dal criterio che era già scritto qui: **18 PEC inviate, 18 consegnate, zero
+risposte**. Le ricevute confermano la consegna, quindi il messaggio arriva e si ferma
+dopo — il sospetto è il destinatario, non il testo.
 
-⚠️ Sono persone fisiche: prima di ingerirli va ripreso `docs/liceita.md`. Finora
-i nomi (`nome_resp`, `cogn_resp`, `titolo_resp`) sono stati **deliberatamente
-esclusi**.
+Tre strade possibili. Misurate tutte e tre **prima** di costruire, e due non funzionano:
+
+| Strada | Copertura su 18.707 enti | Dati personali |
+|---|---|---|
+| PEC di un ufficio IT **diversa** da quella dell'ente | **2,7%** | no |
+| **Nome** dell'ufficio IT, da mettere nell'oggetto | 97,3% | no |
+| Nome e recapito del **responsabile** (RTD) | **92,7%** | **sì** |
+
+`ingestion/uffici.py` fa le prime due: carica 24.997 uffici da IndicePA tenendo **solo le
+colonne organizzative**, e `genera_pec.py` mette il nome dell'ufficio in testa
+all'oggetto — la riga che legge chi smista. Le quattro colonne personali del dataset sono
+escluse nel codice con il nome scritto per esteso, così fra un anno nessuno pensa a una
+dimenticanza.
+
+**Il gate è stato utile perché è andato male.** La prima strada, quella che sembrava
+ovvia — trovare la PEC dell'ufficio informatico — copre il 2,7%, e guardando quei 514 casi
+la PEC «dell'ufficio IT» è spesso `ragioneria@` o `tecnico@`. Mezz'ora di misura ha
+risparmiato una pipeline intera.
+
+Anche la seconda è onestamente piccola: il 95% degli enti dichiara *«Ufficio per la
+transizione al Digitale»*, che ogni PA ha dovuto istituire per il CAD. Corretto, non
+distintivo. Costa zero e si misura sul prossimo lotto.
+
+#### La terza strada è ferma, ed è una decisione, non un lavoro
+
+Il 92,7% degli enti ha un RTD con nome e email nel dataset IndicePA — pubblicato per
+obbligo di legge (CAD art. 17) proprio perché sia raggiungibile. È l'unica delle tre che
+sposterebbe davvero il tasso di risposta, ed è dato personale.
+
+Il dataset è stato scaricato per contare la copertura e **cancellato subito dopo**:
+nessun nome su disco, nessuna colonna personale nello schema. La misura c'è, il
+trattamento no.
+
+Cosa serve per procedere → `docs/liceita.md` §7: base giuridica, informativa art. 14,
+minimizzazione. C'è anche una via intermedia che vale la pena valutare per prima —
+**nominare la persona scrivendo comunque alla PEC istituzionale**, che ottiene quasi lo
+stesso effetto di smistamento senza conservare recapiti personali.
 
 ### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
 

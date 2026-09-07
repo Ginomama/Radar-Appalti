@@ -54,8 +54,8 @@ rigenerati il 4 settembre 2026. In calce a ogni PEC ora c'è:
 
 ```
 Leonardo Foschi
-P.IVA IT00000000000
-tel. 000 0000000 — contatto@esempio.it
+P.IVA 02612600441
+tel. 3468278078 — leonardo.foschi@flowline.it
 ```
 
 ⚠️ **La casella `@flowline.it` va letta ogni giorno.** È il recapito che
@@ -153,31 +153,89 @@ Che Avast dichiari non affidabile anche `smtp.gmail.com` dice che il problema è
 suo, non dei server: il suo archivio di certificati è probabilmente vecchio o
 danneggiato.
 
-### Il rimedio
-
-Sta dentro Avast, ed è una impostazione di sicurezza — falla tu:
-
-1. **Avast → Menu → Impostazioni → Protezione → Componenti principali →
-   Protezione posta** e togli la spunta a *Scansiona connessioni SSL/TLS*
-   (in alcune versioni: *Protezione posta → Personalizza → SSL*).
-2. In alternativa, **Impostazioni → Eccezioni** e aggiungi
-   `smtps.pec.aruba.it`.
-3. Se vuoi tenere la scansione, prova prima **Riparazione/aggiornamento di
-   Avast**: se torna a validare gmail, tornerà a validare anche Aruba.
-
-Poi riverifica con:
+### Prima cosa: guarda chi firma
 
 ```bash
-python ingestion/pec_smtp.py --lotto pec-marche --invia 1 --prova
+python ingestion/diagnosi_tls.py
 ```
 
-Vale anche la pena saperlo a prescindere dall'errore: finché la scansione è
-attiva, **Avast decifra e rilegge la tua posta certificata**. Su un canale che
-ha valore legale è una cosa da decidere consapevolmente.
+Prova le tre porte e dice chi ha firmato il certificato su ciascuna. Serve
+perché l'errore di OpenSSL — *unable to get local issuer certificate* — è lo
+stesso per dieci cause diverse, e da solo manda a cercare nel posto sbagliato.
+Esce 0 se il canale è verificabile, 1 se no: lo si può mettere in un job.
 
-`pec_smtp.py` riconosce da solo la situazione e la spiega, invece di mostrare
-il messaggio criptico di OpenSSL. Non ripiega mai su una verifica più
-permissiva.
+Rimisurato il **7 settembre 2026**, Avast Premium Security **26.7.11086.3745**:
+
+| Porta | Firmato da | Verifica |
+|---|---|---|
+| `imaps.pec.aruba.it:993` | `Avast Web/Mail Shield **Untrusted** Root` | ❌ nessun emittente locale |
+| `smtps.pec.aruba.it:465` | `Avast Web/Mail Shield **Untrusted** Root` | ❌ nessun emittente locale |
+| `pec.aruba.it:443` | `Avast Web/Mail Shield Root` | ❌ *Basic Constraints not marked critical* |
+
+Due guasti diversi, ed è utile distinguerli:
+
+- **Sulla posta** (993/465) Avast firma con la radice *Untrusted*, che non è in
+  nessun magazzino **di proposito**. È il blocco vero.
+- **Sul web** (443) firma con la radice buona, che nel magazzino di Windows c'è
+  — Python su Windows lo legge. Lì non fallisce la catena: fallisce la
+  **verifica stretta**, perché il certificato di Avast è malformato (un vincolo
+  che lo standard vuole *critical* e lui non marca). Se domani sistemassero la
+  radice della posta, resterebbe questo secondo strato.
+
+Che succeda **anche con Gmail** sulla 993 chiude la questione: non è Aruba, non
+è il codice, non è la catena di certificati di Python.
+
+### Il rimedio
+
+Sta dentro Avast, ed è una impostazione di sicurezza: **falla tu**, non è una
+cosa da automatizzare.
+
+**Strada 1 — spegnere la scansione SSL della posta** (quella che risolve)
+
+`Avast → ☰ Menu → Impostazioni → Protezione → Scudi principali` → scorri fino a
+**Scudo posta** → apri le impostazioni dello scudo → togli la spunta a
+***Analizza le connessioni protette (SSL/TLS)***.
+
+L'etichetta cambia leggermente fra le versioni: cerca la voce che nomina SSL o
+TLS dentro lo Scudo posta, non quella dello Scudo Web.
+
+**Strada 2 — eccezione mirata**, se preferisci tenere la scansione accesa per
+il resto della posta: `Impostazioni → Generale → Eccezioni → Aggiungi
+eccezione` e metti `imaps.pec.aruba.it` e `smtps.pec.aruba.it`. Nelle versioni
+recenti le eccezioni non sempre coprono l'intercettazione SSL: verifica subito
+con `diagnosi_tls.py` invece di darlo per fatto.
+
+**Strada 3 — riparare Avast** (`Impostazioni → Risoluzione problemi →
+Ripara app`). Se dopo la riparazione torna a validare Gmail sulla 993, il suo
+archivio era solo vecchio e non serve toccare altro.
+
+Dopo ogni tentativo, una riga:
+
+```bash
+python ingestion/diagnosi_tls.py
+```
+
+Quando la 993 dice `verifica: OK`, le ricevute arretrate si recuperano tutte in
+un colpo — restano sul server finché non le si legge:
+
+```bash
+python ingestion/pec_imap.py --leggi --giorni 30
+```
+
+### Perché non si aggira dal codice
+
+Le due scorciatoie sarebbero disattivare la verifica del certificato, o
+aggiungere la radice *Untrusted* al magazzino di Windows. Sono la stessa cosa
+scritta in due modi: si spegne l'unica difesa contro qualcuno che si mette in
+mezzo. Su un canale che porta le credenziali di una casella PEC — che ha valore
+legale — non si fa. Meglio ricevute non lette che una casella compromessa.
+
+`pec_smtp.py` e `pec_imap.py` riconoscono la situazione e la spiegano invece di
+mostrare il messaggio criptico di OpenSSL. Non ripiegano mai su una verifica
+più permissiva.
+
+E vale la pena saperlo comunque, al di là dell'errore: finché la scansione è
+attiva, **Avast decifra e rilegge la tua posta certificata**.
 
 ## Se esce `SMTPAuthenticationError: 535 5.7.8 Authentication failed`
 

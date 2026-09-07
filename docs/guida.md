@@ -84,10 +84,20 @@ scritto.
 generi → invii → il gestore consegna → risponde → call → offerta → vinto/perso
 ```
 
+**Sapere dove andare** — non scegliere le province a caso:
+
+```bash
+python ingestion/territorio.py --prossimo
+```
+
+Stampa quale provincia tocca e **il comando esatto** per generare il lotto. L'ordine
+non è per numero di lead: mette avanti dove il fornitore uscente è piccolo, cioè
+dove qualcuno si può davvero sostituire.
+
 **Generare un lotto** — prepara le PEC già scritte, una per ente:
 
 ```bash
-python ingestion/genera_pec.py --limite 20 --provincia PD,VE,TV
+python ingestion/genera_pec.py --limite 18 --provincia ROMA
 ```
 
 **Inviare** — dalla console, bottone *invia PEC* su ogni riga. Prima mostra

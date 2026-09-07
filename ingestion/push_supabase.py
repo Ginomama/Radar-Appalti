@@ -202,16 +202,20 @@ def leggi_dsn():
     if dsn:
         return dsn.strip()
     if os.path.exists(ENVFILE):
-        # utf-8-sig: il Blocco note di Windows aggiunge il BOM senza dirlo
-        for riga in open(ENVFILE, encoding="utf-8-sig"):
-            riga = riga.strip()
-            if not riga or riga.startswith("#"):
-                continue
-            if riga.startswith("RADAR_SUPABASE_DSN"):
-                riga = riga.split("=", 1)[1]
-            riga = riga.strip().strip('"').strip("'")
-            if riga.startswith("postgres"):     # accetta anche il DSN nudo
-                return riga
+        # utf-8-sig: il Blocco note di Windows aggiunge il BOM senza dirlo.
+        # Il 'with' non e' pedanteria: uscendo con un return dentro il for il
+        # file restava aperto, e su Windows un handle aperto impedisce di
+        # riscrivere .env.local mentre il processo gira.
+        with open(ENVFILE, encoding="utf-8-sig") as f:
+            for riga in f:
+                riga = riga.strip()
+                if not riga or riga.startswith("#"):
+                    continue
+                if riga.startswith("RADAR_SUPABASE_DSN"):
+                    riga = riga.split("=", 1)[1]
+                riga = riga.strip().strip('"').strip("'")
+                if riga.startswith("postgres"):   # accetta anche il DSN nudo
+                    return riga
     return None
 
 

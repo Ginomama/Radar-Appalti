@@ -707,12 +707,31 @@ di stage, quindi il rinvio non costa una riscrittura.
 - una ventina di conversazioni aperte insieme: a quel punto la console non basta più
 - servono calendario, sequenze automatiche o preventivi — cose che qui non ci saranno mai
 
-### R27 — Copertura territoriale a rotazione · media · ~2h
+### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
-Oggi due lotti scelti a mano. Un piano che copra le regioni una alla volta con
-un ritmo sostenibile (15–20 enti a settimana, sotto il tetto giornaliero PEC),
-partendo dalle province dove il fornitore uscente è piccolo — sono quelle dove
-si può davvero sostituire qualcuno.
+`ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per
+lavorare: senza un ordine si rifanno le province comode, si saltano quelle grandi, e non
+si sa mai quanto manca.
+
+**L'ordine non è per numero di lead**, ed è il punto. La provincia con più scadenze è
+quasi sempre quella con gli enti più grandi, che sono anche quelli con i fornitori più
+radicati: tanti lead e nessuno da sostituire. Il valore di una provincia tiene insieme
+tre cose:
+
+- **quanti enti restano** — a radice, non lineare, se no Roma e Milano mangiano il piano
+- **quanto sono buoni i lead** — il punteggio di R18
+- **quanto è piccolo l'uscente** — la quota di lead il cui fornitore attuale ha al
+  massimo 8 contratti in tutta Italia
+
+Il terzo è quello che nessuno guarda ed è il più predittivo: distingue un mercato
+contendibile da uno presidiato.
+
+Il ritmo è 18 enti a settimana, che non è un'ambizione: è il tetto `PEC_MAX_GIORNO` (20,
+per non farsi marcare come spam) insieme al fatto che una risposta va lavorata a mano.
+
+Oggi: **633 enti in 52 province, 36 settimane** a questo ritmo. `--prossimo` stampa il
+comando esatto da lanciare, che è la differenza fra un piano e una tabella che nessuno
+traduce in azione. L'anti-duplicato di R20 salta da solo chi è già stato contattato.
 
 ### R25 — Funnel completo, non solo la risposta · ✅ FATTO 2026-09-07
 
@@ -775,17 +794,35 @@ sola. Dump mensile compresso, tre generazioni, fuori da OneDrive.
 
 Costa un'ora e copre lo scenario in cui si perde tutto.
 
-### R23 — Test sui punti che si sono già rotti · media · ~3h
+### R23 — Test sui punti che si sono già rotti · ✅ FATTO 2026-09-07
 
-Non test in generale: test **sui bug veri di questo progetto**, perché sono
-quelli che tornano.
+`ingestion/test_regressioni.py`, 39 casi, solo libreria standard. Non test in generale:
+test **sui bug veri di questo progetto**. Un test che non protegge da un errore osservato
+invecchia male — dice che il codice fa quello che fa, e passa anche quando il
+comportamento è sbagliato. Qui ogni classe ha una data e una storia.
 
-- le regex di `categorie.py` (un `\b` di troppo aveva dimezzato la copertura)
-- l'aggregazione per CIG in `v_scadenze_prossime` (gli RTI gonfiavano il valore
-  del 99,8%)
-- la media del ribasso che ignora gli zeri
-- il parsing di `.env.local` con chiave ripetuta (ci è costato una serata)
-- il formato dei file PEC letto da `pec_smtp.leggi_messaggio()`
+| Classe | Il guasto, e cosa era costato |
+|---|---|
+| `Categorie` | un `` di troppo aveva dimezzato la copertura senza dare errore — qui c'è anche una soglia sul database vero |
+| `ParsingEnv` | `.env.local` con chiave ripetuta o BOM del Blocco note: una serata |
+| `Mascheramento` | la password nei traceback che `console_live` rimanda al browser |
+| `FormatoPEC` | il formato dei `.txt`, che si scopre rotto con una PEC in mano |
+| `MediaCheIgnoraIZeri` | `avg()` salta i NULL: 26,40% invece di 4,72%, un fattore cinque sul numero che il prodotto vende |
+| `AggregazionePerCIG` | gli RTI gonfiavano il valore del 99,8% |
+| `DownloadTroncato` | uno ZIP a metà messo in cache come buono: 47.038 CIG mancanti |
+| `CodiciFiscali` | P.IVA a 10 cifre e forme societarie: 41 rinnovi su 660 letti come porte aperte |
+| `Funnel` | gli stadi cumulativi, e le due mappe stato→colonna che devono restare allineate |
+| `DatiPersonali` | test di **disciplina**: se qualcuno carica i nominativi senza passare da `liceita.md`, questo se ne accorge prima della produzione |
+| `UfficiRilevanti` | i falsi amici: «Anagrafe – servizi demografici informatizzati» |
+
+Girano **in testa al piano mensile**, insieme a `sicurezza.py --breve`: durano secondi e
+stanno prima delle quattro ore di ingestione. Se una regex è stata stretta, meglio saperlo
+adesso che dopo aver riscritto il database con una classificazione dimezzata.
+
+Al primo giro hanno già trovato un difetto vero: `leggi_dsn()` usciva con un `return`
+dentro il `for` e lasciava `.env.local` aperto — su Windows un handle aperto impedisce di
+riscrivere il file mentre il processo gira, che è esattamente quello che serve fare per
+ruotare la password.
 
 ### R24 — Guida d'uso in una pagina · ✅ FATTO 2026-09-07
 

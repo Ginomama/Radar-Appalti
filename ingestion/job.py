@@ -96,6 +96,15 @@ PIANI = {
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
     ],
     "mensile": [
+        # Primo di tutto, e dura secondi: i test di regressione girano PRIMA
+        # delle quattro ore di ingestione, non dopo. Se una regex di
+        # categorie.py e' stata stretta, meglio saperlo adesso che dopo aver
+        # riscritto il database con una classificazione dimezzata.
+        dict(id="test",    argv=["test_regressioni.py"],
+             descr="test sui guasti gia' successi (R23)", minuti=2),
+        dict(id="sicurezza", argv=["sicurezza.py", "--breve"],
+             descr="controlli RLS e privilegi (R13)", minuti=2,
+             richiede=("DSN",)),
         dict(id="backup",  argv=["backup.py", "--completo"],
              descr="backup completo (operative + SQLite)", minuti=30,
              richiede=("DSN",)),

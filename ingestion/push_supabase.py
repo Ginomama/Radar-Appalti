@@ -79,12 +79,20 @@ MAPPA = [
         "tipo_scelta_seguito", "fornitore_subentrante", "esito",
         "contendibile", "punteggio",
     ], None, ""),
+    # R5. Gli avvisi TED: pochi ma con la scadenza nel futuro, quindi sono la
+    # sola riga del sistema su cui si puo' agire oggi invece che fra sei mesi.
+    ("ted_avviso", "radar.ted", [
+        "numero", "identificativo", "titolo", "ente", "citta", "cf_ente",
+        "pubblicato", "scadenza", "n_lotti", "cpv", "tipo", "procedura",
+        "natura", "valore", "valuta", "oggetto", "link",
+    ], None, ""),
 ]
 
 # Colonne che in Postgres sono date: SQLite le tiene come testo ISO, e le
 # stringhe vuote vanno convertite in NULL o COPY fallisce.
 COL_DATA = {"data_stipula_contratto", "data_termine_contrattuale",
-            "prima_gara", "ultima_gara", "data_termine"}
+            "prima_gara", "ultima_gara", "data_termine",
+            "pubblicato", "scadenza"}
 
 
 def leggi(cx, vista, colonne, filtro=""):

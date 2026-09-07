@@ -271,3 +271,48 @@ ALTER VIEW radar.v_funnel         SET (security_invoker = on);
 -- di servizio, e' la configurazione piu' restrittiva possibile. Le policy
 -- serviranno il giorno in cui si esporra' qualcosa, non prima: scriverle ora
 -- vorrebbe dire indovinare a chi dare accesso.
+
+
+-- ------------------------------------------------------------- R5: TED
+-- Gare europee ancora APERTE. E' un'altra cosa da radar.scadenze: li' ci sono
+-- contratti finiti e una previsione su quando l'ente ricomprera'; qui c'e' una
+-- gara a cui si puo' partecipare, con una scadenza per presentare offerta.
+--
+-- Il volume e' piccolo per costruzione — sopra soglia comunitaria ci finisce
+-- il ~2,2% del mercato ANAC — e va tenuto onesto: e' un segnale, non il motore.
+CREATE TABLE IF NOT EXISTS radar.ted (
+    numero         text PRIMARY KEY,       -- publication-number, es. 533569-2026
+    identificativo text,
+    titolo         text,
+    ente           text,
+    citta          text,
+    -- TED non pubblica il CF del compratore: l'aggancio e' sul nome, e ne
+    -- prende circa il 38%. NULL vuol dire "non riconosciuto", non "ente nuovo".
+    cf_ente        text,
+    pubblicato     date,
+    scadenza       date,
+    n_lotti        integer,
+    cpv            text,
+    tipo           text,
+    procedura      text,
+    natura         text,
+    valore         numeric,
+    valuta         text,
+    oggetto        text,
+    link           text,
+    ingerito_il    timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_ted_scadenza ON radar.ted (scadenza);
+CREATE INDEX IF NOT EXISTS ix_ted_cf ON radar.ted (cf_ente);
+ALTER TABLE radar.ted ENABLE ROW LEVEL SECURITY;
+
+-- Solo le gare ancora aperte, con i giorni che restano. E' la vista che legge
+-- n8n: una gara scaduta ieri non e' un'allerta, e' rumore.
+CREATE OR REPLACE VIEW radar.v_ted_aperte AS
+SELECT t.*,
+       (t.scadenza - current_date) AS giorni_alla_scadenza,
+       e.cf_ente IS NOT NULL       AS ente_noto
+FROM radar.ted t
+LEFT JOIN radar.ente e ON e.cf_ente = t.cf_ente
+WHERE t.scadenza >= current_date;
+ALTER VIEW radar.v_ted_aperte SET (security_invoker = on);

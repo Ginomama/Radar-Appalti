@@ -150,29 +150,58 @@ quella query quotidiana è ciò che tiene il database sveglio.
 
 ## Sprint 2 — Nuova fonte: allerta gare aperte
 
-### R5 — Ingestion TED · media · ~4h
+### R5 — Ingestion TED · ✅ FATTO 2026-09-07
 
-API v3 già verificata, accesso anonimo, nessuna chiave.
+`ingestion/ted.py` + tabella `radar.ted` e vista `radar.v_ted_aperte`.
 
-```
-POST https://api.ted.europa.eu/v3/notices/search
-query: classification-cpv IN (72000000 48000000) AND buyer-country IN (ITA)
-       AND publication-date >= YYYYMMDD
-```
+**È un'altra cosa rispetto al motore scadenze**, ed è il motivo per cui vale la pena. Le
+scadenze ANAC sono una *previsione*: contratti finiti, e un'ipotesi su quando l'ente
+ricomprerà. TED pubblica l'avviso **mentre la gara è aperta**, con la scadenza per
+presentare offerta ancora nel futuro. Non è un lead da coltivare per sei mesi: è una cosa
+a cui si può partecipare adesso.
 
-- R5.1 tabella `ted_avvisi` (locale + Supabase), chiave `publication-number`.
-- R5.2 paginazione con `iterationNextToken`.
-- R5.3 normalizzare `deadline-receipt-tender-date-lot`: è un **array**, una data per lotto.
-- R5.4 join con `radar.ente` sul buyer, dove possibile.
+Misurato: **453 avvisi in 90 giorni, 98 ancora aperti, 1.801 l'anno** sul verticale — che
+conferma la stima onesta di ~1.900. Il 38,5% si aggancia a un ente che già conosciamo
+dallo storico ANAC, e su quelli la scheda ente dice se vale la pena prima ancora di
+leggere il capitolato.
 
-Aspettativa da tenere onesta: ~1.900 avvisi l'anno sul verticale, cioè ~2,2% del mercato
-ANAC. Non è un difetto — è tutto il mercato realmente contendibile, e TED arriva mentre
-la gara è ancora aperta.
+Tre cose che l'API non dice e costano un pomeriggio:
 
-### R6 — Workflow n8n "Allerta TED" · media · ~2h
+- **`fields` è obbligatorio** e i nomi ammessi sono 1.826. Sbagliarne uno restituisce 400
+  con l'elenco intero in risposta — che è anche l'unica documentazione davvero aggiornata.
+- **I CPV vanno a otto cifre.** `classification-cpv IN (72)` è rifiutato, `(72000000)`
+  prende tutto il ramo.
+- **La paginazione vuole `paginationMode: "ITERATION"`.** Senza, l'API risponde
+  regolarmente ma `iterationNextToken` torna `null` e ci si ferma alla prima pagina
+  credendo di aver finito: il totale dichiarava 296 e in mano ce n'erano 100. Nessun
+  errore, da nessuna parte.
 
-Trigger giornaliero sugli avvisi delle ultime 24h. Copre anche il requisito di attività
-giornaliera del punto R4.
+Quasi ogni campo è un dizionario per lingua **e** una lista per lotto. La scadenza in
+particolare: un avviso con otto lotti ha otto date, e quella utile è la più vicina fra
+quelle ancora future.
+
+### R6 — Workflow n8n "Allerta TED" · ✅ FATTO 2026-09-07
+
+`workflows/radar-allerta-ted.json`, 9 nodi, validati uno per uno con `validate_node`.
+Le tre query SQL sono state provate sul database vero, compresa la doppia esecuzione:
+l'upsert è idempotente e un avviso già annunciato non torna.
+
+Gira su n8n Cloud senza problemi — **TED non ha il WAF sugli IP cloud** che blocca ANAC.
+
+Quattro scelte che evitano guasti silenziosi:
+
+- **finestra di 3 giorni, non 1**, anche girando ogni giorno: se un'esecuzione salta, una
+  finestra da 24 ore perde quegli avvisi per sempre e nessuno se ne accorge
+- **`xmax = 0`** nella `RETURNING` distingue gli inserimenti veri dagli aggiornamenti,
+  se no ogni giorno si riannunciano gli stessi avvisi
+- **si segna dopo l'invio**, non prima: se Telegram fallisce l'avviso resta da annunciare
+- **un IF prima del messaggio**: nei giorni senza avvisi non parte niente. Un messaggio
+  vuoto al giorno è il modo più rapido per far ignorare il canale
+
+⚠️ **Non è stato attivato**: servono le credenziali Postgres e Telegram nel Credentials
+Manager di n8n, e quelle le configuri tu. Senza Telegram il workflow funziona lo stesso
+disattivando l'ultimo nodo — `radar.ted` si riempie comunque, ed è quello che legge la
+console.
 
 ---
 

@@ -1,0 +1,209 @@
+{
+  "name": "Radar — Allerta TED",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "id": "trigger-giornaliero",
+      "name": "Ogni giorno alle 07:15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-460, 300],
+      "notes": "Alle 07:15 e non a mezzanotte: TED pubblica in mattinata, e chiedere gli avvisi di oggi alle 00:05 vuol dire chiedere una lista vuota."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// La finestra e' di 3 giorni, non di 1, anche se il workflow gira ogni\n// giorno: se una esecuzione salta (n8n fermo, TED lento, rete giu') una\n// finestra da 24 ore perde quegli avvisi per sempre e nessuno se ne accorge.\n// L'upsert a valle rende innocuo rivedere gli stessi avvisi.\nconst giorni = 3;\nconst d = new Date(Date.now() - giorni * 86400000);\nconst dal = d.toISOString().slice(0, 10).replace(/-/g, '');\n\n// CPV a otto cifre: l'API rifiuta i prefissi corti come '72'.\nconst query = `classification-cpv IN (72000000 48000000) AND buyer-country IN (ITA) AND publication-date >= ${dal}`;\n\n// 'fields' e' obbligatorio e i nomi sono verificati: sbagliarne uno da' 400.\nconst fields = [\n  'publication-number', 'notice-title', 'buyer-name', 'buyer-city',\n  'deadline-receipt-tender-date-lot', 'classification-cpv',\n  'publication-date', 'notice-type', 'procedure-type', 'contract-nature',\n  'estimated-value-lot', 'estimated-value-cur-lot', 'description-lot',\n  'links', 'notice-identifier'\n];\n\nreturn [{ json: { query, limit: 100, fields, paginationMode: 'ITERATION' } }];"
+      },
+      "id": "costruisci-query",
+      "name": "Costruisci la query TED",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 300],
+      "notes": "Un Code node e' giustificato qui: serve una data calcolata e un array di 15 campi, che con un Set diventerebbe illeggibile."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ted.europa.eu/v3/notices/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "chiama-ted",
+      "name": "Interroga TED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, 300],
+      "alwaysOutputData": true,
+      "notes": "API pubblica, nessuna chiave. Nessun WAF sugli IP cloud, a differenza di ANAC: questo puo' girare su n8n Cloud."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// TED restituisce quasi ogni campo come dizionario per lingua ({\"ita\": [...]})\n// e quasi ogni campo come lista, una voce per lotto. Serve appiattire in un\n// posto solo: farlo a valle vorrebbe dire venti espressioni fragili.\nfunction testo(v) {\n  if (v === null || v === undefined) return null;\n  if (Array.isArray(v)) return v.length ? testo(v[0]) : null;\n  if (typeof v === 'object') {\n    for (const k of ['ita', 'mul', 'eng']) if (k in v) return testo(v[k]);\n    const vals = Object.values(v);\n    return vals.length ? testo(vals[0]) : null;\n  }\n  return String(v).trim() || null;\n}\n\nfunction tutte(v) {\n  if (v === null || v === undefined) return [];\n  if (Array.isArray(v)) return v.flatMap(tutte);\n  if (typeof v === 'object') {\n    for (const k of ['ita', 'mul', 'eng']) if (k in v) return tutte(v[k]);\n    const vals = Object.values(v);\n    return vals.length ? tutte(vals[0]) : [];\n  }\n  const s = String(v).trim();\n  return s ? [s] : [];\n}\n\nfunction dataIso(v) {\n  const m = /^(\\d{4}-\\d{2}-\\d{2})/.exec(String(v || ''));\n  return m ? m[1] : null;\n}\n\nconst oggi = new Date().toISOString().slice(0, 10);\nconst avvisi = [];\n\nfor (const item of $input.all()) {\n  for (const n of (item.json.notices || [])) {\n    // La scadenza e' un array: un avviso con otto lotti ha otto date. Serve\n    // la piu' vicina fra quelle ancora nel futuro — e' quella che dice entro\n    // quando bisogna muoversi.\n    const date_ = tutte(n['deadline-receipt-tender-date-lot'])\n      .map(dataIso).filter(Boolean).sort();\n    const future = date_.filter(d => d >= oggi);\n    const scadenza = future.length ? future[0] : (date_.length ? date_[date_.length - 1] : null);\n\n    const valore = tutte(n['estimated-value-lot'])\n      .map(x => parseFloat(String(x).replace(',', '.')))\n      .filter(x => !isNaN(x))\n      .reduce((a, b) => a + b, 0) || null;\n\n    const numero = testo(n['publication-number']);\n    if (!numero) continue;\n\n    avvisi.push({\n      numero,\n      identificativo: testo(n['notice-identifier']),\n      titolo: testo(n['notice-title']),\n      ente: testo(n['buyer-name']),\n      citta: testo(n['buyer-city']),\n      pubblicato: dataIso(testo(n['publication-date'])),\n      scadenza,\n      n_lotti: date_.length,\n      cpv: [...new Set(tutte(n['classification-cpv']))].slice(0, 6).join(','),\n      tipo: testo(n['notice-type']),\n      procedura: testo(n['procedure-type']),\n      natura: testo(n['contract-nature']),\n      valore,\n      valuta: testo(n['estimated-value-cur-lot']),\n      oggetto: (testo(n['description-lot']) || '').slice(0, 2000) || null,\n      link: ((n.links || {}).xml || {}).MUL || ((n.links || {}).pdf || {}).ITA || null\n    });\n  }\n}\n\n// Un solo item con tutto dentro: la scrittura a valle e' una query sola\n// invece di una per avviso. Su cento avvisi sono cento round-trip risparmiati.\nreturn [{ json: { payload: JSON.stringify(avvisi), quanti: avvisi.length } }];"
+      },
+      "id": "normalizza",
+      "name": "Normalizza gli avvisi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "notes": "Appiattisce i dizionari per lingua e gli array per lotto. Emette un item solo, cosi' la scrittura a valle e' una query sola."
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "INSERT INTO radar.ted (numero, identificativo, titolo, ente, citta, pubblicato, scadenza, n_lotti, cpv, tipo, procedura, natura, valore, valuta, oggetto, link)\nSELECT x.numero, x.identificativo, x.titolo, x.ente, x.citta, x.pubblicato, x.scadenza, x.n_lotti, x.cpv, x.tipo, x.procedura, x.natura, x.valore, x.valuta, x.oggetto, x.link\nFROM jsonb_to_recordset($1::jsonb) AS x(\n  numero text, identificativo text, titolo text, ente text, citta text,\n  pubblicato date, scadenza date, n_lotti integer, cpv text, tipo text,\n  procedura text, natura text, valore numeric, valuta text, oggetto text, link text)\nON CONFLICT (numero) DO UPDATE SET\n  titolo = excluded.titolo, scadenza = excluded.scadenza,\n  valore = excluded.valore, oggetto = excluded.oggetto,\n  link = excluded.link, ingerito_il = now()\nRETURNING numero, (xmax = 0) AS nuovo",
+        "options": {
+          "queryReplacement": "={{ $json.payload }}",
+          "queryBatching": "single"
+        }
+      },
+      "id": "salva",
+      "name": "Salva su Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [420, 300],
+      "notes": "Upsert in una query sola con jsonb_to_recordset. 'xmax = 0' distingue gli inserimenti nuovi dagli aggiornamenti: senza, ogni giorno si riannuncerebbero gli stessi avvisi."
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "-- Solo le gare APERTE e mai annunciate prima. Una gara scaduta ieri non e'\n-- un'allerta, e' rumore; e riannunciare quella di ieri fa smettere di\n-- leggere il canale dopo una settimana.\nSELECT t.numero, t.titolo, t.ente, t.scadenza, t.valore, t.link,\n       (t.scadenza - current_date) AS giorni,\n       (t.cf_ente IS NOT NULL)     AS ente_noto\nFROM radar.ted t\nWHERE t.scadenza >= current_date\n  AND t.ingerito_il > now() - interval '1 day'\n  AND NOT EXISTS (SELECT 1 FROM radar.notificato n\n                   WHERE n.cig = 'ted:' || t.numero)\nORDER BY t.scadenza\nLIMIT 20",
+        "options": {}
+      },
+      "id": "da-annunciare",
+      "name": "Cosa c'e' di nuovo e aperto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [640, 300],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.numero }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "se-ce-qualcosa",
+      "name": "C'e' qualcosa da dire?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [860, 300],
+      "notes": "Senza questo, nei giorni senza avvisi partirebbe un messaggio vuoto — ed e' il modo piu' rapido per far ignorare il canale."
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=🇪🇺 *Gara europea aperta*\n\n*{{ $json.ente }}*\n{{ $json.titolo }}\n\nScade il {{ $json.scadenza }} — fra {{ $json.giorni }} giorni\n{{ $json.valore ? 'Valore stimato: € ' + Math.round($json.valore).toLocaleString('it-IT') : 'Valore non dichiarato' }}\n{{ $json.ente_noto ? '● Ente che conosciamo: guarda la scheda prima di decidere' : '' }}\n\n{{ $json.link }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "telegram",
+      "name": "Avvisa su Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1080, 200],
+      "notes": "Serve la credenziale Telegram configurata nel Credentials Manager. Finche' non c'e', disattiva questo nodo: il resto del workflow continua a riempire radar.ted, che e' quello che legge la console."
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "-- Segnare DOPO l'invio, non prima: se Telegram fallisce, l'avviso deve\n-- restare da annunciare invece di essere dato per fatto.\nINSERT INTO radar.notificato (cig, canale)\nVALUES ('ted:' || $1, 'telegram')\nON CONFLICT (cig, canale) DO NOTHING",
+        "options": {
+          "queryReplacement": "={{ $json.numero || $('Cosa c\\'e\\' di nuovo e aperto').item.json.numero }}"
+        }
+      },
+      "id": "segna",
+      "name": "Segna come annunciato",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1300, 200]
+    }
+  ],
+  "connections": {
+    "Ogni giorno alle 07:15": {
+      "main": [[{ "node": "Costruisci la query TED", "type": "main", "index": 0 }]]
+    },
+    "Costruisci la query TED": {
+      "main": [[{ "node": "Interroga TED", "type": "main", "index": 0 }]]
+    },
+    "Interroga TED": {
+      "main": [[{ "node": "Normalizza gli avvisi", "type": "main", "index": 0 }]]
+    },
+    "Normalizza gli avvisi": {
+      "main": [[{ "node": "Salva su Supabase", "type": "main", "index": 0 }]]
+    },
+    "Salva su Supabase": {
+      "main": [[{ "node": "Cosa c'e' di nuovo e aperto", "type": "main", "index": 0 }]]
+    },
+    "Cosa c'e' di nuovo e aperto": {
+      "main": [[{ "node": "C'e' qualcosa da dire?", "type": "main", "index": 0 }]]
+    },
+    "C'e' qualcosa da dire?": {
+      "main": [
+        [{ "node": "Avvisa su Telegram", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Avvisa su Telegram": {
+      "main": [[{ "node": "Segna come annunciato", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

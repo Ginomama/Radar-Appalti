@@ -1,12 +1,32 @@
 # Workflow n8n del Radar
 
-Due workflow, entrambi validati con `validate_workflow` (0 errori, 0 warning) e con le
-query **eseguite davvero su Supabase**, non solo scritte.
+Tre workflow, tutti con i nodi validati uno per uno e con le query **eseguite davvero su
+Supabase**, non solo scritte.
 
 | File | Cosa fa | Quando |
 |---|---|---|
 | `radar-alert-telegram.json` | manda su Telegram solo i lead **nuovi** | ogni giorno 08:00 |
 | `radar-digest-email.json` | digest HTML completo per categoria | lunedì 08:15 |
+| `radar-allerta-ted.json` | scarica le gare europee aperte e annuncia le nuove | ogni giorno 07:15 |
+
+### Nota sull'Allerta TED
+
+È l'unico dei tre che **prende i dati da fuori** invece di leggere quelli già in
+Supabase, e l'unico che può girare su n8n Cloud senza problemi: TED non ha il WAF sugli
+IP dei provider cloud che invece blocca ANAC.
+
+Quattro cose sono lì apposta, e toglierle rompe il workflow in silenzio:
+
+- la finestra è di **3 giorni** anche se gira ogni giorno — se un'esecuzione salta, 24 ore
+  di avvisi si perdono per sempre;
+- `paginationMode: "ITERATION"` nel corpo della richiesta — senza, si ottengono 100
+  avvisi su 296 e nessun errore;
+- `xmax = 0` nella `RETURNING` distingue gli inserimenti dagli aggiornamenti, se no ogni
+  giorno si riannunciano gli stessi;
+- si segna come annunciato **dopo** l'invio: se Telegram fallisce, l'avviso resta da fare.
+
+Se non hai ancora la credenziale Telegram, **disattiva l'ultimo nodo e attiva lo stesso**:
+`radar.ted` si riempie comunque, ed è quello che legge la console.
 
 ## ⚠️ Perché non sono già sulla tua istanza
 

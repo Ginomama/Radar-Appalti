@@ -91,6 +91,11 @@ PIANI = {
         dict(id="ricevute", argv=["pec_imap.py", "--leggi"],
              descr="lettura ricevute PEC", minuti=15,
              richiede=("DSN", "PEC_USER", "PEC_PASSWORD")),
+        # TED e' nel giornaliero e non nel mensile: una gara aperta ha una
+        # scadenza per presentare offerta, e scoprirla il mese dopo vuol dire
+        # scoprirla quando e' chiusa. Costa una chiamata HTTP.
+        dict(id="ted",     argv=["ted.py", "--ingest", "--giorni", "7"],
+             descr="gare europee aperte (R5)", minuti=10),
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),

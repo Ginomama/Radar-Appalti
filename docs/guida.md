@@ -147,12 +147,50 @@ python ingestion/invii.py --lotto pec-marche --funnel
 
 ---
 
+## Le gare europee (una cosa diversa)
+
+Tutto quello che c'è sopra è **previsione**: contratti che finiscono, e l'ipotesi
+che l'ente ricompri. Le gare TED invece sono **aperte adesso**, con una data entro
+cui presentare offerta.
+
+```bash
+python ingestion/ted.py --aperti
+```
+
+Sono poche — circa 1.800 l'anno su tutta Italia, perché sopra soglia comunitaria ci
+finisce poco — ma sono l'unica cosa a cui si può partecipare oggi. Il pallino ●
+segna gli enti che già conosciamo: su quelli, clicca il nome in console prima di
+decidere se preparare un'offerta.
+
+Si aggiornano da sole ogni mattina.
+
+---
+
+## Il materiale da mostrare
+
+**Un report su una provincia**, da lasciare a chi ti ascolta:
+
+```bash
+python ingestion/report.py --provincia PADOVA
+```
+
+Esce un PDF in `docs/report/`: 20 scadenze vere, con il contesto del territorio.
+**Le PEC non ci sono** — di proposito: chi legge vede cosa comprerebbe, non ha
+ancora niente da usare. Con `--contatti` esce la versione interna, che le contiene:
+quella non si dà a nessuno.
+
+**La presentazione allegata alla PEC** (`ingestion/presentazione.py`) esiste ma
+**non parte ancora**: mancano due o tre referenze vere, e non si inventano. Finché
+mancano, il sistema si rifiuta di allegarla.
+
+---
+
 ## Cosa succede senza che nessuno lo accenda
 
 | Quando | Cosa |
 |---|---|
-| ogni giorno 08:30 | backup, lettura ricevute PEC, notifica Telegram dei lead nuovi |
-| il 3 di ogni mese 07:00 | scarico ANAC, ricalcolo di categorie e punteggi, aggiornamento del database |
+| ogni giorno 08:30 | backup, ricevute PEC, gare TED aperte, notifica Telegram dei lead nuovi |
+| il 3 di ogni mese 07:00 | test di regressione, controlli di sicurezza, scarico ANAC, ricalcolo di categorie e punteggi, aggiornamento del database |
 
 Controllo che siano vivi:
 

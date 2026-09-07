@@ -71,18 +71,34 @@ def raccogli(cur):
         GROUP BY 1 ORDER BY 2 DESC""")
     D["categorie"] = [dict(nome=a, n=b, val=float(c or 0)) for a, b, c in cur.fetchall()]
 
-    cur.execute("""
-        SELECT lotto, progressivo, ente, provincia, pec, n_contratti,
-               stato, inviata_il, risposta_il, note, cig_inclusi,
-               consegnata_il, errore_consegna, sollecitata_il
-        FROM radar.invio ORDER BY lotto, progressivo""")
-    D["invii"] = [dict(lotto=a, n=b, ente=c, prov=d, pec=e, contratti=f, stato=g,
-                       inviata=str(h) if h else None,
-                       risposta=str(i) if i else None, note=j, cig=k,
-                       consegnata=str(l)[:16] if l else None,
-                       errore=m,
-                       sollecitata=str(o) if o else None)
-                  for a, b, c, d, e, f, g, h, i, j, k, l, m, o in cur.fetchall()]
+    # Le colonne sono tante e crescono a ogni stadio del funnel: si nominano
+    # una volta sola e si legge per nome. Con la tupla posizionale, aggiungere
+    # una colonna in mezzo spostava silenziosamente tutti i campi dopo.
+    COL = ["lotto", "progressivo", "ente", "provincia", "pec", "n_contratti",
+           "stato", "inviata_il", "risposta_il", "note", "cig_inclusi",
+           "consegnata_il", "errore_consegna", "sollecitata_il",
+           "discovery_fissata_il", "discovery_fatta_il", "offerta_il",
+           "vendita_il", "persa_il", "motivo_perdita",
+           "valore_offerta", "valore_vendita"]
+    RINOMINA = {"progressivo": "n", "provincia": "prov", "n_contratti": "contratti",
+                "cig_inclusi": "cig", "errore_consegna": "errore",
+                "motivo_perdita": "motivo"}
+    cur.execute(f"SELECT {', '.join(COL)} FROM radar.invio "
+                f"ORDER BY lotto, progressivo")
+    D["invii"] = []
+    for r in cur.fetchall():
+        v = {}
+        for nome, val in zip(COL, r):
+            k = RINOMINA.get(nome, nome[:-3] if nome.endswith("_il") else nome)
+            if nome in ("valore_offerta", "valore_vendita"):
+                v[nome] = float(val) if val is not None else None
+            elif nome == "consegnata_il":
+                v[k] = str(val)[:16] if val else None
+            elif nome.endswith("_il"):
+                v[k] = str(val) if val else None
+            else:
+                v[k] = val
+        D["invii"].append(v)
 
     cur.execute("""
         SELECT cig, ente, provincia, categoria, data_termine_contrattuale,
@@ -141,13 +157,35 @@ def dati(dsn):
         return d
 
 
-def segna(dsn, lotto, n, stato, quando):
-    campo = {"inviata": "inviata_il", "risposta": "risposta_il"}.get(stato)
+# stato -> colonna data. Stessa mappa di invii.py: console e riga di comando
+# scrivono la stessa riga, e se divergessero il funnel conterebbe due volte.
+DATE_STATO = {
+    "inviata":           "inviata_il",
+    "risposta":          "risposta_il",
+    "discovery_fissata": "discovery_fissata_il",
+    "discovery_fatta":   "discovery_fatta_il",
+    "offerta":           "offerta_il",
+    "vendita":           "vendita_il",
+    "persa":             "persa_il",
+}
+
+
+def segna(dsn, lotto, n, stato, quando, motivo=None, valore=None):
+    campo = DATE_STATO.get(stato)
     sql = "UPDATE radar.invio SET stato = %s"
     par = [stato]
     if campo:
         sql += f", {campo} = %s"
         par.append(quando or date.today().isoformat())
+    if motivo:
+        sql += ", motivo_perdita = %s"
+        par.append(motivo)
+    if valore is not None:
+        # L'importo offerto e quello vinto sono numeri diversi: confonderli
+        # falserebbe il tasso di conversione a valore.
+        sql += (", valore_vendita = %s" if stato == "vendita"
+                else ", valore_offerta = %s")
+        par.append(valore)
     sql += " WHERE lotto = %s AND progressivo = %s"
     par += [lotto, n]
     with psycopg.connect(dsn, connect_timeout=20) as pg, pg.cursor() as cur:
@@ -301,8 +339,11 @@ def crea_handler(dsn):
                         pass
                     return
 
+                val = c.get("valore")
                 tocc = segna(dsn, c.get("lotto"), int(c.get("n")),
-                             c.get("stato"), c.get("data"))
+                             c.get("stato"), c.get("data"),
+                             c.get("motivo"),
+                             float(val) if val not in (None, "") else None)
                 # Prima la risposta, poi il log: se stdout e' chiuso o
                 # rediretto verso una pipe interrotta, print() solleva e
                 # trasformerebbe una scrittura riuscita in un errore 500.

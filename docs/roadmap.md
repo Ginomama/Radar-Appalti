@@ -634,7 +634,7 @@ contengono i responsabili per ufficio.
 i nomi (`nome_resp`, `cogn_resp`, `titolo_resp`) sono stati **deliberatamente
 esclusi**.
 
-### R26 — Spinta dei lead su GoHighLevel · media · ~3h
+### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
 
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
@@ -643,6 +643,15 @@ vive in due posti e uno dei due muore.
 ⚠️ Prima verificare i nomi esatti degli stage nella pipeline — è la regola già
 scritta in `CLAUDE.local.md`.
 
+**Rinviato il 2026-09-07.** Il CRM è a pagamento e oggi non c'è niente da tracciarci: zero
+risposte su 18 PEC. R25 intanto tiene il funnel dove i dati già stanno, con gli stessi nomi
+di stage, quindi il rinvio non costa una riscrittura.
+
+**Quando riprenderlo** — al primo dei tre:
+- una seconda persona lavora i lead, e serve sapere chi ha in mano cosa
+- una ventina di conversazioni aperte insieme: a quel punto la console non basta più
+- servono calendario, sequenze automatiche o preventivi — cose che qui non ci saranno mai
+
 ### R27 — Copertura territoriale a rotazione · media · ~2h
 
 Oggi due lotti scelti a mano. Un piano che copra le regioni una alla volta con
@@ -650,12 +659,53 @@ un ritmo sostenibile (15–20 enti a settimana, sotto il tetto giornaliero PEC),
 partendo dalle province dove il fornitore uscente è piccolo — sono quelle dove
 si può davvero sostituire qualcuno.
 
-### R25 — Funnel completo, non solo la risposta · media · ~2h
+### R25 — Funnel completo, non solo la risposta · ✅ FATTO 2026-09-07
 
-Il tracciamento si ferma a `risposta`. Mancano gli stati che dicono se il lavoro
-produce fatturato: **call fissata → offerta inviata → vinto / perso**, con il
-motivo della perdita. Senza, "tasso di risposta 8%" non dice se il canale è
-redditizio.
+Il tracciamento si fermava a `risposta`, e *«tasso di risposta 8%»* non dice se il canale è
+**redditizio**. Ora gli stati arrivano fino al fatturato.
+
+I nomi sono quelli degli stage **GoHighLevel già in uso sui clienti** — Discovery Call
+Fissata, Discovery Call Fatta, Offerta, Vendita. Non è pedanteria: quando R26 porterà i lead
+nel CRM, l'import sarà un copia-incolla invece che una mappatura da riscrivere e da tenere
+allineata.
+
+`radar.invio` guadagna una colonna data per stadio più `motivo_perdita`, `valore_offerta` e
+`valore_vendita`. Le date separate servono a misurare **quanto si resta fermi in uno
+stadio**, che è l'unico modo per capire dove il funnel perde; una sola colonna "stato"
+avrebbe detto solo dove sono adesso.
+
+#### Tre scelte che cambiano cosa si riesce a misurare
+
+**Il conteggio è cumulativo, non per stato corrente.** Chi è arrivato a Vendita è passato
+anche da Offerta. Contando solo lo stato attuale, gli stadi intermedi sembrerebbero vuoti
+proprio quando le cose vanno bene.
+
+**Due percentuali per stadio, non una.** Sul totale (dove sono finiti) e sullo stadio
+precedente (dove si perde). La seconda è quella che indica il buco: *«14 consegnate, 78% del
+passo prima»* dice che quattro PEC non sono mai arrivate, e nessuna percentuale sul totale
+lo direbbe.
+
+**L'importo separato fra offerto e vinto.** Confonderli falserebbe la conversione a valore,
+che è il numero per cui esiste tutto il resto. Senza importi, *«3 vendite»* non dice se il
+canale ripaga il tempo.
+
+**Il motivo della perdita è una lista chiusa** (`gia-fornitore`, `no-budget`, `prezzo`,
+`requisiti`, `tempi`, `silenzio`, `altro`). Con il testo libero, fra sei mesi *«già
+fornito»* e *«hanno già un fornitore»* sarebbero due righe diverse in un conteggio, e il
+motivo più frequente non si vedrebbe.
+
+#### Dove si usa
+
+- **console**, striscia sopra le righe di ogni lotto, e un menù *avanza…* per riga —
+  Offerta e Vendita chiedono l'importo, «persa» chiede il perché
+- `python invii.py --funnel` (`--tutti` per tutti i lotti insieme)
+- `radar.v_funnel`, una riga per lotto, per n8n
+
+Console e riga di comando scrivono la stessa riga con la stessa mappa stato→colonna: se
+divergessero, il funnel conterebbe due volte.
+
+Oggi dice quello che c'è da dire: 18 partite, 0 consegnate confermate, 0 risposte. Il
+canale non ha ancora prodotto niente, e adesso si vede.
 
 ---
 
@@ -682,11 +732,27 @@ quelli che tornano.
 - il parsing di `.env.local` con chiave ripetuta (ci è costato una serata)
 - il formato dei file PEC letto da `pec_smtp.leggi_messaggio()`
 
-### R24 — Guida d'uso in una pagina · media · ~1h
+### R24 — Guida d'uso in una pagina · ✅ FATTO 2026-09-07
 
-C'è molta documentazione tecnica e nessuna operativa. Serve un foglio che dica al
-team: apri questo, guarda questo, fai questo. Dieci minuti di lettura, zero
-gergo — la console ora è comprensibile, il processo intorno no.
+`docs/guida.md`. C'era molta documentazione tecnica e nessuna operativa: chi apre la console
+senza aver seguito i sei sprint vede numeri e non sa da dove cominciare.
+
+Dieci minuti di lettura, nessun gergo. La struttura è la domanda vera di chi lavora, non
+l'architettura del sistema:
+
+| | |
+|---|---|
+| cos'è, in tre righe | perché la PEC e non l'email |
+| **la cosa da fare ogni giorno** | accendi la console, leggi la barra grigia, fai quello che dice |
+| come si legge un lead | le fasce di punteggio, e perché tre quarti vanno scartati |
+| prima di chiamare | clicca il nome dell'ente: se dice *chiuso*, non chiamare |
+| il ciclo di un contatto | genera → invia → ricevute → i cinque stadi del funnel |
+| il funnel | perché gli importi vanno inseriti |
+| cosa succede da solo | i due job, e come si controlla che siano vivi |
+| quando qualcosa non torna | cinque sintomi, cinque risposte |
+
+Due cose ci finiscono di proposito, perché sono quelle che il sistema **non** può impedire:
+una PEC per ente anche cambiando lotto, e non modificare a mano i file generati.
 
 ### R21 — Allegato alla PEC · bassa · ~2h
 
@@ -707,9 +773,11 @@ FATTI   R1 → R2 → R3 → R4 → R7 → R14 → R7b → R14b
 
         R18 → R19                  i dati sono diventati un giudizio
 
-ADESSO  R24 → R25 → R26            il team lo usa, il CRM lo raccoglie
-DOPO    R5 → R6                    TED: le gare aperte
-        R27 → R23 → R28 → R8
+        R24 → R25                  il team lo usa, e si vede se rende
+
+ADESSO  R27 → R5 → R6              piu' territorio, e le gare aperte
+DOPO    R23 → R28 → R8
+RINVIATO R26                       GoHighLevel: si paga, e con 0 risposte non serve
 ALLA FINE  R12 → R13 → R21
 ```
 

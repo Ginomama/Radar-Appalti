@@ -15,7 +15,12 @@ Uso:
     python invii.py --lotto pec-marche       # stato di un altro lotto
     python invii.py --inviata 1,2,3
     python invii.py --risposta 5 --note "chiedono presentazione"
-    python invii.py --chiusa 7 --note "gia' rinnovato"
+    python invii.py --discovery-fissata 5
+    python invii.py --offerta 5 --valore 18000
+    python invii.py --vendita 5 --valore 16500
+    python invii.py --persa 7 --motivo gia-fornitore
+    python invii.py --funnel                 # il funnel del lotto
+    python invii.py --funnel --tutti         # tutti i lotti insieme
     python invii.py --non-consegnata 9
 
 Dipendenza: psycopg.
@@ -28,13 +33,59 @@ from datetime import date
 import psycopg
 from push_supabase import leggi_dsn, maschera
 
+# Gli stati, in ordine di avanzamento. I nomi dopo "risposta" sono quelli
+# degli stage GoHighLevel gia' in uso sui clienti: se un domani questo funnel
+# passa nel CRM, l'import e' un copia-incolla invece che una mappatura.
 STATI = {
-    "da_inviare":       "da inviare",
-    "inviata":          "inviata, in attesa",
-    "risposta":         "HA RISPOSTO",
-    "nessuna_risposta": "nessuna risposta",
-    "non_consegnata":   "consegna fallita",
-    "chiusa":           "chiusa",
+    "da_inviare":         "da inviare",
+    "inviata":            "inviata, in attesa",
+    "risposta":           "HA RISPOSTO",
+    "discovery_fissata":  "Discovery Call Fissata",
+    "discovery_fatta":    "Discovery Call Fatta",
+    "offerta":            "Offerta",
+    "vendita":            "VENDITA",
+    "persa":              "persa",
+    "nessuna_risposta":   "nessuna risposta",
+    "non_consegnata":     "consegna fallita",
+    "chiusa":             "chiusa",
+}
+
+# stato -> colonna data. Le date servono per misurare quanto si resta fermi in
+# uno stadio, che e' l'unico modo per capire dove il funnel perde.
+DATE_STATO = {
+    "inviata":           "inviata_il",
+    "risposta":          "risposta_il",
+    "discovery_fissata": "discovery_fissata_il",
+    "discovery_fatta":   "discovery_fatta_il",
+    "offerta":           "offerta_il",
+    "vendita":           "vendita_il",
+    "persa":             "persa_il",
+}
+
+# Gli stadi del funnel, in ordine, con la colonna che li marca. Cumulativi:
+# chi e' arrivato a Vendita e' passato anche da Offerta.
+FUNNEL = [
+    ("destinatari",   None),
+    ("inviate",       "inviata_il"),
+    ("consegnate",    "consegnata_il"),
+    ("risposte",      "risposta_il"),
+    ("Discovery Call Fissata", "discovery_fissata_il"),
+    ("Discovery Call Fatta",   "discovery_fatta_il"),
+    ("Offerta",       "offerta_il"),
+    ("Vendita",       "vendita_il"),
+]
+
+# Lista chiusa invece di testo libero: con il testo libero, fra sei mesi
+# "gia' fornito" e "hanno gia' un fornitore" sono due righe diverse in un
+# conteggio e il motivo piu' frequente non si vede.
+MOTIVI = {
+    "gia-fornitore": "hanno gia' un fornitore e lo tengono",
+    "no-budget":     "niente budget / capitolo esaurito",
+    "prezzo":        "prezzo fuori mercato",
+    "requisiti":     "requisiti o referenze che non abbiamo",
+    "tempi":         "tempi incompatibili",
+    "silenzio":      "sparito dopo il primo contatto",
+    "altro":         "altro",
 }
 
 # Dopo quanti giorni senza risposta si considera chiusa la partita.
@@ -55,12 +106,23 @@ def numeri(spec):
     return out
 
 
-def aggiorna(cur, lotto, progressivi, stato, note, data_campo=None):
+def aggiorna(cur, lotto, progressivi, stato, note, data_campo=None,
+             motivo=None, valore=None):
     campi = ["stato = %s"]
     par = [stato]
     if data_campo:
         campi.append(f"{data_campo} = %s")
         par.append(date.today())
+    if motivo:
+        campi.append("motivo_perdita = %s")
+        par.append(motivo)
+    if valore is not None:
+        # L'importo va nella colonna dello stadio raggiunto: quello offerto e
+        # quello vinto sono numeri diversi e confonderli falserebbe il tasso
+        # di conversione a valore.
+        campi.append("valore_vendita = %s" if stato == "vendita"
+                     else "valore_offerta = %s")
+        par.append(valore)
     if note:
         campi.append("note = %s")
         par.append(note)
@@ -70,6 +132,79 @@ def aggiorna(cur, lotto, progressivi, stato, note, data_campo=None):
         f"WHERE lotto = %s AND progressivo = ANY(%s) "
         f"RETURNING progressivo, ente", par)
     return cur.fetchall()
+
+
+def eur(v):
+    if not v:
+        return "—"
+    return f"{v / 1000:,.0f} k€" if v >= 1000 else f"{v:,.0f} €"
+
+
+def funnel(cur, lotto=None):
+    """Il funnel completo. Risponde a 'il canale e' redditizio?', che il solo
+    tasso di risposta non poteva dire."""
+    dove = "WHERE lotto = %s" if lotto else ""
+    par = (lotto,) if lotto else ()
+    sel = ", ".join(
+        "count(*)" if col is None
+        else f"count(*) FILTER (WHERE {col} IS NOT NULL)"
+        for _, col in FUNNEL)
+    cur.execute(
+        f"SELECT {sel}, "
+        f"       count(*) FILTER (WHERE persa_il IS NOT NULL), "
+        f"       sum(valore_offerta) FILTER (WHERE offerta_il IS NOT NULL), "
+        f"       sum(valore_vendita) FILTER (WHERE vendita_il IS NOT NULL) "
+        f"FROM radar.invio {dove}", par)
+    r = cur.fetchone()
+    n = list(r[:len(FUNNEL)])
+    perse, offerto, vinto = r[len(FUNNEL):]
+
+    titolo = f"lotto '{lotto}'" if lotto else "tutti i lotti"
+    print(f"\n=== funnel — {titolo} ===\n")
+    partiti = n[1] or 0
+    for i, (etichetta, _) in enumerate(FUNNEL):
+        v = n[i]
+        # Due percentuali: sul totale (dove sono finiti) e sullo stadio
+        # precedente (dove si perde). La seconda e' quella che indica il buco.
+        su_tot = f"{v / n[0] * 100:5.1f}% del totale" if n[0] else ""
+        prec = n[i - 1] if i else 0
+        passo = f"  ({v / prec * 100:.0f}% del passo prima)" if i and prec else ""
+        barra = "#" * int(v / max(n[0], 1) * 26)
+        print(f"  {etichetta:24s} {v:>5,}  {su_tot}{passo}")
+        if barra:
+            print(f"  {'':24s} {barra}")
+    if perse:
+        print(f"\n  perse                    {perse:>5,}")
+
+    if not partiti:
+        print("\n  nessuna PEC ancora partita: il funnel e' vuoto per ora.")
+        return
+    risposte = n[3] or 0
+    vendite = n[7] or 0
+    print(f"\n  tasso di risposta   {risposte}/{partiti} = "
+          f"{risposte / partiti * 100:.1f}%")
+    print(f"  tasso di chiusura   {vendite}/{partiti} = "
+          f"{vendite / partiti * 100:.1f}%")
+    if offerto:
+        print(f"\n  offerto  {eur(float(offerto))}")
+    if vinto:
+        print(f"  vinto    {eur(float(vinto))}")
+        print(f"  valore medio per PEC inviata: "
+              f"{eur(float(vinto) / partiti)}")
+    elif risposte:
+        print("\n  nessuna vendita ancora: il canale risponde ma non ha "
+              "ancora prodotto\n  fatturato. E' presto per dire se e' "
+              "redditizio.")
+
+    cur.execute(
+        f"SELECT coalesce(motivo_perdita,'non registrato'), count(*) "
+        f"FROM radar.invio {('WHERE lotto = %s AND' if lotto else 'WHERE')} "
+        f"persa_il IS NOT NULL GROUP BY 1 ORDER BY 2 DESC", par)
+    righe = cur.fetchall()
+    if righe:
+        print("\n  perche' si perde:")
+        for m, c in righe:
+            print(f"    {c:>3}  {MOTIVI.get(m, m)}")
 
 
 def stato(cur, lotto):
@@ -151,6 +286,21 @@ def main():
     ap.add_argument("--lotto", default="pec")
     ap.add_argument("--inviata", metavar="N[,N|N-N]")
     ap.add_argument("--risposta", metavar="N[,N]")
+    ap.add_argument("--discovery-fissata", metavar="N[,N]",
+                    help="Discovery Call Fissata")
+    ap.add_argument("--discovery-fatta", metavar="N[,N]",
+                    help="Discovery Call Fatta")
+    ap.add_argument("--offerta", metavar="N[,N]")
+    ap.add_argument("--vendita", metavar="N[,N]")
+    ap.add_argument("--persa", metavar="N[,N]")
+    ap.add_argument("--motivo", choices=sorted(MOTIVI),
+                    help="con --persa: perche'")
+    ap.add_argument("--valore", type=float,
+                    help="importo dell'offerta o della vendita, in euro")
+    ap.add_argument("--funnel", action="store_true",
+                    help="il funnel completo, dai destinatari al fatturato")
+    ap.add_argument("--tutti", action="store_true",
+                    help="con --funnel: tutti i lotti insieme")
     ap.add_argument("--non-consegnata", metavar="N[,N]")
     ap.add_argument("--chiusa", metavar="N[,N]")
     ap.add_argument("--scadute", action="store_true",
@@ -163,13 +313,22 @@ def main():
     try:
         with psycopg.connect(dsn) as pg, pg.cursor() as cur:
             fatto = False
-            for spec, st, campo in (
-                    (a.inviata, "inviata", "inviata_il"),
-                    (a.risposta, "risposta", "risposta_il"),
-                    (a.non_consegnata, "non_consegnata", None),
-                    (a.chiusa, "chiusa", None)):
+            for spec, st in (
+                    (a.inviata, "inviata"),
+                    (a.risposta, "risposta"),
+                    (a.discovery_fissata, "discovery_fissata"),
+                    (a.discovery_fatta, "discovery_fatta"),
+                    (a.offerta, "offerta"),
+                    (a.vendita, "vendita"),
+                    (a.persa, "persa"),
+                    (a.non_consegnata, "non_consegnata"),
+                    (a.chiusa, "chiusa")):
                 if spec:
-                    tocc = aggiorna(cur, a.lotto, numeri(spec), st, a.note, campo)
+                    if st == "persa" and not a.motivo:
+                        sys.exit("--persa vuole anche --motivo: "
+                                 + ", ".join(sorted(MOTIVI)))
+                    tocc = aggiorna(cur, a.lotto, numeri(spec), st, a.note,
+                                    DATE_STATO.get(st), a.motivo, a.valore)
                     for p, ente in tocc:
                         print(f"  {p:2d}. {(ente or '?')[:48]:50s} -> {STATI[st]}")
                     if not tocc:
@@ -191,7 +350,10 @@ def main():
             if fatto:
                 pg.commit()
                 print()
-            stato(cur, a.lotto)
+            if a.funnel:
+                funnel(cur, None if a.tutti else a.lotto)
+            else:
+                stato(cur, a.lotto)
     except Exception as e:
         sys.exit(maschera(f"{type(e).__name__}: {e}", dsn))
 

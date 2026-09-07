@@ -1,149 +1,118 @@
-# Radar Appalti
+# Radar Appalti Pubblici — Progetto Interno FlowLine
 
-Un motore che legge i dati aperti degli appalti pubblici italiani e risponde a una domanda
-sola: **quali contratti IT della PA stanno per scadere, e quali di quelli valgono davvero una
-telefonata.**
+Sotto-progetto del repo n8n FlowLine. Motore di intelligence sugli appalti pubblici
+italiani, parametrizzato per CPV + territorio.
 
-Non è un aggregatore di bandi. I bandi sono pubblici e chiunque li vede: quando esce il bando
-la partita è già decisa. Questo guarda il passo prima — i contratti *in corso* e la loro data
-di scadenza — e apre una finestra di qualche mese in cui un fornitore alternativo può ancora
-farsi conoscere.
+**Stato: gate di Fase 0 superato il 2026-08-23.** I numeri sono misurati, non stimati.
 
-Costruito su un verticale (CPV 72 e 48: servizi informatici e software), ma il verticale è un
-parametro: cambiando i prefissi CPV la stessa macchina lavora su qualsiasi settore.
+## Per chi deve solo usarlo
 
-## Cosa dicono i dati
+**[docs/guida.md](docs/guida.md)** — dieci minuti, nessun gergo: accendi la console, leggi
+la barra grigia, fai quello che dice. Il resto di questo file serve a chi ci mette le mani.
 
-Numeri misurati sul dataset reale, non stime.
+## Come usare con Claude Code
 
-| | |
-|---|---:|
-| CIG del verticale IT in database | 283.929 |
-| Contratti con scadenza futura | 13.567 |
-| In scadenza entro 12 mesi | 6.677 |
-| **Enti distinti da contattare entro 12 mesi** | **1.732** |
-| Quota IT sulle scadenze nazionali | 5,5% |
+1. Apri Claude Code nella root del repo → `/model opusplan`
+2. Leggi il `CLAUDE.md` di questa cartella (contesto e vincoli) — eredita le regole d'oro dal `CLAUDE.md` globale
+3. Leggi `docs/fonti-dati.md` — contiene i tassi di riempimento e le trappole già verificate
+4. Costruisci l'ingestion su `docs/schema.sql`
 
-L'ultima riga vale la pena: la quota IT sulle *scadenze* coincide con la quota IT sui *bandi*,
-cioè i contratti informatici non durano né più né meno degli altri.
+> Claude Code gira in locale, quindi ha l'IP residenziale e **non** incontra il WAF ANAC.
+> In produzione invece l'ingestion deve girare su un runner non-cloud: vedi `CLAUDE.md`.
 
-## La domanda difficile: serve a qualcosa?
+## Cosa ha detto la ricognizione
 
-Segnalare una scadenza è facile. La domanda vera è quante di quelle scadenze diventino
-davvero un'occasione. `esito.py` la misura: per ogni contratto scaduto cerca il CIG con cui
-lo stesso ente ha ricomprato la stessa cosa, e guarda chi ha vinto e con che procedura.
-
-Su **30.301 contratti scaduti** fra il 2023 e il 2026:
-
-| | | |
-|---|---:|---:|
-| nessun seguito trovato | 24.888 | 82,1% |
-| rinnovato allo stesso fornitore | 3.429 | 11,3% |
-| **vinto da un altro fornitore** | **1.205** | **4,0%** |
-| aggiudicatario non ancora noto | 779 | 2,6% |
-
-**Il 4,7% delle scadenze finisce in una porta aperta** — cambio di fornitore, o procedura
-competitiva. Tre cose che questo numero cambia:
-
-1. **I lead vanno ordinati per importo, non per data.** Sotto 40 k€ la porta si apre nel 3,2%
-   dei casi e lì sta metà del volume; nella fascia 140 k€–1 M€ si arriva al 7,5%. Il grosso
-   del lavoro sta dove rende meno.
-2. **Il gioco non è vincere gare.** Il 94,1% dei contratti che vengono ricomprati passa per
-   affidamento diretto, non per gara. Aspettare il bando significa arrivare tardi per
-   definizione.
-3. **Il tasso è piatto al 13–19% su 45 mesi**, quindi l'82% senza seguito non è un ritardo di
-   pubblicazione: è strutturale. I limiti veri della misura sono dichiarati in
-   [docs/roadmap.md](docs/roadmap.md), R17.
-
-## Come è fatto
-
-```
-ANAC open data  ──┐
-                  ├──> ingest.py ──> SQLite (grezzo, ~300 MB) ──> viste derivate
-IndicePA        ──┘                                                     │
-                                                                        ▼
-                                          push_supabase.py ──> Supabase (~37 MB)
-                                                                        │
-                            ┌───────────────────────────────────────────┤
-                            ▼                     ▼                     ▼
-                     console_live.py         notifica.py            n8n workflows
-                     (console locale)      (Telegram/email)        (automazioni)
-```
-
-Il grezzo resta in locale di proposito: su Supabase Free il database va in sola lettura oltre
-i 500 MB, e i record ANAC ci arriverebbero in pochi mesi. In cloud vanno solo le viste.
-
-### I file che contano
-
-| | |
-|---|---|
-| `ingestion/ingest.py` | scarica e ingerisce ANAC, con sentinella sul drift dello schema |
-| `ingestion/esito.py` | che fine hanno fatto le scadenze passate — il motore di R17 |
-| `ingestion/categorie.py` | classificazione funzionale dei contratti dal CPV e dall'oggetto |
-| `ingestion/genera_pec.py` | genera le lettere PEC, con anti-duplicato e solleciti |
-| `ingestion/pec_smtp.py` | invio PEC, con quattro guardie prima di spedire |
-| `ingestion/pec_imap.py` | legge le ricevute di consegna (sola lettura, non tocca la casella) |
-| `ingestion/job.py` | i job schedulati, due ritmi diversi |
-| `ingestion/backup.py` | backup delle tabelle che nessuno può rigenerare |
-| `ingestion/console_live.py` | console operativa, in ascolto solo su 127.0.0.1 |
-
-## Un problema che vale la pena raccontare
-
-Trovare il "seguito" di un contratto scaduto vuol dire capire se due oggetti d'appalto
-parlano della stessa cosa. Il primo tentativo — lista di stopword — non converge mai: dopo
-tre giri restavano fuori «procedura negoziata senza previa pubblicazione», il preambolo PNRR,
-gli articoli del Codice dei contratti.
-
-La soluzione è pesare ogni parola per quanto è rara nei 283.929 oggetti: `servizio` vale 1,4,
-`symantec` vale 9,1. Il boilerplate si annulla da solo e non richiede manutenzione.
-
-Restava un buco: parole rare in Italia ma banali per quell'ente. `giannina gaslini` è
-rarissimo nel dataset e compare in ogni bando dell'ospedale Gaslini, quindi due contratti
-scollegati si somigliavano per il nome del committente. Si scartano le parole che compaiono
-in oltre il 30% degli oggetti dello stesso ente.
-
-E poi il caso opposto: «CANONE ANNUALE DARKTRACE» è specifico quanto basta ma ha una parola
-rara sola, e con una soglia fissa era inconfrontabile per costruzione — il 26,9% dei
-contratti non veniva nemmeno cercato. La soglia è diventata adattiva.
-
-Dettagli e falsi positivi residui: [docs/roadmap.md](docs/roadmap.md), R17.
-
-## Provarlo
-
-Serve solo Python 3.11+. L'ingestione è a libreria standard; `psycopg[binary]` serve solo per
-la parte Supabase.
+`ingestion/anac_recon.py` — solo libreria standard, nessuna dipendenza. Rilanciabile:
 
 ```bash
-python ingestion/ingest.py --init
-python ingestion/ingest.py --storico 2021-2025 --purga
-python ingestion/ingest.py --bulk
-python ingestion/categorie.py
-python ingestion/console_live.py
+cd ingestion
+python anac_recon.py --mesi 12 --cpv 72,48               # verticale IT
+python anac_recon.py --mesi 12 --cpv 45,50 --province VE,TV,PN,UD
 ```
 
-Il primo carico scarica diversi GB da ANAC e richiede ore. `--cpv 45,50` (o qualsiasi altro
-prefisso) cambia verticale.
+Risultati sul verticale IT (CPV 72xxx/48xxx), misurati su 620.528 righe CIG:
 
-> **Il WAF di ANAC risponde 403 agli IP dei cloud provider.** L'ingestione deve partire da una
-> linea residenziale: non gira su n8n Cloud, GitHub Actions o un VPS. È il motivo per cui i
-> job stanno nell'Utilità di pianificazione di Windows e non in cloud.
+| Domanda | Risposta |
+|---|---|
+| Il volume regge? | ✅ **~85.000 gare/anno** nazionali, ~10.200 su Veneto+FVG |
+| Il mercato è concentrato? | ❌ **no**: l'ente più grande pesa lo 0,50%, i top 100 il 15,9% |
+| Si può sapere **chi vince**? | ✅ **sì**, join al 95% su `aggiudicazioni`/`aggiudicatari` |
+| ...e **con che ribasso**? | ⚠️ **quasi mai**: utilizzabile all'1,4% — l'88% sono affidamenti diretti, senza gara né ribasso |
+| Si possono prevedere le scadenze contratti? | ✅ **sì**, via `avvio-contratto` (83,6% compilato) |
+| Si può fare allerta tempestiva su ANAC? | ❌ **no**: il 96,6% delle gare è già scaduto all'arrivo del file |
+| Quanto mercato è davvero contendibile? | ⚠️ **~350 procedure su 36.500** — il resto si vince essendo già noti all'ente |
+| Quanti lead produce oggi il motore scadenze? | ✅ **5.334 contratti in scadenza a 12 mesi** per € 6,0 mld; 964 entro 90 giorni |
 
-## Dati e licenze
+Dettaglio completo, con metodo e trappole → `docs/fonti-dati.md`
 
-Il codice è MIT (vedi [LICENSE](LICENSE)). **I dati no**: ANAC pubblica in CC BY-SA 4.0, che è
-ShareAlike. Questo repository contiene solo codice — nessun dataset ANAC, nessun estratto,
-nessuna lista di enti. Vedi [DATI.md](DATI.md) prima di ridistribuire qualsiasi cosa che il
-codice produce.
+## Le tre trappole che fanno perdere tempo
 
-`docs/console.html` contiene **dati inventati**: enti, PEC, CIG e fornitori non esistono e
-servono solo a far vedere l'interfaccia.
+Tutte verificate, tutte documentate in `docs/fonti-dati.md`:
 
-## Stato
+1. **Scoprire i dataset via CKAN API**, non indovinando gli URL. È indovinando che si conclude — a torto — che ANAC abbia 8 mesi di ritardo: i delta mensili freschi esistono, sono nel dataset `cig`. Vale anche per aggiudicazioni, aggiudicatari e avvio-contratto, il cui file base è fermo a gennaio 2026.
+2. **`HEAD` ritorna risposte fasulle.** Usare `GET` con header `Range`.
+3. **L'errore TLS non è di ANAC: è l'antivirus.** Avast fa ispezione TLS e la sua CA ha Basic Constraints non `critical`, che Python 3.13 rifiuta. Fallisce anche `pypi.org`. Su un runner senza AV intercettante il problema non esiste — non portare il workaround in produzione.
 
-Funzionante e in uso. La roadmap in [docs/roadmap.md](docs/roadmap.md) tiene traccia di cosa
-è fatto e cosa manca, con il motivo di ogni scelta. Le considerazioni su liceità e GDPR del
-contatto agli enti stanno in [docs/liceita.md](docs/liceita.md).
+## Struttura
 
----
+```
+radar-appalti/
+├── CLAUDE.md                  # contesto, vincoli, regole (eredita globali)
+├── README.md                  # questo file
+├── docs/
+│   ├── fonti-dati.md           # ricognizione fonti: numeri misurati, con URL e metodo
+│   ├── schema.sql              # schema database — 4 tabelle + log + viste
+│   └── prds/                   # ARD generati da /prd
+├── ingestion/
+│   ├── anac_recon.py           # Fase 0 — misura il segnale
+│   ├── anac_http.py            # accesso ANAC: TLS, User-Agent, no-HEAD, CKAN
+│   ├── ingest.py               # Fase 3 — ingestion incrementale e idempotente
+│   ├── schema_sqlite.sql       # schema locale (rispecchia docs/schema.sql)
+│   ├── analisi_*.py            # controlli su fill-rate e importi
+│   ├── radar.db                # database SQLite (git-ignored)
+│   └── recon_out/              # cache ZIP (git-ignored)
+└── workflows/                  # n8n JSON — solo dopo che il database è popolato
+```
 
-Leonardo Foschi — [FlowLine](https://flowline.it)
+## Ordine di lavoro
+
+| Fase | Cosa | Stato |
+|---|---|---|
+| 0 | Ricognizione volumi + schema reale | ✅ fatto — gate superato |
+| 1 | Scelta verticale pilota sui numeri di Fase 0 | ✅ IT (CPV 72/48) confermato |
+| 2 | Schema database (CIG come chiave naturale) | ✅ `docs/schema.sql` |
+| 3 | Ingestion incrementale + idempotente | ✅ `ingestion/ingest.py`, idempotenza verificata |
+| 3b | Bulk come base + delta mensili | ✅ copertura recente da 0% a 81–91% |
+| 3c | Backfill storico 2021-2025 | ✅ 60/60 file, 236.891 CIG, storico dal 2008 |
+| 3d | Job mensile automatico | ⬅️ **prossimo** |
+| 4 | Motore scadenze contratti (il prodotto) | 🔨 vista `v_scadenze_prossime` funzionante |
+| 5 | Motore intelligence: chi presidia quale ente | 🔨 vista `v_competitor` funzionante |
+| 6 | Motore allerta: TED sopra soglia | ✅ API verificata, copertura quantificata |
+| 7 | Viste — dashboard o agente | ⏳ |
+
+## Dove gira il database
+
+**In fase 3 e 4: SQLite in locale.** Costo zero, nella stdlib, e lo schema si
+riscrive due o tre volte prima di stabilizzarsi — meglio farlo dove iterare non costa. In piu la sintassi UPSERT e identica a Postgres: la logica di idempotenza migra su Supabase senza riscritture.
+
+**Quando n8n dovrà leggere i dati**: uno schema `radar` dentro un progetto Supabase
+**esistente**. ⚠️ L'org Flowline è su piano **Pro**: un progetto nuovo costa **$10/mese
+ricorrenti**, non è free tier. Lo schema dedicato in un progetto esistente ha costo marginale
+€0 e gli 8 GB inclusi bastano (il verticale IT sta in ~200-250 MB per 3 anni).
+
+## Promemoria
+
+La parte difficile non è la query: è **procurarsi i dati e tenerli freschi**. WAF, dump in
+ritardo, schemi che cambiano, portali che vietano il crawling. Proprio per questo, se ci riesci,
+è un vantaggio difendibile — chiunque sa leggere un portale aperto, quasi nessuno ha una copia
+pulita e incrementale.
+
+Corollario: non costruire viste prima che la tabella sia popolata e verificata. Una dashboard
+su dati sbagliati è peggio di nessuna dashboard.
+
+## Una precisazione sul modello di business
+
+Il rationale originale — "il radar produce lead per FlowLine stessa, validazione a costo zero" —
+**non regge**: il mercato è troppo polverizzato per essere una lista chiamabile. Ma la stessa
+frammentazione è ciò che rende il radar vendibile ai vendor IT che alla PA ci vendono davvero.
+Il prodotto tiene; salta la scorciatoia dell'auto-validazione. Dettaglio in `CLAUDE.md`.

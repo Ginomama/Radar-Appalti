@@ -199,3 +199,45 @@ ALTER TABLE radar.scadenze
     ADD COLUMN IF NOT EXISTS valore_atteso numeric;
 CREATE INDEX IF NOT EXISTS ix_scadenze_punteggio
     ON radar.scadenze (punteggio DESC NULLS LAST);
+
+
+-- ---------------------------------------------------------------- R25: funnel
+-- Il tracciamento si fermava a 'risposta', e "tasso di risposta 8%" non dice
+-- se il canale e' redditizio. Servono gli stati fino al fatturato.
+--
+-- I nomi sono quelli degli stage GoHighLevel gia' in uso sui clienti. Non e'
+-- pedanteria: se un domani questo funnel passa nel CRM, l'import e' un
+-- copia-incolla invece che una mappatura da riscrivere.
+ALTER TABLE radar.invio
+    ADD COLUMN IF NOT EXISTS discovery_fissata_il date,
+    ADD COLUMN IF NOT EXISTS discovery_fatta_il   date,
+    ADD COLUMN IF NOT EXISTS offerta_il           date,
+    ADD COLUMN IF NOT EXISTS vendita_il           date,
+    ADD COLUMN IF NOT EXISTS persa_il             date,
+    ADD COLUMN IF NOT EXISTS motivo_perdita       text,
+    -- Senza l'importo, "3 vendite" non dice se il canale ripaga il lavoro.
+    ADD COLUMN IF NOT EXISTS valore_offerta       numeric,
+    ADD COLUMN IF NOT EXISTS valore_vendita       numeric;
+
+CREATE INDEX IF NOT EXISTS ix_invio_stato ON radar.invio (stato);
+
+-- Il funnel in una riga per lotto: quanti ne sono passati per ogni stadio.
+-- Cumulativo, non per stato corrente: un contatto arrivato a 'Vendita' e'
+-- passato anche da 'Offerta', e contarlo solo nell'ultimo stadio farebbe
+-- sembrare vuoti quelli prima.
+CREATE OR REPLACE VIEW radar.v_funnel AS
+SELECT
+    lotto,
+    count(*)                                             AS destinatari,
+    count(*) FILTER (WHERE inviata_il IS NOT NULL)       AS inviate,
+    count(*) FILTER (WHERE consegnata_il IS NOT NULL)    AS consegnate,
+    count(*) FILTER (WHERE risposta_il IS NOT NULL)      AS risposte,
+    count(*) FILTER (WHERE discovery_fissata_il IS NOT NULL) AS discovery_fissate,
+    count(*) FILTER (WHERE discovery_fatta_il IS NOT NULL)   AS discovery_fatte,
+    count(*) FILTER (WHERE offerta_il IS NOT NULL)       AS offerte,
+    count(*) FILTER (WHERE vendita_il IS NOT NULL)       AS vendite,
+    count(*) FILTER (WHERE persa_il IS NOT NULL)         AS perse,
+    sum(valore_offerta) FILTER (WHERE offerta_il IS NOT NULL) AS valore_offerto,
+    sum(valore_vendita) FILTER (WHERE vendita_il IS NOT NULL) AS valore_vinto
+FROM radar.invio
+GROUP BY lotto;

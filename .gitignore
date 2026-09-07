@@ -17,6 +17,12 @@ docs/pec-marche/
 docs/lista-outreach.csv
 docs/console-dati.json
 
+# Output generati. I report contengono estratti ANAC con nomi di enti veri
+# (e nella versione --contatti anche le PEC): sono il prodotto, non il codice.
+# Chi clona il repo se li rigenera con report.py e presentazione.py.
+docs/report/
+docs/allegati/
+
 # Log e backup
 logs/
 *.log

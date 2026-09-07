@@ -285,10 +285,54 @@ spiegazione sotto ogni titolo di pannello e una barra **"cosa fare adesso"** che
 traduce lo stato in un compito. Via il gergo: niente più *"senza LLM"*,
 *"valore intercettato"*, *"chi presidia il mercato"*, *"n.c."*, *"gg"*.
 
-### R8 — Report dimostrativo territoriale · media · ~3h
+### R8 — Report dimostrativo territoriale · ✅ FATTO 2026-09-07
 
-20 scadenze verificate su un'area, in PDF o foglio di calcolo, da mostrare a software
-house locali. Dipende da R1 e R2: senza contatto e categoria è un elenco, non una demo.
+`ingestion/report.py`. PDF (e CSV) su una provincia: le 20 migliori scadenze, ordinate per
+punteggio, con il contesto del territorio in testa.
+
+Raccontare a voce che «esiste un motore che trova i contratti IT in scadenza» non convince
+nessuno. Venti righe vere sulla provincia di chi ascolta — enti che conosce, fornitori che
+ha già incontrato, CIG che può verificare su ANAC in due minuti — sono un'altra cosa. È la
+**verificabilità** a fare la differenza fra una demo e una presentazione.
+
+Due scelte che sembrano prudenza e sono commerciali:
+
+**La PEC non c'è.** Il report mostra il giudizio — cosa scade, quanto vale, chi ce l'ha
+adesso, quanto è probabile che quella porta si apra — e non il recapito per bussare. Chi
+legge vede esattamente cosa comprerebbe e non ha ancora niente da usare. `--contatti` la
+include, ed è la versione interna.
+
+**L'attribuzione è su ogni pagina.** ANAC è CC BY-SA 4.0 e IndicePA CC BY 4.0: è dovuta da
+entrambe e costa una riga. ⚠️ La clausola ShareAlike su un prodotto commerciale resta
+aperta (`docs/liceita.md` §2): venti righe elaborate non sono la ridistribuzione del
+dataset, ma vale la pena saperlo prima di stamparne cinquanta copie.
+
+C'è anche il contesto storico: per Padova, 203 scadenze a 12 mesi in 36 enti per 922 M€, e
+la quota misurata di cambi di fornitore su quella provincia. È il numero che rende il resto
+credibile invece che ottimistico.
+
+### R21 — Allegato alla PEC · ✅ FATTO 2026-09-07
+
+`ingestion/presentazione.py` + `allega()` in `pec_smtp.py`, acceso da `PEC_ALLEGATO=1`.
+
+**Era bloccato da una condizione scritta qui**: farlo solo dopo aver misurato il tasso di
+risposta *senza*. Ora la misura c'è — 18 inviate, 18 consegnate, **0 risposte** — quindi la
+linea di base è zero e qualunque miglioramento sarà attribuibile all'allegato.
+
+Il contenuto viene da `MITTENTE` e `COSA_FACCIAMO` di `genera_pec.py`: un posto solo da
+aggiornare, e allegato e messaggio non possono contraddirsi. La parte più utile non è
+l'elenco delle competenze ma le **quattro domande che un RUP fa davvero** — chi resta
+proprietario, cosa succede se ve ne andate, come si affida, quanto costa scoprire se serve.
+
+#### Quello che manca è voluto
+
+Referenze, casi studio e numeri di clienti **non ci sono**, e non li ho inventati. La
+sezione esiste con un `[DA COMPILARE]`, e finché resta così **`pec_smtp.py` si rifiuta di
+allegare il file**, fallendo rumorosamente invece di spedire in silenzio senza allegato.
+
+Un PDF con dentro un segnaposto, mandato a un ente pubblico, non è un allegato incompleto:
+è l'unica occasione che si aveva con quell'ente, bruciata. Bastano due o tre righe vere in
+`REFERENZE`.
 
 ---
 
@@ -403,10 +447,37 @@ Resta un limite dichiarato in `fonti-dati.md`: lo storico CIG copre il 2021–20
 una convenzione quadro lunga bandita prima del 2021 non viene contata. Il 5,5% è un
 minimo garantito, non un totale.
 
-### R12 — Valutare `smartcig` per il sotto soglia · media · ~3h
+### R12 — Valutare `smartcig` per il sotto soglia · ✅ VALUTATO 2026-09-07 · **no**
 
-È l'unica via lecita rimasta al sotto soglia: i portali regionali lo vietano nel
-robots.txt. Dataset presente nel catalogo ANAC, mai ispezionato.
+Ispezionato il delta di settembre 2026: 683.756 righe, 102 MB compressi per un mese solo.
+La risposta è no, per tre motivi indipendenti — e basterebbe il secondo.
+
+**1. Non c'è il CPV.** Ventisei colonne, nessuna con il codice merceologico. Senza, il
+verticale non si può filtrare e resta solo la regex sull'oggetto. Che su questo dataset
+non regge: `categorie.py` è nata come **rete di sicurezza dopo il filtro CPV**, non come
+classificatore autonomo, e applicata a dati non filtrati «manutenzione» prende tutto.
+
+Su un campione di 14 righe sopra i 20.000 € classificate *Manutenzione e assistenza*,
+**14 su 14 erano falsi positivi**: reti fognarie, illuminazione stradale, centrali
+termiche, strade bianche. Quella categoria da sola valeva 70.701 righe delle 125.380
+«IT».
+
+**2. Non c'è la data di fine contratto.** Ci sono `data_comunicazione`, `anno_` e
+`mese_comunicazione`. Il motore scadenze — cioè il prodotto — ha bisogno di sapere
+**quando finisce** un contratto. Su smartcig non si può sapere, e nessuna elaborazione a
+valle lo recupera.
+
+**3. Gli importi sono un altro mestiere.** Mediana 919 €, media 3.483 €. Togliendo i
+falsi positivi di «manutenzione» restano 54.679 righe plausibilmente IT in un mese, di cui
+**182 sopra i 20.000 €** (in 134 enti) e **7 sopra i 40.000 €**. Il motore ANAC oggi ne dà
+13.567 con la data di fine.
+
+E il costo: 102 MB al mese, ~1,2 GB l'anno, contro un tetto Supabase di 500 MB.
+
+**Cosa resta vero**: il sotto soglia è dove sta l'88% del mercato, e i portali regionali
+lo vietano nel `robots.txt`. Semplicemente **smartcig non è la via**: pubblica che un
+affidamento è avvenuto, non quando finirà. Se un domani ANAC aggiungesse CPV e durata,
+questa valutazione va rifatta — le due misure da controllare sono in questa pagina.
 
 ### R13 — Revisione sicurezza · ✅ FATTO 2026-09-07
 
@@ -875,12 +946,6 @@ l'architettura del sistema:
 Due cose ci finiscono di proposito, perché sono quelle che il sistema **non** può impedire:
 una PEC per ente anche cambiando lotto, e non modificare a mano i file generati.
 
-### R21 — Allegato alla PEC · bassa · ~2h
-
-Una presentazione in PDF allegata alla richiesta di iscrizione all'elenco
-operatori. Da fare **solo dopo** aver misurato il tasso di risposta senza: se no
-non si saprà mai se è servita.
-
 ---
 
 ## Ordine consigliato
@@ -891,16 +956,39 @@ FATTI   R1 → R2 → R3 → R4 → R7 → R14 → R7b → R14b
         R9 → R10 → R11             il sistema si mantiene da solo
 
         R17                        sappiamo se il prodotto vale: 4,7%
-
         R18 → R19                  i dati sono diventati un giudizio
-
         R24 → R25                  il team lo usa, e si vede se rende
 
-ADESSO  R27 → R5 → R6              piu' territorio, e le gare aperte
-DOPO    R23 → R28 → R8
-RINVIATO R26                       GoHighLevel: si paga, e con 0 risposte non serve
-ALLA FINE  R12 → R13 → R21
+        R13 → R23                  sicurezza misurata, guasti sotto test
+        R28 → R27                  a chi scrivere, e in che ordine
+        R5 → R6                    TED: le gare aperte, non solo previste
+        R8 → R21                   il materiale commerciale
+
+VALUTATI E SCARTATI
+        R12                        smartcig: ne' CPV ne' data di fine
+
+RINVIATO
+        R26                        GoHighLevel: si paga, e con 0 risposte
+                                   non c'e' ancora niente da tracciarci
+
+APERTO, E NON E' UN LAVORO
+        R28 (parte 2)              il nome del responsabile: 92,7% di
+                                   copertura, ma e' dato personale e passa
+                                   da docs/liceita.md §7
 ```
+
+**La domanda vera, adesso.** La roadmap tecnica e' finita. Restano tre cose, e nessuna
+delle tre e' codice:
+
+1. **Avast** blocca la lettura delle ricevute PEC (`ingestion/diagnosi_tls.py` dice
+   esattamente perche'). Le consegne sono confermate a mano, ma il canale automatico e'
+   fermo.
+2. **18 consegnate, 0 risposte.** Il messaggio arriva e non produce niente. R28 ha
+   escluso che si risolva con un ufficio diverso (2,7% di copertura utile); resta il nome
+   del responsabile, che e' una decisione sul trattamento dei dati personali.
+3. **Le referenze** per l'allegato di R21. Due o tre righe vere: nessuno puo' scriverle
+   al posto di chi le ha.
+
 
 **Perché in quest'ordine.**
 

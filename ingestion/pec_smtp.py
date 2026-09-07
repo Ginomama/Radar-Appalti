@@ -359,6 +359,31 @@ def apri_smtp():
     return conn, utente, (c["PEC_NOME"] or "Leonardo Foschi")
 
 
+def allega(msg):
+    """L'allegato di R21, se e solo se e' stato acceso ED e' pronto.
+
+    Due condizioni e non una. PEC_ALLEGATO=1 dice che lo vuoi; presentazione.
+    controlla() dice se il file e' allegabile davvero. Un PDF con dentro un
+    [DA COMPILARE] spedito a un ente pubblico non e' un allegato incompleto,
+    e' l'unica occasione che si aveva con quell'ente, bruciata.
+
+    Si fallisce rumorosamente invece di spedire senza allegato: se hai chiesto
+    l'allegato e non parte, devi saperlo prima, non scoprirlo dopo venti PEC.
+    """
+    if (conf("PEC_ALLEGATO", False) or "").strip() not in ("1", "si", "true"):
+        return
+    import presentazione
+    p = os.path.abspath(os.path.join(presentazione.FUORI, presentazione.NOME))
+    problemi = presentazione.controlla(p)
+    if problemi:
+        raise RuntimeError(
+            "PEC_ALLEGATO e' acceso ma la presentazione non e' allegabile:\n  - "
+            + "\n  - ".join(problemi))
+    with open(p, "rb") as f:
+        msg.add_attachment(f.read(), maintype="application",
+                           subtype="pdf", filename=presentazione.NOME)
+
+
 def invia(dest, oggetto, corpo):
     """Spedisce e ritorna il Message-ID. Il provider PEC incapsula il messaggio
     in una busta firmata e le ricevute citano questo id: e' cio' che permette
@@ -373,6 +398,7 @@ def invia(dest, oggetto, corpo):
     mid = make_msgid(domain=utente.rsplit("@", 1)[-1])
     msg["Message-ID"] = mid
     msg.set_content(corpo, subtype="plain", charset="utf-8")
+    allega(msg)
 
     try:
         with conn as s:

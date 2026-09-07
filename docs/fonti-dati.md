@@ -385,7 +385,7 @@ concorrenza reale per ente e verticale. Scaricabile, **schema e copertura non an
 
 Da `package_list`, ~70 dataset. Rilevanti e non ancora testati: `subappalti`, `varianti`,
 `sospensioni`, `quadro-economico`, `stazioni-appaltanti`, `fonti-finanziamento`,
-`indicatori-pnrrpnc`, `smartcig` (affidamenti sotto soglia semplificati — **da valutare, potrebbe
+`indicatori-pnrrpnc`, `smartcig` (affidamenti sotto soglia semplificati — **valutato e scartato**, R12: potrebbe
 coprire parte del sotto soglia per via lecita**).
 
 - **OCDS bulk**: stessi dati in [Open Contracting Data Standard](https://dati.anticorruzione.it/opendata/ocds_it). Ritardo di mesi, sequenza non continua, 404 frequenti. Nessun vantaggio rispetto ai CSV.
@@ -545,7 +545,7 @@ un troncone trasforma un errore transitorio in un errore permanente.
 - [x] Verificare il join aggiudicazioni/aggiudicatari sul CIG
 - [x] Verificare la freschezza reale della fonte e la fattibilità dell'allerta
 - [ ] Verificare schema e copertura di `partecipanti`
-- [ ] Valutare `smartcig` come via lecita al sotto soglia
+- [x] Valutare `smartcig` come via lecita al sotto soglia — **no**, 2026-09-07: niente CPV, niente data di fine contratto, mediana 919 € (vedi roadmap R12)
 - [ ] Testare l'endpoint soldipubblici e aggiornarne lo stato
 - [ ] Quantificare la copertura TED sul verticale scelto (quota sopra soglia)
 - [x] Confermare la quota IT delle scadenze con il join sullo storico CIG (R11: 5,5%, misurata)

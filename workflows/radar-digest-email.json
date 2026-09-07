@@ -1,0 +1,68 @@
+{
+  "name": "Radar Appalti — Digest Email settimanale",
+  "nodes": [
+    {
+      "id": "trigger-lunedi",
+      "name": "Ogni lunedi alle 08:15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-220, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [1],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "notes": "Il lunedi basta per il digest, ma NON basta a tenere sveglio il progetto Supabase Free: quello lo fa l'alert Telegram giornaliero."
+    },
+    {
+      "id": "costruisci-digest",
+      "name": "Costruisci digest",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [20, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Tutto l'HTML si compone in SQL: nessun Code node, e la logica sta\n-- dove stanno i dati. Filtro fornitore_persona_fisica = 0 come da R3.\nWITH lead AS (\n  SELECT * FROM radar.v_lead_90gg WHERE fornitore_persona_fisica = 0\n),\nper_categoria AS (\n  SELECT string_agg(\n           '<tr><td>' || coalesce(categoria, 'Non classificato')\n           || '</td><td align=right>' || cnt\n           || '</td><td align=right>€ ' || coalesce(replace(to_char(val, 'FM999G999G999'), ',', '.'), 'n.d.')\n           || '</td></tr>', '' ORDER BY val DESC NULLS LAST) AS html\n  FROM (SELECT categoria, count(*) AS cnt, sum(importo_aggiudicazione) AS val\n        FROM lead GROUP BY categoria) t\n),\nprime25 AS (\n  SELECT string_agg(\n           '<tr><td align=right><b>' || gg || '</b></td><td>' || ente\n           || '</td><td>' || prov || '</td><td>' || cat\n           || '</td><td align=right>€ ' || imp\n           || '</td><td>' || forn\n           || '</td><td><a href=\"mailto:' || pec || '\">' || pec || '</a></td></tr>',\n           '' ORDER BY ord DESC NULLS LAST) AS html\n  FROM (SELECT giorni_alla_scadenza AS gg,\n               left(coalesce(ente, '?'), 46) AS ente,\n               coalesce(provincia, '') AS prov,\n               coalesce(categoria, 'n.c.') AS cat,\n               coalesce(replace(to_char(importo_aggiudicazione, 'FM999G999G999'), ',', '.'), 'n.d.') AS imp,\n               left(coalesce(fornitore_uscente, ''), 30) AS forn,\n               pec,\n               importo_aggiudicazione AS ord\n        FROM lead ORDER BY importo_aggiudicazione DESC NULLS LAST LIMIT 25) t\n)\nSELECT\n  (SELECT count(*) FROM lead) AS tot,\n  to_char(now(), 'DD/MM/YYYY') AS oggi,\n  per_categoria.html AS html_categorie,\n  prime25.html      AS html_prime25\nFROM per_categoria, prime25;",
+        "options": {}
+      },
+      "notes": "Credenziale Postgres verso Supabase (Session pooler, porta 5432)."
+    },
+    {
+      "id": "invia-email",
+      "name": "Invia digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [260, 0],
+      "parameters": {
+        "fromEmail": "Radar Appalti <INSERISCI_MITTENTE>",
+        "toEmail": "INSERISCI_DESTINATARIO",
+        "subject": "=Radar Appalti — {{ $json.tot }} scadenze IT entro 90 giorni",
+        "emailFormat": "html",
+        "html": "=<html><body style=\"font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1a1a1a;max-width:900px\">\n<h2 style=\"margin-bottom:4px\">Radar Appalti — digest del {{ $json.oggi }}</h2>\n<p style=\"color:#555;margin-top:0\">{{ $json.tot }} contratti IT in scadenza entro 90 giorni presso enti pubblici. Esclusi i fornitori persona fisica.</p>\n<h3>Per categoria</h3>\n<table cellpadding=6 style=\"border-collapse:collapse;font-size:14px\">\n<tr style=\"background:#f2f2f2\"><th align=left>Categoria</th><th>Lead</th><th align=right>Valore</th></tr>\n{{ $json.html_categorie }}</table>\n<h3>Le 25 per valore</h3>\n<table cellpadding=5 style=\"border-collapse:collapse;font-size:13px\">\n<tr style=\"background:#f2f2f2\"><th>gg</th><th align=left>Ente</th><th>Prov</th><th align=left>Categoria</th><th align=right>Importo</th><th align=left>Fornitore uscente</th><th align=left>PEC</th></tr>\n{{ $json.html_prime25 }}</table>\n<p style=\"color:#777;font-size:12px;margin-top:26px\">Fonti: ANAC open data (CC BY-SA 4.0), IndicePA (CC BY 4.0). Elaborazione FlowLine.</p>\n</body></html>",
+        "options": {}
+      },
+      "notes": "Credenziale SMTP. Con Gmail serve una password per le app, non quella dell'account."
+    }
+  ],
+  "connections": {
+    "Ogni lunedi alle 08:15": {
+      "main": [[{ "node": "Costruisci digest", "type": "main", "index": 0 }]]
+    },
+    "Costruisci digest": {
+      "main": [[{ "node": "Invia digest", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Rome",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  }
+}

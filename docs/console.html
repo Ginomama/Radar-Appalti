@@ -1,0 +1,1019 @@
+<title>Radar Appalti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style id="css">
+:root{
+  --ground:#F6F7F5; --surface:#FFFFFF; --surface-2:#EFF2EE;
+  --ink:#131816; --ink-2:#5A6461; --ink-3:#8A938F;
+  --rule:#DCE2DD; --rule-forte:#C3CCC5;
+  --accento:#1E6E58; --accento-tenue:#E4EFEA;
+  --alta:#A8342A; --alta-bg:#F7E7E4;
+  --media:#A9741A; --media-bg:#F9EFDF;
+  --bassa:#3E6E63; --bassa-bg:#E6EFEB;
+  --ombra:0 1px 2px rgba(19,24,22,.05), 0 4px 14px rgba(19,24,22,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1211; --surface:#161B19; --surface-2:#1D2422;
+    --ink:#E9EEEB; --ink-2:#98A29E; --ink-3:#6D7773;
+    --rule:#252D2A; --rule-forte:#374039;
+    --accento:#57AE90; --accento-tenue:#172A24;
+    --alta:#E2796C; --alta-bg:#2C1C1A;
+    --media:#D5A254; --media-bg:#2B2419;
+    --bassa:#6FAE9D; --bassa-bg:#182421;
+    --ombra:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1211; --surface:#161B19; --surface-2:#1D2422;
+  --ink:#E9EEEB; --ink-2:#98A29E; --ink-3:#6D7773;
+  --rule:#252D2A; --rule-forte:#374039;
+  --accento:#57AE90; --accento-tenue:#172A24;
+  --alta:#E2796C; --alta-bg:#2C1C1A;
+  --media:#D5A254; --media-bg:#2B2419;
+  --bassa:#6FAE9D; --bassa-bg:#182421;
+  --ombra:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:15px; line-height:1.5;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:28px 22px 72px}
+h1,h2,h3{font-family:Archivo,"IBM Plex Sans",system-ui,sans-serif; text-wrap:balance; margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* intestazione */
+header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px 24px; margin-bottom:26px}
+h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
+.sotto{color:var(--ink-2); font-size:13.5px; margin-top:3px}
+.spia{margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12px;
+  color:var(--ink-2); font-family:"IBM Plex Mono",monospace}
+.pallino{width:7px; height:7px; border-radius:50%; background:var(--accento)}
+
+/* tessere di riepilogo */
+.tessere{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:12px; margin-bottom:30px}
+.tess{background:var(--surface); border:1px solid var(--rule); border-radius:5px;
+  padding:13px 15px 14px; box-shadow:var(--ombra)}
+.tess .et{font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:600}
+.tess .v{font-family:Archivo,sans-serif; font-size:25px; font-weight:600;
+  letter-spacing:-.02em; margin-top:5px; font-variant-numeric:tabular-nums}
+.tess .n{font-size:12px; color:var(--ink-2); margin-top:1px}
+
+/* pannelli */
+.griglia{display:grid; grid-template-columns:1.55fr 1fr; gap:20px; align-items:start}
+@media (max-width:900px){ .griglia{grid-template-columns:1fr} }
+/* Senza questo una colonna della griglia non scende sotto la larghezza minima
+   del suo contenuto — e la tabella delle scadenze ha sette colonne. Risultato:
+   la pagina diventava 1112px dentro una finestra da 700 e si scorreva in
+   orizzontale invece di far scorrere la sola tabella. */
+.griglia > *{min-width:0}
+.pan{background:var(--surface); border:1px solid var(--rule); border-radius:5px;
+  box-shadow:var(--ombra); overflow:hidden; margin-bottom:20px; min-width:0}
+.pan > h2{font-size:14px; font-weight:600; letter-spacing:-.01em;
+  padding:13px 16px; border-bottom:1px solid var(--rule); display:flex;
+  align-items:center; gap:10px}
+.pan > h2 .conta{margin-left:auto; font-size:11.5px; color:var(--ink-3);
+  font-family:"IBM Plex Mono",monospace; font-weight:400}
+.corpo{padding:6px 0}
+
+/* tracker PEC */
+.lotto-t{font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:600; padding:12px 16px 6px}
+.riga{display:flex; align-items:center; gap:11px; padding:8px 16px;
+  border-bottom:1px solid var(--rule)}
+.riga:last-child{border-bottom:none}
+.riga:hover{background:var(--surface-2)}
+.riga .idx{font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+  color:var(--ink-3); width:20px; flex:none; text-align:right}
+.riga .chi{flex:1; min-width:0}
+.riga .nome{font-size:13.5px; font-weight:500; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis}
+.riga .meta{font-size:11.5px; color:var(--ink-2); font-family:"IBM Plex Mono",monospace;
+  margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* Lo stato NON deve somigliare a un bottone. Prima .p-da aveva bordo e sfondo
+   identici a .btn, e ogni riga mostrava quattro forme uguali in fila: una era
+   un'informazione, tre erano azioni, e non si capiva quale fosse cliccabile.
+   Ora lo stato e' un pallino colorato piu' testo, senza bordo ne' sfondo, in
+   una colonna di larghezza fissa: cosi' i bottoni si allineano fra le righe e
+   l'occhio scorre una colonna sola. */
+/* Larghezza fissa tarata su "nessuna risposta", l'etichetta piu' lunga: piu'
+   di cosi' e ogni nome di ente viene tagliato per niente. */
+.pillola{font-size:11.5px; font-weight:500; white-space:nowrap; flex:none;
+  display:inline-flex; align-items:center; gap:6px; width:112px}
+.pillola::before{content:""; width:8px; height:8px; border-radius:50%;
+  flex:none; background:currentColor}
+.p-da{color:var(--ink-3)}
+.p-inv{color:var(--media)}
+.p-ris{color:var(--bassa); font-weight:600}
+.p-no{color:var(--ink-3)}
+.p-err{color:var(--alta); font-weight:600}
+.azioni{display:flex; gap:5px; flex:none}
+button{font:inherit; cursor:pointer}
+.btn{font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:3px;
+  border:1px solid var(--rule-forte); background:var(--surface); color:var(--ink-2);
+  transition:background .12s, border-color .12s, color .12s}
+.btn:hover{background:var(--accento-tenue); border-color:var(--accento); color:var(--accento)}
+.btn:focus-visible{outline:2px solid var(--accento); outline-offset:2px}
+/* Un'azione non applicabile si nasconde invece di restare grigia: tre bottoni
+   di cui due inerti su ogni riga sono rumore, e l'opacita' al 40% non basta a
+   distinguerli. Lo spazio resta occupato per non far ballare le colonne. */
+.btn[disabled]{visibility:hidden}
+.azioni .posto{display:inline-block}
+
+/* il bottone che spedisce si distingue dagli altri: e' l'unico irreversibile */
+.btn-pec{border-color:var(--accento); color:var(--accento);
+  background:var(--accento-tenue); font-weight:600}
+.btn-pec:hover{background:var(--accento); color:var(--surface)}
+
+/* finestra di conferma invio */
+.velo{position:fixed; inset:0; background:rgba(19,24,22,.55); z-index:50;
+  display:flex; align-items:center; justify-content:center; padding:20px}
+.modale{background:var(--surface); border:1px solid var(--rule-forte);
+  border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,.28); width:min(720px,100%);
+  max-height:88vh; display:flex; flex-direction:column}
+.modale h3{font-size:15px; padding:14px 18px; border-bottom:1px solid var(--rule)}
+.modale .campi{padding:12px 18px; border-bottom:1px solid var(--rule);
+  font-size:12.5px; line-height:1.7}
+.modale .campi b{display:inline-block; min-width:78px; color:var(--ink-2);
+  font-weight:500}
+.modale .campi .val{font-family:"IBM Plex Mono",monospace; color:var(--ink)}
+.modale pre{margin:0; padding:14px 18px; overflow:auto; flex:1;
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; line-height:1.55;
+  white-space:pre-wrap; word-break:break-word; color:var(--ink)}
+.modale .piede{padding:12px 18px; border-top:1px solid var(--rule);
+  display:flex; gap:9px; align-items:center}
+.modale .piede .btn{font-size:12.5px; padding:7px 14px}
+.blocco{margin:0 18px 12px; padding:11px 13px; border-radius:4px;
+  background:var(--alta-bg); color:var(--alta); font-size:12.5px; line-height:1.55}
+.blocco ul{margin:6px 0 0; padding-left:18px}
+.avvertenza{font-size:11.5px; color:var(--ink-2); line-height:1.5; flex:1}
+
+/* riga di spiegazione sotto ogni titolo di pannello: chi apre la pagina per
+   la prima volta deve capire cosa sta guardando senza chiedere a nessuno */
+.aiuto{font-size:12px; color:var(--ink-2); line-height:1.5;
+  padding:10px 16px 11px; border-bottom:1px solid var(--rule);
+  background:var(--surface-2)}
+.aiuto b{color:var(--ink); font-weight:600}
+
+/* barra "cosa fare adesso" in cima al tracker */
+.dafare{display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px;
+  padding:12px 16px; border-bottom:1px solid var(--rule)}
+.dafare .voce{display:flex; align-items:baseline; gap:6px; font-size:12.5px}
+.dafare .voce .q{font-family:Archivo,sans-serif; font-size:19px; font-weight:600;
+  letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.dafare .voce .e{color:var(--ink-2)}
+.dafare .prossima{margin-left:auto; font-size:12px; color:var(--ink-2);
+  text-align:right; line-height:1.45}
+.dafare .prossima b{color:var(--ink)}
+
+/* legenda dei colori: senza, i numeri rossi e arancioni non vogliono dire nulla */
+.legenda{display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center;
+  padding:9px 16px; border-bottom:1px solid var(--rule); font-size:11.5px;
+  color:var(--ink-2)}
+.legenda .v{display:inline-flex; align-items:center; gap:6px}
+.legenda .v::before{content:""; width:9px; height:9px; border-radius:2px;
+  background:currentColor}
+.legenda .l-alta{color:var(--alta)} .legenda .l-media{color:var(--media)}
+.legenda .l-bassa{color:var(--ink-3)}
+
+/* intestazioni ordinabili */
+thead th.ord{cursor:pointer; user-select:none; white-space:nowrap}
+thead th.ord:hover{color:var(--accento)}
+thead th.ord::after{content:"\2195"; opacity:.3; margin-left:5px; font-size:11px}
+thead th.ord[data-dir="asc"]::after{content:"\2191"; opacity:1}
+thead th.ord[data-dir="desc"]::after{content:"\2193"; opacity:1}
+thead th.ord:focus-visible{outline:2px solid var(--accento); outline-offset:-2px}
+
+/* data di scadenza sotto i giorni */
+td.gg .quando{display:block; font-size:10.5px; color:var(--ink-3);
+  font-weight:400; margin-top:1px}
+
+/* spia di freschezza: diventa ambra e poi rossa quando i dati invecchiano */
+.spia.vecchia .pallino{background:var(--media)}
+.spia.scaduta .pallino{background:var(--alta)}
+.spia.scaduta{color:var(--alta)}
+
+@media (max-width:760px){
+  .wrap{padding:20px 14px 56px}
+  /* Tessere piu' larghe: sotto i 760px il minimo da 158px ne stipava quattro
+     per riga lasciandone una spaiata sotto. */
+  .tessere{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  /* Nome accanto al suo numero, stato e azioni a capo solo se non ci stanno. */
+  .riga{flex-wrap:wrap; gap:6px 10px}
+  .riga .idx{order:0}
+  .riga .chi{flex:1 1 auto; order:1; min-width:0}
+  .pillola{order:2; width:auto; flex:0 0 auto}
+  .azioni{order:3; margin-left:auto}
+  .dafare .prossima{margin-left:0; text-align:left; flex:1 1 100%}
+}
+
+/* esito del lotto */
+.verdetto{margin:2px 16px 14px; padding:11px 13px; border-radius:4px;
+  background:var(--surface-2); font-size:12.5px; color:var(--ink-2); line-height:1.5}
+.verdetto b{color:var(--ink); font-weight:600}
+
+/* barre categoria */
+.cat{padding:7px 16px}
+.cat-r{display:flex; align-items:baseline; gap:8px; font-size:12.5px; margin-bottom:3px}
+.cat-r .n{margin-left:auto; font-family:"IBM Plex Mono",monospace; color:var(--ink-2); font-size:11.5px}
+.barra{height:5px; background:var(--surface-2); border-radius:3px; overflow:hidden}
+.barra i{display:block; height:100%; background:var(--accento); border-radius:3px}
+
+/* tabella scadenze */
+.filtri{display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px; border-bottom:1px solid var(--rule)}
+select,input[type=search]{font:inherit; font-size:12.5px; padding:5px 9px;
+  border:1px solid var(--rule-forte); border-radius:3px; background:var(--surface);
+  color:var(--ink); min-width:0}
+input[type=search]{flex:1; min-width:150px}
+select:focus-visible,input:focus-visible{outline:2px solid var(--accento); outline-offset:1px}
+.tab-scroll{overflow-x:auto; max-height:560px; overflow-y:auto}
+table{border-collapse:collapse; width:100%; font-size:12.5px}
+thead th{position:sticky; top:0; background:var(--surface); z-index:1;
+  text-align:left; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:600; padding:9px 12px; border-bottom:1px solid var(--rule-forte);
+  white-space:nowrap}
+tbody td{padding:8px 12px; border-bottom:1px solid var(--rule); vertical-align:top}
+tbody tr:hover{background:var(--surface-2)}
+td.gg{font-family:"IBM Plex Mono",monospace; font-weight:500; white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+td.imp{font-family:"IBM Plex Mono",monospace; text-align:right; white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+td.ente{max-width:250px}
+td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
+.g-alta{color:var(--alta)} .g-media{color:var(--media)} .g-bassa{color:var(--ink-2)}
+.tag{display:inline-block; font-size:10.5px; padding:1.5px 6px; border-radius:3px;
+  background:var(--surface-2); color:var(--ink-2); white-space:nowrap}
+a{color:var(--accento); text-decoration:none}
+a:hover{text-decoration:underline}
+.vuoto{padding:26px 16px; color:var(--ink-3); font-size:13px; text-align:center}
+
+footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
+  font-size:11.5px; color:var(--ink-3); line-height:1.6}
+.avviso{background:var(--media-bg); color:var(--media); border-radius:4px;
+  padding:10px 13px; font-size:12.5px; margin:0 0 18px}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+
+<div id="app"></div>
+
+<!-- I dati qui sotto sono INVENTATI: enti, PEC, CIG e fornitori non esistono.
+     Servono solo a far vedere l'interfaccia. La console vera prende i dati
+     da /api/dati, servito da ingestion/console_live.py in locale. -->
+    <script id="dati" type="application/json">{"totali": {"scadenze": 13567, "con_pec": 12690, "con_categoria": 12480, "a90": 971, "a365": 6677, "valore365": 5940322646.37, "competitor": 25005, "enti": 21442}, "categorie": [{"nome": "Manutenzione e assistenza", "n": 1433, "val": 1633005296.71}, {"nome": "Licenze e pacchetti", "n": 1036, "val": 1711516961.17}, {"nome": "Sviluppo software", "n": 626, "val": 1207485511.71}, {"nome": "Cloud e datacenter", "n": 401, "val": 289251597.67}, {"nome": "Cybersecurity", "n": 308, "val": 486329963.52}, {"nome": "Dati e analytics", "n": 308, "val": 452019494.18}, {"nome": "Connettivita e reti", "n": 304, "val": 422708808.91}, {"nome": "Consulenza IT", "n": 301, "val": 119885798.1}, {"nome": "Gestione documentale", "n": 237, "val": 58891229.83}], "invii": [{"lotto": "esempio", "n": 1, "ente": "COMUNE DI VALDIPIETRA", "prov": "MILANO", "pec": "valdipietra@pec.esempio.it", "contratti": 4, "stato": "da_inviare", "inviata": null, "risposta": null, "note": null, "cig": "D8AC414646,A329D2F4DA"}, {"lotto": "esempio", "n": 2, "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "ROMA", "pec": "litorale@pec.esempio.it", "contratti": 1, "stato": "inviata", "inviata": "2026-08-22", "risposta": null, "note": null, "cig": "B1B1FB0C73,67B1828648"}, {"lotto": "esempio", "n": 3, "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "TORINO", "pec": "montelago@pec.esempio.it", "contratti": 3, "stato": "risposta", "inviata": "2026-08-24", "risposta": "2026-09-01", "note": null, "cig": "5A38A01B0E,8F16982F04"}, {"lotto": "esempio", "n": 4, "ente": "REGIONE ESEMPIO", "prov": "BOLOGNA", "pec": "esempio@pec.esempio.it", "contratti": 4, "stato": "chiusa", "inviata": "2026-08-20", "risposta": null, "note": "dati di esempio", "cig": "C56843619A,A15D298CF2"}, {"lotto": "esempio", "n": 5, "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "FIRENZE", "pec": "applicata@pec.esempio.it", "contratti": 5, "stato": "da_inviare", "inviata": null, "risposta": null, "note": null, "cig": "2778591FCF,7DE2E67FA6"}, {"lotto": "esempio", "n": 6, "ente": "COMUNE DI PORTOVECCHIO", "prov": "NAPOLI", "pec": "portovecchio@pec.esempio.it", "contratti": 3, "stato": "inviata", "inviata": "2026-08-16", "risposta": null, "note": null, "cig": "0D1A57AB56,9DBE23065E"}, {"lotto": "esempio", "n": 7, "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "BARI", "pec": "ambiente@pec.esempio.it", "contratti": 4, "stato": "risposta", "inviata": "2026-08-21", "risposta": "2026-08-29", "note": null, "cig": "4FE09850EA,A6183003F9"}, {"lotto": "esempio", "n": 8, "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "GENOVA", "pec": "centrale@pec.esempio.it", "contratti": 5, "stato": "chiusa", "inviata": "2026-08-29", "risposta": null, "note": "dati di esempio", "cig": "30E70C3D11,688BBDC0A2"}], "lead": [{"cig": "19AA3A47F9", "ente": "COMUNE DI VALDIPIETRA", "prov": "MILANO", "cat": "Manutenzione e assistenza", "scad": "2027-04-26", "imp": 125301.28, "forn": "ACME INFORMATICA SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "72D96FB464", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "ROMA", "cat": "Licenze e pacchetti", "scad": "2027-02-09", "imp": 88645.82, "forn": "BETA SISTEMI SPA", "pec": "litorale@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "EC445AF9D2", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "TORINO", "cat": "Sviluppo software", "scad": "2027-07-24", "imp": 224002.7, "forn": "GAMMA DIGITAL SRL", "pec": "montelago@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "47DAE497F8", "ente": "REGIONE ESEMPIO", "prov": "BOLOGNA", "cat": "Cloud e datacenter", "scad": "2027-05-27", "imp": 184052.65, "forn": "DELTA SOLUTIONS SPA", "pec": "esempio@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "03AF2D2C75", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "FIRENZE", "cat": "Cybersecurity", "scad": "2026-10-18", "imp": 838812.58, "forn": "EPSILON IT SRL", "pec": "applicata@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "29AEA4489C", "ente": "COMUNE DI PORTOVECCHIO", "prov": "NAPOLI", "cat": "Dati e analytics", "scad": "2027-02-25", "imp": 830766.29, "forn": "ZETA CONSULTING SRL", "pec": "portovecchio@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "4D38766BDC", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "BARI", "cat": "Connettivita e reti", "scad": "2027-01-28", "imp": 851232.36, "forn": "ACME INFORMATICA SRL", "pec": "ambiente@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "9C6A011BFC", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "GENOVA", "cat": "Consulenza IT", "scad": "2027-04-16", "imp": 554886.66, "forn": "BETA SISTEMI SPA", "pec": "centrale@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "9E5D666B67", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "MILANO", "cat": "Gestione documentale", "scad": "2027-08-02", "imp": 760202.31, "forn": "GAMMA DIGITAL SRL", "pec": "demo@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "2E6B4FE247", "ente": "COMUNE DI ROCCAFINTA", "prov": "ROMA", "cat": "Manutenzione e assistenza", "scad": "2027-04-23", "imp": 694667.42, "forn": "DELTA SOLUTIONS SPA", "pec": "roccafinta@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "7CCFA7AC65", "ente": "COMUNE DI VALDIPIETRA", "prov": "TORINO", "cat": "Licenze e pacchetti", "scad": "2027-05-22", "imp": 25263.55, "forn": "EPSILON IT SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "3DF35F08F4", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "BOLOGNA", "cat": "Sviluppo software", "scad": "2026-12-22", "imp": 153768.87, "forn": "ZETA CONSULTING SRL", "pec": "litorale@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "4139E12989", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "FIRENZE", "cat": "Cloud e datacenter", "scad": "2027-08-09", "imp": 349903.06, "forn": "ACME INFORMATICA SRL", "pec": "montelago@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "81092189BF", "ente": "REGIONE ESEMPIO", "prov": "NAPOLI", "cat": "Cybersecurity", "scad": "2026-12-29", "imp": 694242.49, "forn": "BETA SISTEMI SPA", "pec": "esempio@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "31BBFEAFB7", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "BARI", "cat": "Dati e analytics", "scad": "2026-09-16", "imp": 546817.12, "forn": "GAMMA DIGITAL SRL", "pec": "applicata@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "3B4C321C3E", "ente": "COMUNE DI PORTOVECCHIO", "prov": "GENOVA", "cat": "Connettivita e reti", "scad": "2026-11-24", "imp": 589652.0, "forn": "DELTA SOLUTIONS SPA", "pec": "portovecchio@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "E180334F79", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "MILANO", "cat": "Consulenza IT", "scad": "2027-08-07", "imp": 280968.59, "forn": "EPSILON IT SRL", "pec": "ambiente@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "A0D2C0E3AA", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "ROMA", "cat": "Gestione documentale", "scad": "2027-05-05", "imp": 834812.39, "forn": "ZETA CONSULTING SRL", "pec": "centrale@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "1F2E9342A1", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "TORINO", "cat": "Manutenzione e assistenza", "scad": "2026-11-29", "imp": 760128.63, "forn": "ACME INFORMATICA SRL", "pec": "demo@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "69D23C1FDD", "ente": "COMUNE DI ROCCAFINTA", "prov": "BOLOGNA", "cat": "Licenze e pacchetti", "scad": "2027-08-23", "imp": 248114.2, "forn": "BETA SISTEMI SPA", "pec": "roccafinta@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "7C47A7AFA6", "ente": "COMUNE DI VALDIPIETRA", "prov": "FIRENZE", "cat": "Sviluppo software", "scad": "2027-07-26", "imp": 102580.06, "forn": "GAMMA DIGITAL SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "6E6EDBD163", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "NAPOLI", "cat": "Cloud e datacenter", "scad": "2027-01-17", "imp": 20070.91, "forn": "DELTA SOLUTIONS SPA", "pec": "litorale@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "18BDC100AA", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "BARI", "cat": "Cybersecurity", "scad": "2027-08-19", "imp": 798265.43, "forn": "EPSILON IT SRL", "pec": "montelago@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "BA78EE3404", "ente": "REGIONE ESEMPIO", "prov": "GENOVA", "cat": "Dati e analytics", "scad": "2027-05-02", "imp": 464114.88, "forn": "ZETA CONSULTING SRL", "pec": "esempio@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "E005CCC386", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "MILANO", "cat": "Connettivita e reti", "scad": "2026-12-24", "imp": 139525.65, "forn": "ACME INFORMATICA SRL", "pec": "applicata@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "0EA4F7DB8E", "ente": "COMUNE DI PORTOVECCHIO", "prov": "ROMA", "cat": "Consulenza IT", "scad": "2027-05-10", "imp": 94303.07, "forn": "BETA SISTEMI SPA", "pec": "portovecchio@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "37F79388AE", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "TORINO", "cat": "Gestione documentale", "scad": "2027-01-23", "imp": 464970.01, "forn": "GAMMA DIGITAL SRL", "pec": "ambiente@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "0E856631B3", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "BOLOGNA", "cat": "Manutenzione e assistenza", "scad": "2026-10-02", "imp": 181473.63, "forn": "DELTA SOLUTIONS SPA", "pec": "centrale@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "A76550F1ED", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "FIRENZE", "cat": "Licenze e pacchetti", "scad": "2027-04-12", "imp": 311638.52, "forn": "EPSILON IT SRL", "pec": "demo@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "E102259C14", "ente": "COMUNE DI ROCCAFINTA", "prov": "NAPOLI", "cat": "Sviluppo software", "scad": "2027-02-05", "imp": 180354.28, "forn": "ZETA CONSULTING SRL", "pec": "roccafinta@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "A5AAF7E9D6", "ente": "COMUNE DI VALDIPIETRA", "prov": "BARI", "cat": "Cloud e datacenter", "scad": "2026-12-07", "imp": 516665.57, "forn": "ACME INFORMATICA SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "D9E91A4A10", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "GENOVA", "cat": "Cybersecurity", "scad": "2027-02-14", "imp": 710761.01, "forn": "BETA SISTEMI SPA", "pec": "litorale@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "2B362B5FFA", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "MILANO", "cat": "Dati e analytics", "scad": "2026-11-20", "imp": 735844.7, "forn": "GAMMA DIGITAL SRL", "pec": "montelago@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "F67D0762D7", "ente": "REGIONE ESEMPIO", "prov": "ROMA", "cat": "Connettivita e reti", "scad": "2027-05-12", "imp": 257335.63, "forn": "DELTA SOLUTIONS SPA", "pec": "esempio@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "95AE4A882F", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "TORINO", "cat": "Consulenza IT", "scad": "2027-01-25", "imp": 817274.06, "forn": "EPSILON IT SRL", "pec": "applicata@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "C05DA061F9", "ente": "COMUNE DI PORTOVECCHIO", "prov": "BOLOGNA", "cat": "Gestione documentale", "scad": "2026-11-13", "imp": 558182.41, "forn": "ZETA CONSULTING SRL", "pec": "portovecchio@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "B8B97170F2", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "FIRENZE", "cat": "Manutenzione e assistenza", "scad": "2027-04-19", "imp": 742752.14, "forn": "ACME INFORMATICA SRL", "pec": "ambiente@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "CB7889108B", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "NAPOLI", "cat": "Licenze e pacchetti", "scad": "2026-09-18", "imp": 636109.83, "forn": "BETA SISTEMI SPA", "pec": "centrale@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "74E1A2B169", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "BARI", "cat": "Sviluppo software", "scad": "2027-06-01", "imp": 720987.38, "forn": "GAMMA DIGITAL SRL", "pec": "demo@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "860BD388C6", "ente": "COMUNE DI ROCCAFINTA", "prov": "GENOVA", "cat": "Cloud e datacenter", "scad": "2027-07-24", "imp": 152320.49, "forn": "DELTA SOLUTIONS SPA", "pec": "roccafinta@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "15E9352166", "ente": "COMUNE DI VALDIPIETRA", "prov": "MILANO", "cat": "Cybersecurity", "scad": "2027-01-09", "imp": 342813.57, "forn": "EPSILON IT SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "9F02DE53AF", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "ROMA", "cat": "Dati e analytics", "scad": "2027-04-01", "imp": 629368.47, "forn": "ZETA CONSULTING SRL", "pec": "litorale@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "0DE60308A6", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "TORINO", "cat": "Connettivita e reti", "scad": "2026-12-13", "imp": 618910.12, "forn": "ACME INFORMATICA SRL", "pec": "montelago@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "6C386684B4", "ente": "REGIONE ESEMPIO", "prov": "BOLOGNA", "cat": "Consulenza IT", "scad": "2027-06-01", "imp": 285917.65, "forn": "BETA SISTEMI SPA", "pec": "esempio@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "22F9DDA677", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "FIRENZE", "cat": "Gestione documentale", "scad": "2027-02-11", "imp": 256118.65, "forn": "GAMMA DIGITAL SRL", "pec": "applicata@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "C956CA7806", "ente": "COMUNE DI PORTOVECCHIO", "prov": "NAPOLI", "cat": "Manutenzione e assistenza", "scad": "2027-03-05", "imp": 482338.3, "forn": "DELTA SOLUTIONS SPA", "pec": "portovecchio@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "B9EBCC8561", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "BARI", "cat": "Licenze e pacchetti", "scad": "2027-07-25", "imp": 249679.63, "forn": "EPSILON IT SRL", "pec": "ambiente@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "DB75AF1756", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "GENOVA", "cat": "Sviluppo software", "scad": "2027-08-27", "imp": 205420.14, "forn": "ZETA CONSULTING SRL", "pec": "centrale@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "33DA1744B8", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "MILANO", "cat": "Cloud e datacenter", "scad": "2026-09-23", "imp": 845419.9, "forn": "ACME INFORMATICA SRL", "pec": "demo@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "BD28A2DBB7", "ente": "COMUNE DI ROCCAFINTA", "prov": "ROMA", "cat": "Cybersecurity", "scad": "2026-12-30", "imp": 300191.36, "forn": "BETA SISTEMI SPA", "pec": "roccafinta@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "FD115D112A", "ente": "COMUNE DI VALDIPIETRA", "prov": "TORINO", "cat": "Dati e analytics", "scad": "2027-06-08", "imp": 720850.4, "forn": "GAMMA DIGITAL SRL", "pec": "valdipietra@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "5BB810DF50", "ente": "AZIENDA SANITARIA DEL LITORALE", "prov": "BOLOGNA", "cat": "Connettivita e reti", "scad": "2027-08-26", "imp": 302251.43, "forn": "DELTA SOLUTIONS SPA", "pec": "litorale@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "4251DF71A2", "ente": "UNIVERSITA DEGLI STUDI DI MONTELAGO", "prov": "FIRENZE", "cat": "Consulenza IT", "scad": "2027-01-06", "imp": 37093.53, "forn": "EPSILON IT SRL", "pec": "montelago@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}, {"cig": "042A6A01F4", "ente": "REGIONE ESEMPIO", "prov": "NAPOLI", "cat": "Gestione documentale", "scad": "2026-12-10", "imp": 768284.7, "forn": "ZETA CONSULTING SRL", "pec": "esempio@pec.esempio.it", "ogg": "ASSISTENZA SISTEMISTICA"}, {"cig": "D21A7A68F6", "ente": "ISTITUTO NAZIONALE DI RICERCA APPLICATA", "prov": "BARI", "cat": "Manutenzione e assistenza", "scad": "2027-06-20", "imp": 643667.67, "forn": "ACME INFORMATICA SRL", "pec": "applicata@pec.esempio.it", "ogg": "FORNITURA LICENZE DATABASE"}, {"cig": "7E44DEFC33", "ente": "COMUNE DI PORTOVECCHIO", "prov": "GENOVA", "cat": "Licenze e pacchetti", "scad": "2027-08-03", "imp": 367294.61, "forn": "BETA SISTEMI SPA", "pec": "portovecchio@pec.esempio.it", "ogg": "SERVIZIO DI CONSERVAZIONE DOCUMENTALE"}, {"cig": "8931650D55", "ente": "AGENZIA REGIONALE PER L AMBIENTE", "prov": "MILANO", "cat": "Sviluppo software", "scad": "2026-11-21", "imp": 694869.12, "forn": "GAMMA DIGITAL SRL", "pec": "ambiente@pec.esempio.it", "ogg": "MANUTENZIONE SOFTWARE GESTIONALE"}, {"cig": "5BB19C818F", "ente": "CONSORZIO DI BONIFICA CENTRALE", "prov": "ROMA", "cat": "Cloud e datacenter", "scad": "2027-02-13", "imp": 497522.45, "forn": "DELTA SOLUTIONS SPA", "pec": "centrale@pec.esempio.it", "ogg": "LICENZE ANTIVIRUS TRIENNALI"}, {"cig": "7218BFDD51", "ente": "AZIENDA OSPEDALIERA SAN DEMO", "prov": "TORINO", "cat": "Cybersecurity", "scad": "2027-01-15", "imp": 726019.0, "forn": "EPSILON IT SRL", "pec": "demo@pec.esempio.it", "ogg": "SERVIZI CLOUD E BACKUP"}, {"cig": "1F8129C591", "ente": "COMUNE DI ROCCAFINTA", "prov": "BOLOGNA", "cat": "Dati e analytics", "scad": "2026-11-08", "imp": 817927.12, "forn": "ZETA CONSULTING SRL", "pec": "roccafinta@pec.esempio.it", "ogg": "SVILUPPO PORTALE SERVIZI AL CITTADINO"}], "competitor": [{"nome": "ACME INFORMATICA SRL", "gare": 293, "val": 37357131.07, "enti": 31, "rib": 20.9}, {"nome": "BETA SISTEMI SPA", "gare": 288, "val": 42482435.87, "enti": 38, "rib": 10.2}, {"nome": "GAMMA DIGITAL SRL", "gare": 205, "val": 28842828.16, "enti": 67, "rib": 18.8}, {"nome": "DELTA SOLUTIONS SPA", "gare": 21, "val": 64872433.97, "enti": 44, "rib": 27.7}, {"nome": "EPSILON IT SRL", "gare": 216, "val": 49276324.49, "enti": 43, "rib": 5.2}, {"nome": "ZETA CONSULTING SRL", "gare": 148, "val": 59930018.64, "enti": 69, "rib": 7.8}, {"nome": "ACME INFORMATICA SRL", "gare": 214, "val": 40957036.64, "enti": 21, "rib": 5.8}, {"nome": "BETA SISTEMI SPA", "gare": 62, "val": 75280165.67, "enti": 15, "rib": 10.8}, {"nome": "GAMMA DIGITAL SRL", "gare": 97, "val": 27852917.43, "enti": 42, "rib": 13.0}, {"nome": "DELTA SOLUTIONS SPA", "gare": 122, "val": 51111266.91, "enti": 31, "rib": 11.9}], "territorio": [{"prov": "MILANO", "tot": 824, "forn": "ACME INFORMATICA SRL"}, {"prov": "ROMA", "tot": 734, "forn": "BETA SISTEMI SPA"}, {"prov": "TORINO", "tot": 140, "forn": "GAMMA DIGITAL SRL"}, {"prov": "BOLOGNA", "tot": 440, "forn": "DELTA SOLUTIONS SPA"}, {"prov": "FIRENZE", "tot": 40, "forn": "EPSILON IT SRL"}, {"prov": "NAPOLI", "tot": 543, "forn": "ZETA CONSULTING SRL"}, {"prov": "BARI", "tot": 512, "forn": "ACME INFORMATICA SRL"}, {"prov": "GENOVA", "tot": 606, "forn": "BETA SISTEMI SPA"}], "generato": "2026-09-07T00:00:00"}</script>
+<script id="stato" type="application/json">{"invii":{},"salvato":null}</script>
+
+<script id="codice">
+(function(){
+  "use strict";
+  // Due modalita' con la stessa pagina: se il payload incorporato e' vuoto
+  // la serve console_live.py e i dati si chiedono a /api/dati; altrimenti
+  // e' l'artifact pubblicato e si usa l'istantanea che ha dentro.
+  var grezzo = document.getElementById("dati").textContent.trim();
+  var LOCALE = (grezzo === "" || grezzo === "__DATI__");
+  var DATI  = LOCALE ? null : JSON.parse(grezzo);
+  var STATO = JSON.parse(document.getElementById("stato").textContent);
+  var app   = document.getElementById("app");
+  var artefatto = null;
+  var scaricatore = null;
+  var filtroLotto = "";     // stato di sola vista: non finisce nel documento
+  var filtroProv = "";
+  // I filtri della tabella vivono qui, non solo nel DOM. disegna() ricostruisce
+  // l'intera pagina, e prima bastava cambiare provincia nel pannello del
+  // territorio — o lotto nel tracker — per azzerare ricerca, categoria e
+  // urgenza senza che nulla lo segnalasse. Chi cercava un ente si ritrovava
+  // l'elenco completo e non capiva perche'.
+  var tab = {testo:"", cat:"", prov:"", urg:"", ordine:"gg", verso:1};
+
+  var ETICHETTE = {
+    da_inviare:"da inviare", inviata:"inviata", risposta:"ha risposto",
+    nessuna_risposta:"nessuna risposta", non_consegnata:"non consegnata"
+  };
+  var CLASSI = {
+    da_inviare:"p-da", inviata:"p-inv", risposta:"p-ris",
+    nessuna_risposta:"p-no", non_consegnata:"p-err"
+  };
+  var GIORNI_ATTESA = 21;
+
+  function oggi(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
+  function giorni(iso){
+    if(!iso) return null;
+    var d = new Date(iso+"T00:00:00");
+    return Math.round((d - oggi())/86400000);
+  }
+  function eur(v){
+    if(v==null) return "n.d.";
+    return "€ " + Math.round(v).toLocaleString("it-IT");
+  }
+  // eur() senza il simbolo: prima ogni chiamante faceva .replace("€ ","")
+  function num(v){ return v==null ? "n.d." : Math.round(v).toLocaleString("it-IT"); }
+
+  var MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio",
+              "agosto","settembre","ottobre","novembre","dicembre"];
+  function dataIt(iso){
+    if(!iso) return "";
+    var d = new Date(String(iso).slice(0,10)+"T00:00:00");
+    if(isNaN(d)) return "";
+    return d.getDate()+" "+MESI[d.getMonth()].slice(0,3)+" "+d.getFullYear();
+  }
+  function dataOraIt(iso){
+    if(!iso) return "";
+    var d = new Date(String(iso).replace(" ","T"));
+    if(isNaN(d)) return String(iso).slice(0,16);
+    var p = function(n){ return (n<10?"0":"")+n; };
+    return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+
+           " alle "+p(d.getHours())+":"+p(d.getMinutes());
+  }
+  // Somma quanti destinatari stanno in ciascuno stato.
+  function conteggi(righe){
+    var c = {};
+    righe.forEach(function(i){ var s = statoDi(i); c[s] = (c[s]||0)+1; });
+    return c;
+  }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];
+    });
+  }
+  function chiave(i){ return i.lotto + "#" + i.n; }
+  function statoDi(i){
+    var s = STATO.invii[chiave(i)];
+    return s ? s.stato : i.stato;
+  }
+  function dataDi(i, campo){
+    var s = STATO.invii[chiave(i)];
+    return (s && s[campo]) || i[campo];
+  }
+
+  /* ---------------------------------------------------------- riepilogo */
+  function tessere(){
+    var t = DATI.totali;
+    // Tutte le percentuali sul totale delle scadenze future (t.scadenze), e la
+    // base scritta sotto. Prima la prima tessera contava i 12 mesi e le due
+    // accanto una base diversa: due numeri affiancati che non tornavano.
+    var mld = t.valore365 / 1e9;
+    var v = [
+      ["contratti in scadenza", num(t.a365),
+       "nei prossimi 12 mesi · " + num(t.a90) + " entro 90 giorni"],
+      ["valore complessivo",
+       "€ " + mld.toLocaleString("it-IT", {maximumFractionDigits:2}) + " mld",
+       "somma degli importi di aggiudicazione"],
+      ["raggiungibili via PEC", Math.round(t.con_pec / t.scadenze * 100) + "%",
+       num(t.con_pec) + " su " + num(t.scadenze) + " scadenze totali"],
+      ["con categoria assegnata",
+       Math.round(t.con_categoria / t.scadenze * 100) + "%",
+       "classificate dal codice CPV, non a mano"],
+      ["enti censiti", num(t.enti),
+       num(t.competitor) + " fornitori già mappati"]
+    ];
+    return '<div class="tessere">' + v.map(function(x){
+      return '<div class="tess"><div class="et">'+esc(x[0])+'</div>'+
+             '<div class="v">'+esc(x[1])+'</div><div class="n">'+esc(x[2])+'</div></div>';
+    }).join("") + '</div>';
+  }
+
+  /* ------------------------------------------------------- tracker PEC */
+  function nomeLotto(l){
+    return l === "pec" ? "Lotto nazionale" : l === "pec-marche" ? "Lotto Marche" : l;
+  }
+
+  function tracker(){
+    var lotti = {};
+    DATI.invii.forEach(function(i){ (lotti[i.lotto] = lotti[i.lotto] || []).push(i); });
+    var tutti = Object.keys(lotti).sort();
+    var nomi = filtroLotto ? tutti.filter(function(l){ return l === filtroLotto; }) : tutti;
+    var mostrati = nomi.reduce(function(s,l){ return s + lotti[l].length; }, 0);
+
+    var html = '<div class="pan"><h2>Invii PEC'+
+      '<select id="f-lotto" aria-label="Filtra per lotto" style="margin-left:auto;font-size:12px">'+
+        '<option value="">Tutti i lotti</option>'+
+        tutti.map(function(l){
+          return '<option value="'+esc(l)+'"'+(l===filtroLotto?' selected':'')+'>'+
+                 esc(nomeLotto(l))+' ('+lotti[l].length+')</option>';
+        }).join("")+
+      '</select>'+
+      '<span class="conta">'+mostrati+' destinatari</span></h2>'+
+      '<div class="aiuto">Le PEC già scritte, una per ente, con lo stato di '+
+      'ciascuna. <b>Invia PEC</b> apre l’anteprima e spedisce davvero; gli '+
+      'altri due bottoni servono a segnare a mano un invio o una risposta '+
+      'arrivata fuori da qui.</div>'+
+      dafare(nomi.reduce(function(s,l){ return s.concat(lotti[l]); }, []))+
+      '<div class="corpo">';
+
+    nomi.forEach(function(lot){
+      var righe = lotti[lot];
+      html += '<div class="lotto-t">'+esc(nomeLotto(lot))+' &middot; '+righe.length+'</div>';
+
+      righe.forEach(function(i){
+        var st = statoDi(i), inv = dataDi(i,"inviata");
+        var coda = "";
+        if(st === "inviata" && inv){
+          var gg = -giorni(inv);
+          coda = gg + (gg===1?" giorno fa":" giorni fa");
+          // L'esito tecnico viene prima dell'attesa: una PEC mai consegnata
+          // non e' "in attesa di risposta", e aspettarla e' tempo buttato.
+          if(i.consegnata)        coda += " · consegnata";
+          else if(i.errore)       coda += " · " + i.errore;
+          else                    coda += " · consegna non confermata";
+          if(i.sollecitata)       coda += " · sollecitata il " + dataIt(i.sollecitata);
+          else if(gg > GIORNI_ATTESA) coda += " · da chiudere";
+        } else if(st === "risposta" && dataDi(i,"risposta")){
+          coda = "risposta il " + dataIt(dataDi(i,"risposta"));
+        }
+        // L'ente finisce in ogni aria-label: senza, da tastiera o con uno
+        // screen reader si sentono 38 bottoni "inviata" tutti uguali.
+        var chi = (i.ente || "?");
+        html += '<div class="riga">'+
+          '<span class="idx">'+i.n+'</span>'+
+          '<span class="chi"><div class="nome" title="'+esc(chi)+'">'+esc(chi)+'</div>'+
+          '<div class="meta">'+esc(i.prov||"—")+' · '+i.contratti+
+          (i.contratti===1?' contratto':' contratti')+(coda?' · '+esc(coda):'')+'</div></span>'+
+          '<span class="pillola '+CLASSI[st]+'">'+esc(ETICHETTE[st]||st)+'</span>'+
+          '<span class="azioni">'+
+            // Spedire richiede il server locale: l'artifact pubblicato non
+            // puo' parlare col provider PEC, e il bottone non deve comparire.
+            (LOCALE && (st==="da_inviare" || st==="non_consegnata")
+              ? '<button class="btn btn-pec" data-pec="'+esc(chiave(i))+'"'+
+                ' aria-label="Invia la PEC a '+esc(chi)+'">invia PEC</button>'
+              : (LOCALE ? '<span class="posto"></span>' : ''))+
+            '<button class="btn" data-az="inviata" data-k="'+esc(chiave(i))+'"'+
+              ' aria-label="Segna come già inviata la PEC a '+esc(chi)+'"'+
+              (st!=="da_inviare"?" disabled":"")+'>segna inviata</button>'+
+            '<button class="btn" data-az="risposta" data-k="'+esc(chiave(i))+'"'+
+              ' aria-label="Segna che '+esc(chi)+' ha risposto"'+
+              (st==="da_inviare"||st==="risposta"?" disabled":"")+'>ha risposto</button>'+
+          '</span></div>';
+      });
+
+      html += verdetto(righe);
+    });
+    return html + '</div></div>';
+  }
+
+  /* Cosa c'e' da fare adesso. Aprire la console e vedere solo numeri non dice
+     a nessuno da dove cominciare: questa barra traduce lo stato in un compito. */
+  function dafare(righe){
+    var c = conteggi(righe);
+    var daInviare = c.da_inviare || 0;
+    var attesa    = c.inviata || 0;
+    var risposte  = c.risposta || 0;
+
+    // Le inviate da piu' di tre settimane non torneranno: vanno chiuse, se no
+    // restano a gonfiare "in attesa" e il tasso di risposta non si legge.
+    var scadute = righe.filter(function(i){
+      var inv = dataDi(i, "inviata");
+      return statoDi(i) === "inviata" && inv && -giorni(inv) > GIORNI_ATTESA;
+    }).length;
+
+    // Consegne fallite e solleciti dovuti: due cose che si scoprono solo
+    // leggendo le ricevute, e che valgono piu' di un altro invio a freddo.
+    var fallite = righe.filter(function(i){ return i.errore; }).length;
+    var daSollecitare = righe.filter(function(i){
+      var inv = dataDi(i, "inviata");
+      return statoDi(i) === "inviata" && i.consegnata && !i.sollecitata
+             && inv && -giorni(inv) >= 12;
+    }).length;
+
+    var prossima;
+    if(risposte)         prossima = '<b>'+risposte+(risposte===1?' ha risposto':' hanno risposto')+'</b> — ricontattali, è la cosa che vale di più.';
+    else if(fallite)     prossima = '<b>'+fallite+(fallite===1?' PEC non è arrivata':' PEC non sono arrivate')+'</b> — casella piena o indirizzo dismesso: verifica il recapito prima di riprovare.';
+    else if(daSollecitare) prossima = '<b>'+daSollecitare+(daSollecitare===1?' consegnata da oltre 12 giorni senza risposta':' consegnate da oltre 12 giorni senza risposta')+'</b> — genera i solleciti con <code>genera_pec.py --solleciti</code>.';
+    else if(scadute)     prossima = '<b>'+scadute+(scadute===1?' invio è fermo':' invii sono fermi')+' da oltre '+GIORNI_ATTESA+' giorni</b> — chiudili con <code>invii.py --scadute</code>.';
+    else if(daInviare)   prossima = 'Prossimo passo: <b>inviare le '+daInviare+' rimanenti</b>.';
+    else if(attesa)      prossima = 'Tutte inviate. Ora si aspetta: le risposte arrivano entro tre settimane, dopo non arrivano più.';
+    else                 prossima = 'Niente in sospeso.';
+
+    return '<div class="dafare">'+
+      '<span class="voce"><span class="q">'+daInviare+'</span><span class="e">da inviare</span></span>'+
+      '<span class="voce"><span class="q">'+attesa+'</span><span class="e">in attesa</span></span>'+
+      '<span class="voce"><span class="q">'+risposte+'</span><span class="e">'+(risposte===1?'risposta':'risposte')+'</span></span>'+
+      '<span class="prossima">'+prossima+'</span></div>';
+  }
+
+  function verdetto(righe){
+    var inviate = 0, risposte = 0;
+    righe.forEach(function(i){
+      var s = statoDi(i);
+      if(s==="inviata"||s==="risposta"||s==="nessuna_risposta") inviate++;
+      if(s==="risposta") risposte++;
+    });
+    if(!inviate) return '<div class="verdetto">Nessuna ancora inviata.</div>';
+    var t = Math.round(risposte/inviate*100);
+    var letto = "";
+    if(inviate >= 10){
+      letto = risposte === 0
+        ? " Zero risposte su un numero di invii sufficiente a dire qualcosa: la PEC arriva al protocollo ma non a chi decide. Conviene cercare il nome del responsabile del procedimento invece dell&rsquo;indirizzo generico."
+        : risposte <= 2
+          ? " &Egrave; il risultato normale di un primo contatto a freddo: il canale funziona, tienilo."
+          : " Risultato sopra la norma: vale la pena allargare a pi&ugrave; territori.";
+    } else {
+      letto = " Ancora troppo pochi invii per trarne una conclusione: se ne riparla dopo i primi dieci.";
+    }
+    return '<div class="verdetto"><b>'+risposte+' risposte su '+inviate+
+           ' inviate</b> &mdash; '+t+'%.'+letto+'</div>';
+  }
+
+  /* ------------------------------------------------------- categorie */
+  function categorie(){
+    var max = Math.max.apply(null, DATI.categorie.map(function(c){ return c.n; }));
+    return '<div class="pan"><h2>Di cosa si tratta<span class="conta">12 mesi</span></h2>'+
+      '<div class="aiuto">I contratti in scadenza divisi per tipo di servizio. '+
+      'La barra è il numero di contratti, non il valore: le categorie in alto '+
+      'sono quelle dove capitano più occasioni.</div>'+
+      '<div class="corpo">' + DATI.categorie.map(function(c){
+        return '<div class="cat"><div class="cat-r"><span>'+esc(c.nome)+'</span>'+
+          '<span class="n">'+c.n+' &middot; '+eur(c.val).replace("€ ","€&nbsp;")+'</span></div>'+
+          '<div class="barra"><i style="width:'+(c.n/max*100).toFixed(1)+'%"></i></div></div>';
+      }).join("") + '</div></div>';
+  }
+
+  /* ------------------------------------------- competitor territoriali */
+  function territorio(){
+    if(!DATI.territorio || !DATI.territorio.length) return "";
+    var sel = filtroProv || DATI.territorio[0].prov;
+    var t = DATI.territorio.filter(function(x){ return x.prov === sel; })[0]
+            || DATI.territorio[0];
+    var max = Math.max.apply(null, t.forn.map(function(f){ return f.n; }));
+    return '<div class="pan"><h2>Concorrenti per provincia'+
+      '<select id="f-terr" aria-label="Scegli la provincia" style="margin-left:auto;font-size:12px">'+
+        DATI.territorio.map(function(x){
+          return '<option value="'+esc(x.prov)+'"'+(x.prov===sel?' selected':'')+'>'+
+                 esc(x.prov)+' ('+x.tot+')</option>';
+        }).join("")+
+      '</select></h2>'+
+      '<div class="aiuto">Chi tiene oggi i contratti che stanno per scadere in '+
+      'quella provincia. Sono i fornitori che dovrai sostituire, e conoscerli '+
+      'in anticipo cambia come scrivi all’ente.</div>'+
+      '<div class="corpo">'+
+      t.forn.map(function(f){
+        return '<div class="cat"><div class="cat-r"><span>'+esc(f.nome)+'</span>'+
+          '<span class="n">'+f.n+' &middot; '+num(f.val)+'</span></div>'+
+          '<div class="barra"><i style="width:'+(f.n/max*100).toFixed(1)+'%"></i></div></div>';
+      }).join("")+
+      '<div class="verdetto">I primi fornitori uscenti sui <b>'+t.tot+' contratti</b> '+
+      'in scadenza nei prossimi 12 mesi in provincia di '+esc(sel)+'.</div>'+
+      '</div></div>';
+  }
+
+  /* ------------------------------------------------------ competitor */
+  function competitor(){
+    return '<div class="pan"><h2>I grandi fornitori della PA<span class="conta">per valore vinto</span></h2>'+
+      '<div class="aiuto">Le dieci aziende che hanno vinto di più in Italia, su '+
+      'tutto lo storico. Non sono lead: servono a riconoscere un nome quando '+
+      'compare come fornitore uscente. Il <b>ribasso</b> è lo sconto medio con '+
+      'cui vincono le gare competitive.</div>'+
+      '<div class="corpo">' + DATI.competitor.slice(0,10).map(function(c){
+        return '<div class="riga"><span class="chi">'+
+          '<div class="nome" title="'+esc(c.nome)+'">'+esc(c.nome)+'</div>'+
+          '<div class="meta">'+c.gare+' aggiudicazioni · '+c.enti+' enti'+
+          (c.rib!=null? ' · ribasso medio '+c.rib+'%':'')+'</div></span>'+
+          '<span class="mono" style="font-size:11.5px;color:var(--ink-2)">'+
+          num(c.val)+'</span></div>';
+      }).join("") + '</div></div>';
+  }
+
+  /* -------------------------------------------------------- scadenze */
+  function opzioni(campo, scelto){
+    var v = {};
+    DATI.lead.forEach(function(l){ if(l[campo]) v[l[campo]] = 1; });
+    return Object.keys(v).sort().map(function(x){
+      return '<option value="'+esc(x)+'"'+selezionato(scelto, x)+'>'+esc(x)+'</option>';
+    }).join("");
+  }
+
+  // Le colonne su cui si puo' ordinare, e con che valore. La chiave finisce
+  // nell'attributo data-ord dell'intestazione.
+  var ORDINI = {
+    gg:   function(l){ return giorni(l.scad); },
+    ente: function(l){ return (l.ente||"").toLowerCase(); },
+    prov: function(l){ return (l.prov||"").toLowerCase(); },
+    cat:  function(l){ return (l.cat||"").toLowerCase(); },
+    imp:  function(l){ return l.imp || 0; },
+    forn: function(l){ return (l.forn||"").toLowerCase(); }
+  };
+
+  function selezionato(v, atteso){ return v === atteso ? " selected" : ""; }
+
+  function tabella(){
+    function th(chiave, testo, stile){
+      return '<th class="ord" data-ord="'+chiave+'" tabindex="0" role="button"'+
+             (stile?' style="'+stile+'"':'')+'>'+testo+'</th>';
+    }
+    return '<div class="pan"><h2>Contratti in scadenza'+
+      '<span class="conta" id="conta-lead"></span></h2>'+
+      '<div class="aiuto">Ogni riga è un contratto che sta per finire presso un '+
+      'ente con PEC nota. Sono le <b>400 di importo maggiore</b> entro 12 mesi: '+
+      'per un elenco diverso si rigenera un lotto. Clicca un’intestazione per '+
+      'ordinare.</div>'+
+      '<div class="filtri">'+
+        '<input type="search" id="f-testo" placeholder="Cerca ente, oggetto, fornitore…" '+
+          'aria-label="Cerca fra le scadenze" value="'+esc(tab.testo)+'">'+
+        '<select id="f-cat" aria-label="Filtra per categoria"><option value="">Tutte le categorie</option>'+opzioni("cat", tab.cat)+'</select>'+
+        '<select id="f-prov" aria-label="Filtra per provincia"><option value="">Tutte le province</option>'+opzioni("prov", tab.prov)+'</select>'+
+        '<select id="f-urg" aria-label="Filtra per scadenza">'+
+          '<option value=""'+selezionato(tab.urg,"")+'>Qualsiasi scadenza</option>'+
+          '<option value="30"'+selezionato(tab.urg,"30")+'>entro 30 giorni</option>'+
+          '<option value="90"'+selezionato(tab.urg,"90")+'>entro 90 giorni</option>'+
+          '<option value="180"'+selezionato(tab.urg,"180")+'>entro 6 mesi</option>'+
+          '<option value="365"'+selezionato(tab.urg,"365")+'>entro 12 mesi</option>'+
+        '</select>'+
+        '<button class="btn" id="b-azzera">Azzera filtri</button>'+
+        '<button class="btn" id="b-csv" hidden>Esporta CSV</button>'+
+      '</div>'+
+      '<div class="legenda"><span>Quanto manca alla scadenza:</span>'+
+        '<span class="v l-alta">meno di 30 giorni</span>'+
+        '<span class="v l-media">da 1 a 3 mesi</span>'+
+        '<span class="v l-bassa">oltre 3 mesi</span></div>'+
+      '<div class="tab-scroll"><table><thead><tr>'+
+        th("gg","Scade fra")+th("ente","Ente e PEC")+th("prov","Prov")+
+        th("cat","Categoria")+th("imp","Importo","text-align:right")+
+        th("forn","Fornitore uscente")+'<th>Oggetto del contratto</th>'+
+      '</tr></thead><tbody id="righe-lead"></tbody></table></div></div>';
+  }
+
+  function filtrate(){
+    // I criteri si leggono da tab, non dal DOM: cosi' sopravvivono a disegna().
+    var testo = tab.testo.toLowerCase();
+    var urg = parseInt(tab.urg || "0", 10);
+    var chiave = ORDINI[tab.ordine] || ORDINI.gg;
+
+    return DATI.lead.filter(function(l){
+      var gg = giorni(l.scad);
+      if(gg == null || gg < 0) return false;
+      if(tab.cat && l.cat !== tab.cat) return false;
+      if(tab.prov && l.prov !== tab.prov) return false;
+      if(urg && gg > urg) return false;
+      if(testo){
+        var blob = (l.ente+" "+(l.ogg||"")+" "+(l.forn||"")+" "+(l.cat||"")).toLowerCase();
+        if(blob.indexOf(testo) === -1) return false;
+      }
+      return true;
+    }).sort(function(a,b){
+      var x = chiave(a), y = chiave(b);
+      if(x === y) return 0;
+      return (x < y ? -1 : 1) * tab.verso;
+    });
+  }
+
+  function disegnaRighe(){
+    var righe = filtrate();
+    var tot = DATI.lead.length;
+    document.getElementById("conta-lead").textContent =
+      righe.length === tot ? tot + " righe"
+                           : righe.length + " di " + tot + " righe";
+
+    // La freccia va solo sulla colonna attiva.
+    Array.prototype.forEach.call(document.querySelectorAll("th.ord"), function(th){
+      if(th.getAttribute("data-ord") === tab.ordine){
+        th.setAttribute("data-dir", tab.verso === 1 ? "asc" : "desc");
+      } else {
+        th.removeAttribute("data-dir");
+      }
+    });
+
+    var tb = document.getElementById("righe-lead");
+    if(!righe.length){
+      tb.innerHTML = '<tr><td colspan="7" class="vuoto">Nessun contratto con '+
+        'questi filtri. <b>Azzera filtri</b> per rivederli tutti.</td></tr>';
+      return;
+    }
+    tb.innerHTML = righe.map(function(l){
+      var gg = giorni(l.scad);
+      var cl = gg <= 30 ? "g-alta" : gg <= 90 ? "g-media" : "g-bassa";
+      var quanto = gg === 0 ? "oggi" : gg === 1 ? "1 giorno"
+                 : gg < 60 ? gg + " giorni"
+                 : Math.round(gg/30) + " mesi";
+      return '<tr>'+
+        '<td class="gg '+cl+'">'+quanto+
+          '<span class="quando">'+dataIt(l.scad)+'</span></td>'+
+        '<td class="ente">'+esc(l.ente)+
+          '<br><a href="mailto:'+esc(l.pec)+'" class="mono" style="font-size:11px">'+esc(l.pec)+'</a></td>'+
+        '<td>'+esc(l.prov||"—")+'</td>'+
+        '<td><span class="tag">'+esc(l.cat||"non classificato")+'</span></td>'+
+        '<td class="imp">'+num(l.imp)+'</td>'+
+        '<td>'+esc((l.forn||"—").slice(0,34))+'</td>'+
+        '<td class="ogg">'+esc((l.ogg||"").slice(0,90))+'</td>'+
+      '</tr>';
+    }).join("");
+  }
+
+  /* ------------------------------------------------------ salvataggio */
+  function pagina(nuovo){
+    var css = document.getElementById("css").textContent;
+    var codice = document.getElementById("codice").textContent;
+    var dati = document.getElementById("dati").textContent;
+    var ct = "<" + "/script>";
+    return '<!doctype html>\n<html lang="it">\n<head>\n<meta charset="utf-8">\n'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">\n'+
+      '<title>Radar Appalti</title>\n'+
+      '<link rel="preconnect" href="https://fonts.googleapis.com">\n'+
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'+
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">\n'+
+      '<style id="css">'+css+'</style>\n</head>\n<body>\n<div id="app"></div>\n'+
+      '<script id="dati" type="application/json">'+dati+ct+'\n'+
+      '<script id="stato" type="application/json">'+JSON.stringify(nuovo)+ct+'\n'+
+      '<script id="codice">'+codice+ct+'\n</body>\n</html>';
+  }
+
+  var inCorso = false;
+  function salva(chiave, voce){
+    if(LOCALE){
+      // In locale lo stato va dritto in radar.invio: console e invii.py
+      // leggono e scrivono la stessa riga, quindi non si disallineano.
+      var pezzi = String(chiave).split("#");
+      fetch("/api/invio", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({lotto: pezzi[0], n: parseInt(pezzi[1], 10),
+                              stato: voce.stato, data: voce[voce.stato]})
+      }).catch(function(){});
+      return;
+    }
+    if(!artefatto || inCorso) return;
+    inCorso = true;
+    STATO.salvato = new Date().toISOString().slice(0,16).replace("T"," ");
+    artefatto.publish(pagina(STATO)).catch(function(){ /* conflitto: la vista ricarica */ })
+      .finally(function(){ inCorso = false; });
+  }
+
+  /* ------------------------------------------------------------ avvio */
+  // Quanto sono vecchi i dati. In locale sono sempre di adesso; nell'artifact
+  // pubblicato sono una fotografia, e il pallino era verde comunque — sembrava
+  // un indicatore di freschezza senza esserlo.
+  function spia(){
+    var eta = -(giorni(DATI.generato.slice(0,10)) || 0);
+    var classe = eta > 21 ? " scaduta" : eta > 7 ? " vecchia" : "";
+    var testo = LOCALE
+      ? "in diretta dal database &middot; letti " + esc(dataOraIt(DATI.generato))
+      : (eta <= 0 ? "fotografia di oggi, " + esc(dataOraIt(DATI.generato))
+                  : "fotografia del " + esc(dataIt(DATI.generato)) +
+                    " &middot; " + eta + (eta === 1 ? " giorno fa" : " giorni fa") +
+                    (eta > 21 ? " — da rigenerare" : ""));
+    return '<div class="spia'+classe+'"><span class="pallino"></span>'+testo+
+      (STATO.salvato ? ' &middot; stato salvato ' + esc(STATO.salvato) : '')+'</div>';
+  }
+
+  function disegna(){
+    app.innerHTML =
+      '<div class="wrap">'+
+      '<header><div><h1>Radar Appalti</h1>'+
+      '<div class="sotto">Contratti informatici in scadenza presso la pubblica '+
+      'amministrazione, con il recapito PEC dell’ente. Serve a scrivere '+
+      '<b>prima</b> che il contratto venga rinnovato.</div></div>'+
+      spia()+'</header>'+
+      tessere()+
+      '<div class="griglia"><div>'+tracker()+tabella()+'</div>'+
+      '<div>'+categorie()+territorio()+competitor()+'</div></div>'+
+      '<footer>Fonti: ANAC open data (CC BY-SA 4.0) e IndicePA (CC BY 4.0). '+
+      'Elaborazione FlowLine, uso interno &mdash; i dati non vanno ridistribuiti a terzi.<br>'+
+      'I giorni alla scadenza si ricalcolano a ogni apertura; il resto &egrave; '+
+      (LOCALE ? 'letto dal database a ogni caricamento.'
+              : 'la fotografia del ' + esc(dataIt(DATI.generato)) + '.')+
+      '</footer></div>';
+
+    disegnaRighe();
+
+    // I filtri scrivono in tab prima di ridisegnare: e' quello che li fa
+    // sopravvivere ai re-render innescati dagli altri pannelli.
+    var campi = {"f-testo":"testo", "f-cat":"cat", "f-prov":"prov", "f-urg":"urg"};
+    Object.keys(campi).forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener(id === "f-testo" ? "input" : "change", function(){
+        tab[campi[id]] = el.value;
+        disegnaRighe();
+      });
+    });
+
+    var az = document.getElementById("b-azzera");
+    if(az) az.addEventListener("click", function(){
+      tab.testo = tab.cat = tab.prov = tab.urg = "";
+      disegna();
+    });
+
+    // Ordinamento: stessa colonna due volte inverte il verso.
+    Array.prototype.forEach.call(document.querySelectorAll("th.ord"), function(th){
+      function ordina(){
+        var k = th.getAttribute("data-ord");
+        if(tab.ordine === k) tab.verso = -tab.verso;
+        else { tab.ordine = k; tab.verso = 1; }
+        disegnaRighe();
+      }
+      th.addEventListener("click", ordina);
+      th.addEventListener("keydown", function(e){
+        if(e.key === "Enter" || e.key === " "){ e.preventDefault(); ordina(); }
+      });
+    });
+
+    var fl = document.getElementById("f-lotto");
+    if(fl) fl.addEventListener("change", function(){ filtroLotto = fl.value; disegna(); });
+    var ft = document.getElementById("f-terr");
+    if(ft) ft.addEventListener("change", function(){ filtroProv = ft.value; disegna(); });
+    var bc = document.getElementById("b-csv");
+    if(bc && (LOCALE || scaricatore)){
+      bc.hidden = false;
+      bc.addEventListener("click", esporta);
+    }
+  }
+
+  /* ------------------------------------------------------ esportazione */
+  function csv(righe){
+    var col = ["cig","ente","provincia","categoria","scadenza","giorni",
+               "importo_eur","fornitore_uscente","pec","oggetto"];
+    function cella(v){
+      v = String(v==null ? "" : v);
+      return /[";\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+    }
+    var out = [col.join(";")];
+    righe.forEach(function(l){
+      out.push([l.cig, l.ente, l.prov, l.cat, l.scad, giorni(l.scad),
+                Math.round(l.imp||0), l.forn, l.pec, l.ogg].map(cella).join(";"));
+    });
+    // BOM: senza, Excel apre il file in ANSI e sbaglia gli accenti
+    return "﻿" + out.join("\r\n");
+  }
+
+  function esporta(){
+    var righe = filtrate();
+    if(!righe.length) return;
+    var b = document.getElementById("b-csv");
+    var testo = b.textContent;
+    var nome = "scadenze-" + new Date().toISOString().slice(0,10) + ".csv";
+    var contenuto = csv(righe);
+
+    function fine(msg){
+      b.textContent = msg;
+      setTimeout(function(){ b.textContent = testo; b.disabled = false; }, 2600);
+    }
+    b.disabled = true;
+
+    if(LOCALE){
+      // Pagina servita da localhost: il download del browser funziona e basta.
+      // La capability downloads serve solo dentro l'artifact pubblicato, dove
+      // i link con attributo download sono inerti.
+      var url = URL.createObjectURL(new Blob([contenuto], {type:"text/csv;charset=utf-8"}));
+      var a = document.createElement("a");
+      a.href = url; a.download = nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      fine("Esportate " + righe.length);
+      return;
+    }
+
+    if(!scaricatore){ fine("Esportazione non disponibile"); return; }
+    scaricatore.save({filename: nome, data: contenuto})
+      .then(function(){ fine("Esportate " + righe.length); })
+      .catch(function(){ fine("Esportazione annullata"); });
+  }
+
+  /* ------------------------------------------ invio PEC (solo in locale) */
+  // Due passaggi di proposito: prima si legge cosa parte, poi si conferma.
+  // Una PEC ha valore legale e non si ritira, e il destinatario sbagliato e'
+  // l'unico errore qui che non si puo' correggere dopo.
+  var modale = null;
+
+  function escChiude(e){ if(e.key === "Escape") chiudiModale(); }
+
+  function chiudiModale(){
+    if(modale){ modale.remove(); modale = null; }
+    document.removeEventListener("keydown", escChiude);
+  }
+
+  function apiPec(k, opz){
+    var p = String(k).split("#");
+    return fetch("/api/pec", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({lotto: p[0], n: parseInt(p[1], 10),
+                            prova: !!opz.prova, forza: !!opz.forza})
+    }).then(function(r){ return r.json(); });
+  }
+
+  function anteprima(k){
+    var b = app.querySelector('button[data-pec="' + k + '"]');
+    if(b){ b.disabled = true; b.textContent = "leggo…"; }
+    apiPec(k, {prova: true}).then(function(d){
+      disegna();
+      mostraModale(k, d);
+    }).catch(function(){
+      disegna();
+      mostraModale(k, {errore: "Server locale non raggiungibile: "
+        + "console_live.py è ancora in esecuzione?"});
+    });
+  }
+
+  function mostraModale(k, d){
+    chiudiModale();
+    var bloccata = !!(d.errore || (d.problemi && d.problemi.length));
+    var v = document.createElement("div");
+    v.className = "velo";
+    v.innerHTML =
+      '<div class="modale" role="dialog" aria-modal="true" aria-label="Conferma invio PEC">'+
+        '<h3>Invio PEC' + (d.ente ? ' &middot; ' + esc(d.ente) : '') + '</h3>'+
+        (d.errore
+          ? '<div class="blocco" style="margin:14px 18px">' + esc(d.errore) + '</div>'
+          : '<div class="campi">'+
+              '<div><b>A</b><span class="val">' + esc(d.dest) + '</span></div>'+
+              '<div><b>Oggetto</b><span class="val">' + esc(d.oggetto) + '</span></div>'+
+            '</div>'+
+            (d.problemi && d.problemi.length
+              ? '<div class="blocco" style="margin-top:12px"><b>Non parte:</b><ul>'+
+                d.problemi.map(function(p){ return '<li>' + esc(p) + '</li>'; }).join("")+
+                '</ul></div>'
+              : '')+
+            '<pre>' + esc(d.corpo || "") + '</pre>')+
+        '<div class="piede">'+
+          '<span class="avvertenza">'+
+            (bloccata
+              ? 'Risolvi quanto sopra, poi riprova.'
+              : 'Una PEC ha valore legale e non si ritira: ricontrolla il destinatario.')+
+          '</span>'+
+          (bloccata ? '' : '<button class="btn btn-pec" id="m-conferma">Conferma invio</button>')+
+          '<button class="btn" id="m-annulla">' + (bloccata ? 'Chiudi' : 'Annulla') + '</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(v);
+    modale = v;
+    v.addEventListener("click", function(e){ if(e.target === v) chiudiModale(); });
+    document.addEventListener("keydown", escChiude);
+    v.querySelector("#m-annulla").addEventListener("click", chiudiModale);
+
+    var c = v.querySelector("#m-conferma");
+    if(c){
+      c.addEventListener("click", function(){
+        c.disabled = true;
+        c.textContent = "invio in corso…";
+        apiPec(k, {}).then(function(r){ esitoInvio(k, r); }).catch(function(){
+          // Timeout dopo il POST: non si sa se la PEC e' partita. Non si
+          // segna nulla e si manda a guardare le ricevute, perche' un
+          // reinvio alla cieca crea il doppione.
+          esitoInvio(k, {errore: "Il server non ha risposto in tempo. "
+            + "Controlla la finestra di console_live.py e le ricevute nella "
+            + "tua casella PEC prima di riprovare: il messaggio potrebbe "
+            + "essere partito."});
+        });
+      });
+      c.focus();
+    }
+  }
+
+  function esitoInvio(k, r){
+    if(r.errore || (r.problemi && r.problemi.length)){
+      mostraModale(k, r);
+      return;
+    }
+    // Il server ha gia' scritto in radar.invio e svuotato la sua cache:
+    // questo e' solo l'aggiornamento immediato della vista.
+    var voce = STATO.invii[k] || {};
+    voce.stato = "inviata";
+    voce.inviata = new Date().toISOString().slice(0, 10);
+    STATO.invii[k] = voce;
+    chiudiModale();
+    disegna();
+  }
+
+  app.addEventListener("click", function(e){
+    var p = e.target.closest("button[data-pec]");
+    if(p && !p.disabled){ anteprima(p.getAttribute("data-pec")); return; }
+    var b = e.target.closest("button[data-az]");
+    if(!b || b.disabled) return;
+    var k = b.getAttribute("data-k"), az = b.getAttribute("data-az");
+    var voce = STATO.invii[k] || {};
+    voce.stato = az;
+    voce[az] = new Date().toISOString().slice(0,10);
+    STATO.invii[k] = voce;
+    disegna();
+    salva(k, voce);
+  });
+
+  if(LOCALE){
+    // Servita da console_live.py: i dati arrivano dal database, sempre freschi.
+    app.innerHTML = '<div class="wrap"><p class="sotto">Carico i dati dal database…</p></div>';
+    fetch("/api/dati").then(function(r){ return r.json(); }).then(function(d){
+      DATI = d;
+      disegna();
+    }).catch(function(){
+      app.innerHTML = '<div class="wrap"><div class="avviso">Database non raggiungibile. '+
+        'Controlla che <b>console_live.py</b> sia in esecuzione e che '+
+        '<b>ingestion/.env.local</b> contenga la stringa di connessione.</div></div>';
+    });
+  } else {
+    disegna();
+  }
+
+  // Le capability arrivano dopo il primo render, mai durante: la pagina deve
+  // funzionare senza, e accendere le funzioni quando la promessa si risolve.
+  if(window.claude && window.claude.use){
+    window.claude.use("artifact").then(function(a){ artefatto = a; }).catch(function(){});
+    window.claude.use("downloads").then(function(d){
+      scaricatore = d;
+      var b = document.getElementById("b-csv");
+      if(d && b){ b.hidden = false; b.addEventListener("click", esporta); }
+    }).catch(function(){});
+  }
+})();
+</script>

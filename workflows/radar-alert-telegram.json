@@ -1,0 +1,85 @@
+{
+  "name": "Radar Appalti — Alert Telegram",
+  "nodes": [
+    {
+      "id": "trigger-giornaliero",
+      "name": "Ogni giorno alle 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-220, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "notes": "Giornaliero anche a mani vuote: i progetti Supabase Free vengono sospesi dopo 7 giorni di bassa attivita', e questa query e' cio' che tiene sveglio il database."
+    },
+    {
+      "id": "leggi-nuove",
+      "name": "Leggi nuove scadenze",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [0, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Solo i lead mai notificati su Telegram. Rimandare ogni giorno gli\n-- stessi ~890 lead li renderebbe rumore.\n-- Il filtro fornitore_persona_fisica = 0 esclude ditte individuali e\n-- professionisti: e' la mitigazione decisa in docs/liceita.md (R3).\n-- Il messaggio si compone in SQL, non in un Code node.\nWITH nuovi AS (\n  SELECT l.cig,\n         l.giorni_alla_scadenza AS gg,\n         l.ente, l.provincia, l.categoria,\n         l.importo_aggiudicazione AS imp,\n         l.fornitore_uscente, l.pec\n  FROM radar.v_lead_90gg l\n  LEFT JOIN radar.notificato n\n         ON n.cig = l.cig AND n.canale = 'telegram'\n  WHERE n.cig IS NULL\n    AND l.fornitore_persona_fisica = 0\n  ORDER BY l.importo_aggiudicazione DESC NULLS LAST\n  LIMIT 10\n)\nSELECT\n  count(*) AS n,\n  string_agg(cig, ',') AS cig_list,\n  string_agg(\n    CASE WHEN gg <= 30 THEN '🔴' WHEN gg <= 60 THEN '🟠' ELSE '🟡' END\n    || ' *' || gg || 'gg* · ' || coalesce(categoria, 'n.c.') || E'\\n'\n    || left(coalesce(ente, '?'), 52) || ' (' || coalesce(provincia, '?') || ')' || E'\\n'\n    || '€ ' || coalesce(replace(to_char(imp, 'FM999G999G999'), ',', '.'), 'n.d.')\n    || ' · uscente: ' || left(coalesce(fornitore_uscente, 'n.d.'), 38) || E'\\n'\n    || 'PEC: ' || pec,\n    E'\\n\\n' ORDER BY imp DESC NULLS LAST\n  ) AS corpo\nFROM nuovi\n-- Con zero lead nuovi non esce nessuna riga, e i nodi a valle non partono:\n-- niente messaggio vuoto, e nessun nodo IF da mantenere.\nHAVING count(*) > 0;",
+        "options": {}
+      },
+      "notes": "Credenziale Postgres verso Supabase (Session pooler, porta 5432)."
+    },
+    {
+      "id": "invia-telegram",
+      "name": "Invia alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [220, 0],
+      "parameters": {
+        "chatId": "INSERISCI_IL_TUO_CHAT_ID",
+        "text": "=*Radar Appalti* — {{ $json.n }} nuove scadenze\n\n{{ $json.corpo }}\n\n_Fonti: ANAC open data (CC BY-SA 4.0), IndicePA (CC BY 4.0). Elaborazione FlowLine._",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true
+        }
+      },
+      "notes": "Sostituisci chatId col tuo. L'attribuzione delle fonti e' dovuta dalle licenze CC BY-SA 4.0 e CC BY 4.0."
+    },
+    {
+      "id": "segna-notificati",
+      "name": "Segna come notificati",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [440, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Si marca DOPO l'invio: se Telegram fallisce, i lead restano da mandare.\n-- $1 e' un parametro, non concatenazione: niente SQL costruito a stringhe.\nINSERT INTO radar.notificato (cig, canale)\nSELECT unnest(string_to_array($1, ',')), 'telegram'\nON CONFLICT (cig, canale) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ $('Leggi nuove scadenze').item.json.cig_list }}"
+        }
+      },
+      "notes": "Il riferimento e' al nodo di lettura: l'output del nodo Telegram e' la risposta dell'API, non i nostri dati."
+    }
+  ],
+  "connections": {
+    "Ogni giorno alle 08:00": {
+      "main": [[{ "node": "Leggi nuove scadenze", "type": "main", "index": 0 }]]
+    },
+    "Leggi nuove scadenze": {
+      "main": [[{ "node": "Invia alert", "type": "main", "index": 0 }]]
+    },
+    "Invia alert": {
+      "main": [[{ "node": "Segna come notificati", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Rome",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  }
+}

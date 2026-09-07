@@ -1,0 +1,34 @@
+# Credenziali — mai, in nessuna forma
+.env
+.env.*
+*.local.md
+*.local.json
+
+# Dati ANAC: CC BY-SA 4.0, non ridistribuibili senza ShareAlike (vedi DATI.md)
+*.db
+*.sqlite
+*.sqlite3
+recon_out/
+ingestion/recon_out/
+
+# Materiale operativo: PEC generate, liste di contatti, estratti
+docs/pec/
+docs/pec-marche/
+docs/lista-outreach.csv
+docs/console-dati.json
+
+# Log e backup
+logs/
+*.log
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -531,21 +531,97 @@ dopo tre settimane è insistenza, dopo otto mesi è un nuovo contatto legittimo.
 
 ## Sprint 6 — Profondità dei dati
 
-### R18 — Punteggio dei lead · media · ~3h
+### R18 — Punteggio dei lead · ✅ FATTO 2026-09-07
 
-Ordinare per importo è grezzo: un contratto da 900 M€ di Sogei non è un lead, è
-rumore. Un punteggio che combini importo **nella fascia servibile**, giorni alla
-scadenza, categoria fra le cinque che sappiamo servire, dimensione del fornitore
-uscente (un piccolo si sostituisce, TIM no), e la storia dell'ente da R17 (fa
-gare o solo affidamenti diretti?). Diventa l'ordinamento predefinito della
-console al posto dell'importo.
+`ingestion/punteggio.py`. I pesi non sono decisi a tavolino: sono **misurati** sui 30.301
+contratti scaduti di R17. Tasso base di porta aperta 4,72%, e ogni fattore è un
+moltiplicatore su quello.
 
-### R19 — Scheda ente · media · ~3h
+| Fattore | Migliore | Peggiore |
+|---|---|---|
+| storia dell'ente | oltre 25% di aperture ×2,80 | mai aperta ×0,45 |
+| categoria | Cybersecurity ×1,87 | Software verticale ×0,58 |
+| importo | 140k–1M ×1,59 | sotto 40k ×0,69 |
+| fornitore uscente | micro, 1–2 contratti ×1,27 | oltre 200 contratti ×0,70 |
 
-Cliccando un ente nella console: tutti i suoi contratti IT, chi glieli tiene,
-quanto spende l'anno, ogni quanto rinnova, se fa gare o affidamenti diretti, e
-lo storico dei nostri contatti. È il documento che si legge nei dieci minuti
-prima di una call, e oggi va ricostruito a mano dal database.
+`--calibra` li rimisura e li scrive in tabella, quindi non invecchiano: il job mensile lo
+rifà dopo ogni ingestione.
+
+#### Tre cose che il primo tentativo sbagliava
+
+**L'ente vedeva se stesso.** Calcolando la storia di un ente contavo anche la riga che
+stavo valutando, quindi una scadenza aperta si spiegava da sola. Togliendola, il fattore
+ente scende da ×6,87 a ×2,80 — resta il più forte dei quattro, ma è la metà di quello che
+sembrava.
+
+**«Ignoto» era un bonus.** Il fornitore uscente sconosciuto usciva ×3,00, il tetto massimo,
+su 111 osservazioni. Non sapere non è un buon segno né cattivo: premiarlo significa premiare
+le righe compilate peggio. Ora ogni valore `ignoto` è forzato a neutro.
+
+**La scala era inutilizzabile.** Normalizzando su una probabilità massima teorica il 97% dei
+lead finiva sotto 20 e il punteggio non ordinava niente. Ora 100 = quattro volte il tasso
+base con servibilità e urgenza piene, che sui dati veri è il 99° percentile.
+
+#### Probabilità e servibilità sono due cose diverse
+
+Le probabilità migliori stanno in **Cybersecurity** (×1,87) e **Abbonamenti editoriali**
+(×2,08), che non sono categorie che FlowLine serve. Al primo giro il punteggio metteva in
+cima quattro lead perfetti e irraggiungibili.
+
+Da qui la separazione in tre termini, tenuti distinti anche nell'output di `--perche`:
+
+- **probabilità** — misurata, dai quattro fattori sopra
+- **servibilità** — assunzione commerciale dichiarata: fascia d'importo aggredibile, e
+  categoria fra le cinque che sappiamo servire (fuori categoria ×0,25, non zero: un lavoro
+  adiacente ogni tanto si prende)
+- **urgenza** — euristica dichiarata: il picco è fra i 60 e i 210 giorni. R17 guarda
+  contratti già scaduti, quindi sui giorni di anticipo non ha niente da dire
+
+Il punteggio è il loro **prodotto**, non una somma pesata: se una delle tre è zero il lead
+non vale niente, e una somma lo terrebbe a galla lo stesso.
+
+#### Risultato
+
+Su 13.567 scadenze: **193 eccezionali** (60+), 439 ottimi (35+), 1.034 buoni (18+), il resto
+sotto. Che tre quarti non valgano la pena è il risultato corretto, non un difetto.
+
+È l'ordinamento predefinito della console, di `radar.v_lead_90gg` che legge n8n, e di
+`--top`. `--perche <CIG>` scompone il punteggio nei suoi pezzi.
+
+### R19 — Scheda ente · ✅ FATTO 2026-09-07
+
+`ingestion/scheda.py`, più `/api/ente` nella console e il nome dell'ente cliccabile in ogni
+riga. Sette sezioni, nell'ordine in cui servono prima di una chiamata:
+
+| | |
+|---|---|
+| **Si entra?** | lo storico degli esiti (R17) per quell'ente, col verdetto in chiaro |
+| Come comprano | gara o affidamento diretto, in che proporzione |
+| Ogni quanto | durata media dei contratti — dice quando ripassare |
+| Quanto spendono | importo aggiudicato per anno, con la tendenza |
+| Chi glieli tiene | i fornitori che presidiano l'ente, per valore |
+| Cosa scade | le scadenze in arrivo, col punteggio di R18 |
+| Cosa gli abbiamo già detto | lo storico dei nostri invii PEC |
+
+La prima sezione è messa per prima di proposito: **un ente che in tre anni non ha mai
+cambiato fornitore non è un lead, per quanto spenda**, e saperlo prima di leggere il resto
+evita dieci minuti di preparazione a una chiamata che non andava fatta.
+
+Esempio reale, ASL Toscana Sud Est: *«Ente che si muove: 15 porte aperte su 79 scadenze
+osservate (19%). Vale la pena insistere»*, 100% per affidamento diretto, durata media 16
+mesi, GPI e TIM che si tengono 32 M€ su 202 lotti.
+
+Due note tecniche:
+
+- **È l'unico punto del sistema che legge da entrambi i database.** Lo storico ANAC sta in
+  SQLite (su Supabase vanno solo i derivati), i contatti PEC stanno su Supabase. Se Supabase
+  non risponde la scheda si costruisce lo stesso senza la sezione contatti: quello che serve
+  prima di una chiamata è il resto.
+- **`radar.invio` non ha il codice fiscale**, identifica il destinatario dalla PEC — la
+  stessa chiave dell'anti-duplicato di R20. La scheda quindi cerca per PEC, non per CF.
+
+Funziona anche da riga di comando: `python scheda.py "comune di jesi"`, o `--cerca` per
+elencare gli enti che somigliano.
 
 ### R28 — Nome del RUP e del responsabile transizione digitale · media · ~4h
 
@@ -629,8 +705,9 @@ FATTI   R1 → R2 → R3 → R4 → R7 → R14 → R7b → R14b
 
         R17                        sappiamo se il prodotto vale: 4,7%
 
-ADESSO  R18 → R19                  i dati diventano un giudizio
-        R24 → R25 → R26            il team lo usa, il CRM lo raccoglie
+        R18 → R19                  i dati sono diventati un giudizio
+
+ADESSO  R24 → R25 → R26            il team lo usa, il CRM lo raccoglie
 DOPO    R5 → R6                    TED: le gare aperte
         R27 → R23 → R28 → R8
 ALLA FINE  R12 → R13 → R21

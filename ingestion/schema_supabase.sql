@@ -101,6 +101,7 @@ SELECT
     data_stipula_contratto, data_termine_contrattuale,
     importo_aggiudicazione, fornitore_uscente, n_fornitori,
     cf_fornitore_uscente, fornitore_persona_fisica, aggiornato_il,
+    punteggio, prob_apertura, valore_atteso,
     (data_termine_contrattuale - CURRENT_DATE) AS giorni_alla_scadenza
 FROM radar.scadenze
 WHERE data_termine_contrattuale >= CURRENT_DATE;
@@ -111,10 +112,14 @@ SELECT
     tipologia_amm, denominazione_ipa, pec, mail_alt, sito_istituzionale,
     data_stipula_contratto, data_termine_contrattuale,
     importo_aggiudicazione, fornitore_uscente, n_fornitori,
-    cf_fornitore_uscente, fornitore_persona_fisica, giorni_alla_scadenza
+    cf_fornitore_uscente, fornitore_persona_fisica, giorni_alla_scadenza,
+    punteggio, prob_apertura, valore_atteso
 FROM radar.v_scadenze
 WHERE giorni_alla_scadenza <= 90
-ORDER BY giorni_alla_scadenza;
+-- R18: prima i lead che valgono, non i primi a scadere. Ordinare per data
+-- tratta uguale una scadenza che diventera' una gara e una che verra'
+-- rinnovata in silenzio allo stesso fornitore.
+ORDER BY punteggio DESC NULLS LAST, giorni_alla_scadenza;
 
 -- La vista che interroga n8n: una riga per lead, nessun join da scrivere.
 CREATE VIEW radar.v_lead_90gg AS
@@ -134,11 +139,14 @@ SELECT
     fornitore_persona_fisica,
     pec,
     mail_alt,
-    sito_istituzionale
+    sito_istituzionale,
+    punteggio,
+    prob_apertura,
+    valore_atteso
 FROM radar.v_scadenze
 WHERE giorni_alla_scadenza <= 90
   AND pec IS NOT NULL
-ORDER BY importo_aggiudicazione DESC NULLS LAST;
+ORDER BY punteggio DESC NULLS LAST, importo_aggiudicazione DESC NULLS LAST;
 
 -- ---------------------------------------------------------------- R17: esito
 -- Che fine ha fatto la scadenza. Calcolato in locale da esito.py e spedito
@@ -182,3 +190,12 @@ SELECT cf_ente,
 FROM radar.esito
 GROUP BY cf_ente
 HAVING count(*) >= 3;
+
+-- ------------------------------------------------------------- R18: punteggio
+-- Il punteggio del lead, calcolato in locale da punteggio.py.
+ALTER TABLE radar.scadenze
+    ADD COLUMN IF NOT EXISTS punteggio     smallint,
+    ADD COLUMN IF NOT EXISTS prob_apertura real,
+    ADD COLUMN IF NOT EXISTS valore_atteso numeric;
+CREATE INDEX IF NOT EXISTS ix_scadenze_punteggio
+    ON radar.scadenze (punteggio DESC NULLS LAST);

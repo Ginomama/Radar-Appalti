@@ -27,12 +27,16 @@ import argparse
 import json
 import os
 import re
+import sqlite3
 import threading
+import urllib.parse
 import webbrowser
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import psycopg
+
+import scheda
 from push_supabase import leggi_dsn, maschera
 
 QUI = os.path.dirname(os.path.abspath(__file__))
@@ -82,14 +86,19 @@ def raccogli(cur):
 
     cur.execute("""
         SELECT cig, ente, provincia, categoria, data_termine_contrattuale,
-               importo_aggiudicazione, fornitore_uscente, pec, left(oggetto_lotto,120)
+               importo_aggiudicazione, fornitore_uscente, pec, left(oggetto_lotto,120),
+               punteggio, prob_apertura, cf_ente
         FROM radar.v_scadenze
         WHERE fornitore_persona_fisica = 0 AND pec IS NOT NULL
           AND giorni_alla_scadenza <= 365
-        ORDER BY importo_aggiudicazione DESC NULLS LAST LIMIT 400""")
+        -- R18: prima quelli che valgono. L'importo da solo metteva in cima
+        -- contratti enormi e irraggiungibili; la data metteva in cima quelli
+        -- che scadono presto anche se verranno rinnovati in silenzio.
+        ORDER BY punteggio DESC NULLS LAST,
+                 importo_aggiudicazione DESC NULLS LAST LIMIT 400""")
     D["lead"] = [dict(cig=a, ente=b, prov=c, cat=d, scad=str(e), imp=float(f or 0),
-                      forn=g, pec=h, ogg=i)
-                 for a, b, c, d, e, f, g, h, i in cur.fetchall()]
+                      forn=g, pec=h, ogg=i, pt=j, pr=float(k or 0), cf=l)
+                 for a, b, c, d, e, f, g, h, i, j, k, l in cur.fetchall()]
 
     cur.execute("""
         SELECT vincitore, gare_vinte, valore_vinto, enti_serviti, ribasso_medio_competitive
@@ -184,6 +193,50 @@ def pagina_html():
             + h + "\n</body>\n</html>")
 
 
+def scheda_ente(dsn, cf):
+    """R19 — la scheda, per la console.
+
+    Lo storico ANAC sta in SQLite (su Supabase vanno solo i derivati), i
+    contatti PEC stanno su Supabase: la scheda e' l'unico punto del sistema
+    che deve leggere da tutte e due."""
+    cf = (cf or "").strip()
+    if not cf:
+        return {"errore": "manca il codice fiscale dell'ente"}
+    cx = sqlite3.connect(scheda.DB)
+    cx.row_factory = sqlite3.Row
+    try:
+        d = scheda.scheda(cx, cf)
+    finally:
+        cx.close()
+    if not d:
+        return {"errore": f"nessun ente con codice fiscale {cf}"}
+
+    # I contatti non devono far fallire la scheda: se Supabase non risponde,
+    # il resto e' comunque quello che serve prima di una chiamata.
+    try:
+        with psycopg.connect(dsn, connect_timeout=15) as pg, pg.cursor() as cur:
+            # radar.invio non ha il codice fiscale: identifica il
+            # destinatario dalla PEC, che e' la stessa chiave su cui lavora
+            # l'anti-duplicato (R20). Una PEC sola puo' servire piu' enti,
+            # ed e' giusto vederli tutti: e' la casella che ha gia' ricevuto.
+            cur.execute(
+                "SELECT lotto, progressivo, stato, inviata_il, risposta_il, "
+                "       note, consegnata_il, sollecitata_il "
+                "FROM radar.invio WHERE pec = %s OR upper(ente) = %s "
+                "ORDER BY lotto, progressivo",
+                ((d.get("contatti") or {}).get("pec") or "-nessuna-",
+                 (d.get("ente") or "").upper()))
+            d["invii"] = [dict(lotto=a, n=b, stato=c, inviata=str(e) if e else None,
+                               risposta=str(f) if f else None, note=g,
+                               consegnata=str(h) if h else None,
+                               sollecitata=str(i) if i else None)
+                          for a, b, c, e, f, g, h, i in cur.fetchall()]
+    except Exception as err:
+        d["invii"] = None
+        d["invii_errore"] = maschera(str(err), dsn)[:160]
+    return d
+
+
 def crea_handler(dsn):
     class H(BaseHTTPRequestHandler):
         def _invia(self, codice, corpo, tipo="application/json; charset=utf-8"):
@@ -197,13 +250,19 @@ def crea_handler(dsn):
 
         def do_GET(self):
             try:
-                # Senza spogliare la query string un "/?x=1" — che arriva da un
-                # segnalibro o da un ricarica forzata — cadrebbe nel 404.
-                self.path = self.path.split("?", 1)[0]
+                # La query si legge PRIMA di spogliare il path: /api/ente ne ha
+                # bisogno. Spogliarlo serve comunque, perche' un "/?x=1" —
+                # da un segnalibro o da un ricarica forzata — cadrebbe nel 404.
+                percorso, _, qs = self.path.partition("?")
+                self.path = percorso
                 if self.path in ("/", "/index.html"):
                     self._invia(200, pagina_html(), "text/html; charset=utf-8")
                 elif self.path.startswith("/api/dati"):
                     self._invia(200, json.dumps(dati(dsn), ensure_ascii=False))
+                elif self.path.startswith("/api/ente"):
+                    cf = (urllib.parse.parse_qs(qs).get("cf") or [""])[0]
+                    self._invia(200, json.dumps(scheda_ente(dsn, cf),
+                                                ensure_ascii=False, default=str))
                 else:
                     self._invia(404, '{"errore":"non trovato"}')
             except Exception as e:

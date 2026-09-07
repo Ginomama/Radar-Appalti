@@ -114,9 +114,22 @@ PIANI = {
         dict(id="esito",   argv=["esito.py", "--misura"],
              descr="che fine hanno fatto le scadenze (R17)", minuti=60,
              dipende="bulk"),
+        # Ricalibrare ogni mese non e' zelo: i moltiplicatori vengono da
+        # 'esito', che il passo prima ha appena riscritto. Lasciare i pesi
+        # vecchi vorrebbe dire ordinare i lead di domani con la statistica
+        # dell'anno scorso.
+        dict(id="categorie", argv=["categorie.py", "--applica"],
+             descr="classificazione funzionale dei contratti", minuti=20,
+             dipende="bulk"),
+        dict(id="punteggio", argv=["punteggio.py", "--calibra"],
+             descr="ricalibrazione dei pesi del punteggio (R18)", minuti=45,
+             dipende="esito"),
+        dict(id="lead",    argv=["punteggio.py", "--applica"],
+             descr="punteggio ai lead correnti", minuti=30,
+             dipende="punteggio"),
         dict(id="push",    argv=["push_supabase.py"],
              descr="pubblicazione su Supabase", minuti=30,
-             dipende="esito", richiede=("DSN",)),
+             dipende="lead", richiede=("DSN",)),
     ],
 }
 
@@ -367,23 +380,63 @@ def disinstalla():
     return 0
 
 
+# schtasks parla la lingua di Windows, non l'inglese: su una macchina italiana
+# le etichette sono "Prossima esecuzione", "Ultimo esito". Si cerca per pezzo di
+# stringa invece che per chiave esatta, cosi' funziona in entrambe le lingue.
+ETICHETTE = {
+    "prossima": ("next run time", "prossima esecuzione"),
+    "ultima":   ("last run time", "ultima esecuzione"),
+    "esito":    ("last result", "ultimo esito", "ultimo risultato"),
+    "stato":    ("status", "stato attivita"),
+    # "modalit" e non "modalita": schtasks stampa nella codepage della
+    # console, non in UTF-8, e la "a" accentata arriva corrotta.
+    "accesso":  ("logon mode", "modalit"),
+}
+
+# 267011 = "l'attivita' non e' mai stata eseguita". Windows lo restituisce come
+# se fosse un errore; non lo e'.
+MAI_ESEGUITA = ("267011", "0x41303")
+
+
+def _campi(out):
+    d = {}
+    for riga in out.splitlines():
+        k, _, v = riga.partition(":")
+        k = k.strip().lower().replace("�", "").replace("à", "a")
+        if v.strip():
+            d[k] = v.strip()
+    return d
+
+
+def _leggi(campi, quale):
+    for pezzo in ETICHETTE[quale]:
+        for k, v in campi.items():
+            if pezzo in k:
+                return v
+    return "?"
+
+
 def stato():
     print("=== attivita' pianificate ===\n")
     for ritmo, t in TASKS.items():
-        rc, out = schtasks("/query", "/tn", t["nome"], "/fo", "list")
+        rc, out = schtasks("/query", "/tn", t["nome"], "/v", "/fo", "list")
         if rc != 0:
             print(f"  {t['nome']:28s} NON INSTALLATA")
             continue
-        campi = {}
-        for riga in out.splitlines():
-            k, _, v = riga.partition(":")
-            if v.strip():
-                campi[k.strip().lower()] = v.strip()
-        prossima = campi.get("next run time") or campi.get("ora prossima esecuzione", "?")
-        ultima = campi.get("last run time") or campi.get("ora ultima esecuzione", "?")
-        esito = campi.get("last result") or campi.get("ultimo risultato", "?")
-        print(f"  {t['nome']:28s} prossima {prossima}\n"
-              f"  {'':28s} ultima   {ultima}  esito {esito}")
+        campi = _campi(out)
+        esito = _leggi(campi, "esito")
+        if any(m in esito for m in MAI_ESEGUITA):
+            esito = "mai eseguita"
+        elif esito == "0":
+            esito = "ok"
+        ultima = _leggi(campi, "ultima")
+        if ultima.startswith("30/11/1999") or ultima.startswith("11/30/1999"):
+            ultima = "mai"
+        print(f"  {t['nome']:28s} prossima {_leggi(campi, 'prossima')}")
+        print(f"  {'':28s} ultima   {ultima}  esito {esito}")
+        accesso = _leggi(campi, "accesso").lower()
+        if "interattiv" in accesso or "interactive" in accesso:
+            print(f"  {'':28s} gira solo con l'utente collegato")
     print(f"\n=== ultimi log ({LOGDIR}) ===\n")
     if not os.path.isdir(LOGDIR):
         print("  nessuno: il job non e' mai partito")

@@ -208,6 +208,13 @@ SELECT
     k.tipologia_amm,
     k.sito_istituzionale,
     g.categoria,
+    -- R18: il punteggio del lead. LEFT JOIN perche' una scadenza appena
+    -- entrata puo' non essere ancora stata valutata, e non deve sparire
+    -- dalla lista solo perche' punteggio.py non e' ancora passato.
+    p.punteggio,
+    p.probabilita   AS prob_apertura,
+    p.valore_atteso,
+    p.spiegazione   AS punteggio_perche,
     g.metodo AS categoria_metodo,
     -- Il CF a 16 caratteri e' il formato delle persone fisiche: ditte
     -- individuali e professionisti. Sono 2.464 su 22.018 aggiudicatari.
@@ -216,7 +223,8 @@ SELECT
         AS fornitore_persona_fisica
 FROM v_scadenze_prossime s
 LEFT JOIN ente_contatti k ON k.cf_ente = s.cf_amministrazione_appaltante
-LEFT JOIN categoria g     ON g.cig = s.cig;
+LEFT JOIN categoria g     ON g.cig = s.cig
+LEFT JOIN punteggio p     ON p.cig = s.cig;
 
 -- --------------------------------------------- 7. CATEGORIA FUNZIONALE (R2)
 -- Popolata da categorie.py. Copertura misurata 92,0% senza LLM:

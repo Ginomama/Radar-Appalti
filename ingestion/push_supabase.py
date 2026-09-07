@@ -48,6 +48,7 @@ MAPPA = [
         "fornitore_uscente", "n_fornitori", "cf_fornitore_uscente",
         "pec", "mail_alt", "denominazione_ipa", "tipologia_amm",
         "sito_istituzionale", "categoria", "fornitore_persona_fisica",
+        "punteggio", "prob_apertura", "valore_atteso",
     ], [
         "cig", "oggetto_lotto", "cpv_norm", "provincia", "ente",
         "cf_ente", "data_stipula_contratto",
@@ -55,6 +56,7 @@ MAPPA = [
         "fornitore_uscente", "n_fornitori", "cf_fornitore_uscente",
         "pec", "mail_alt", "denominazione_ipa", "tipologia_amm",
         "sito_istituzionale", "categoria", "fornitore_persona_fisica",
+        "punteggio", "prob_apertura", "valore_atteso",
     ], ""),
     ("v_competitor", "radar.competitor", [
         "codice_fiscale", "vincitore", "gare_vinte", "valore_vinto",

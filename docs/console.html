@@ -161,16 +161,63 @@ button{font:inherit; cursor:pointer}
   background:var(--surface-2)}
 .aiuto b{color:var(--ink); font-weight:600}
 
-/* barra "cosa fare adesso" in cima al tracker */
-.dafare{display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px;
-  padding:12px 16px; border-bottom:1px solid var(--rule)}
-.dafare .voce{display:flex; align-items:baseline; gap:6px; font-size:12.5px}
-.dafare .voce .q{font-family:Archivo,sans-serif; font-size:19px; font-weight:600;
-  letter-spacing:-.02em; font-variant-numeric:tabular-nums}
-.dafare .voce .e{color:var(--ink-2)}
-.dafare .prossima{margin-left:auto; font-size:12px; color:var(--ink-2);
-  text-align:right; line-height:1.45}
-.dafare .prossima b{color:var(--ink)}
+/* Da fare: la prima cosa della pagina. La colonna dei numeri grandi e' il
+   segno della console: la si scorre e si sa quanto lavoro c'e' oggi. */
+.oggi{background:var(--surface); border:1px solid var(--rule);
+  border-left:3px solid var(--accento); border-radius:5px; box-shadow:var(--ombra);
+  padding:16px 18px 6px; margin-bottom:24px}
+.oggi h2{font-size:19px; font-weight:700; letter-spacing:-.015em}
+.oggi .finora{font-size:12.5px; color:var(--ink-2); margin-top:3px}
+.oggi .finora b{color:var(--ink); font-weight:600}
+.compiti{list-style:none; margin:12px 0 0; padding:0}
+.compito{display:flex; gap:16px; align-items:baseline; padding:11px 0;
+  border-top:1px solid var(--rule)}
+.compito .q{font-family:Archivo,sans-serif; font-size:28px; font-weight:700;
+  letter-spacing:-.03em; line-height:1; min-width:46px; text-align:right;
+  font-variant-numeric:tabular-nums; flex:none}
+.compito .t{font-size:14px; line-height:1.45}
+.compito .t b{font-weight:600}
+.compito .det{font-size:12.5px; color:var(--ink-2); margin-top:3px; line-height:1.45}
+.compito.t-alta .q{color:var(--accento)}
+.compito.t-err .q{color:var(--alta)}
+.compito.t-quiet .q{color:var(--ink-3)}
+.oggi .niente{font-size:13.5px; color:var(--ink-2); margin:12px 0 10px}
+code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--surface-2);
+  padding:1px 4px; border-radius:3px}
+
+/* un riquadro per lotto, chiuso finche' non serve */
+details.lotto{border-top:1px solid var(--rule)}
+.pan > .aiuto + details.lotto{border-top:none}
+details.lotto > summary{list-style:none; cursor:pointer; display:flex; flex-wrap:wrap;
+  align-items:baseline; gap:3px 14px; padding:13px 16px}
+details.lotto > summary::-webkit-details-marker{display:none}
+details.lotto > summary::before{content:"\203A"; color:var(--ink-3); width:10px;
+  display:inline-block; transition:transform .15s; font-size:16px; line-height:1}
+details.lotto[open] > summary::before{transform:rotate(90deg)}
+details.lotto > summary:hover{background:var(--surface-2)}
+details.lotto > summary:focus-visible{outline:2px solid var(--accento); outline-offset:-2px}
+.l-nome{font-family:Archivo,sans-serif; font-weight:600; font-size:14.5px}
+.l-conti{font-size:12.5px; color:var(--ink-2)}
+.l-conti b{color:var(--ink); font-weight:600}
+.l-dx{margin-left:auto; font-size:11.5px; color:var(--ink-3);
+  font-family:"IBM Plex Mono",monospace}
+details.lotto .dentro{padding-bottom:6px; border-top:1px solid var(--rule)}
+details.lotto .funnel{margin:12px 16px 8px}
+/* Otto stadi in fila quando c'e' posto, due file da quattro quando no: con il
+   flex-wrap di prima "vendite" finiva da solo su una riga. */
+details.lotto .dentro{container-type:inline-size}
+details.lotto .passi{display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:10px 8px}
+details.lotto .passo{min-width:0}
+details.lotto .passo .e, details.lotto .passo .p{white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis}
+details.lotto .freccia{display:none}
+@container (max-width:620px){
+  details.lotto .passi{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+/* il passo successivo: in evidenza, ma non come l'invio PEC, che non si ritira */
+.btn-avanti{color:var(--ink); font-weight:600}
+h2.sez{font-size:13px; font-weight:600; color:var(--ink-2); letter-spacing:.02em;
+  margin:6px 0 12px}
 
 /* legenda dei colori: senza, i numeri rossi e arancioni non vogliono dire nulla */
 .legenda{display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center;
@@ -204,13 +251,17 @@ td.gg .quando{display:block; font-size:10.5px; color:var(--ink-3);
   /* Tessere piu' larghe: sotto i 760px il minimo da 158px ne stipava quattro
      per riga lasciandone una spaiata sotto. */
   .tessere{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-  /* Nome accanto al suo numero, stato e azioni a capo solo se non ci stanno. */
+  /* Nome su tutta la prima riga, stato e azioni sempre sulla seconda: se va
+     a capo solo chi ha il nome lungo, ogni riga ha una forma diversa e
+     l'occhio non trova piu' la colonna dei bottoni. */
   .riga{flex-wrap:wrap; gap:6px 10px}
   .riga .idx{order:0}
-  .riga .chi{flex:1 1 auto; order:1; min-width:0}
-  .pillola{order:2; width:auto; flex:0 0 auto}
+  .riga .chi{flex:1 1 calc(100% - 30px); order:1; min-width:0}
+  .pillola{order:2; width:auto; flex:0 0 auto; margin-left:30px}
   .azioni{order:3; margin-left:auto}
-  .dafare .prossima{margin-left:0; text-align:left; flex:1 1 100%}
+  .compito{gap:12px}
+  .compito .q{min-width:34px; font-size:23px}
+  .l-dx{margin-left:0}
 }
 
 /* esito del lotto */
@@ -313,10 +364,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     .funnel .coda{margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5}
     .pillola.p-off{background:var(--media-bg);color:var(--media)}
     .pillola.p-vin{background:var(--bassa-bg);color:var(--bassa);font-weight:600}
-    select.avanza{font:inherit;font-size:11.5px;padding:3px 5px;border-radius:4px;
+    select.avanza,select.altro{font:inherit;font-size:11.5px;padding:3px 5px;border-radius:4px;
                   border:1px solid var(--rule-forte);background:var(--surface);
                   color:var(--ink-2);cursor:pointer;max-width:118px}
-    select.avanza:hover{color:var(--ink);border-color:var(--accento)}
+    select.avanza:hover,select.altro:hover{color:var(--ink);border-color:var(--accento)}
   </style>
 
 <div id="app"></div>
@@ -337,7 +388,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var app   = document.getElementById("app");
   var artefatto = null;
   var scaricatore = null;
-  var filtroLotto = "";     // stato di sola vista: non finisce nel documento
+  var aperti = {};          // lotti aperti: stato di sola vista, non finisce nel documento
   var filtroProv = "";
   // I filtri della tabella vivono qui, non solo nel DOM. disegna() ricostruisce
   // l'intera pagina, e prima bastava cambiare provincia nel pannello del
@@ -348,13 +399,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // vicina che verra' rinnovata in silenzio non e' un buon lead.
   var tab = {testo:"", cat:"", prov:"", urg:"", ordine:"pt", verso:-1};
 
-  // I nomi dopo "ha risposto" sono gli stage GoHighLevel gia' in uso sui
-  // clienti: se un domani il funnel passa nel CRM, l'import e' un
-  // copia-incolla invece che una mappatura da riscrivere.
+  // Nomi brevi degli stadi. Sono gli stage di GoHighLevel ("Discovery Call
+  // Fissata" diventa "call fissata"): nel database e nel CRM restano quelli,
+  // qui si accorciano perche' ogni riga ne mostra uno e deve leggersi al volo.
   var ETICHETTE = {
     da_inviare:"da inviare", inviata:"inviata", risposta:"ha risposto",
-    discovery_fissata:"Discovery Call Fissata", discovery_fatta:"Discovery Call Fatta",
-    offerta:"Offerta", vendita:"VENDITA", persa:"persa",
+    discovery_fissata:"call fissata", discovery_fatta:"call fatta",
+    offerta:"offerta inviata", vendita:"vendita", persa:"persa",
     nessuna_risposta:"nessuna risposta", non_consegnata:"non consegnata"
   };
   var CLASSI = {
@@ -368,8 +419,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // nell'ultimo stadio farebbe sembrare vuoti quelli prima.
   var FUNNEL = [
     ["destinatari", null], ["inviate","inviata"], ["consegnate","consegnata"],
-    ["risposte","risposta"], ["Disc. fissata","discovery_fissata"],
-    ["Disc. fatta","discovery_fatta"], ["Offerta","offerta"], ["Vendita","vendita"]
+    ["risposte","risposta"], ["call fissate","discovery_fissata"],
+    ["call fatte","discovery_fatta"], ["offerte","offerta"], ["vendite","vendita"]
   ];
   // Lista chiusa invece di testo libero: fra sei mesi "gia' fornito" e "hanno
   // gia' un fornitore" sarebbero due righe diverse in un conteggio, e il
@@ -383,8 +434,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     ["silenzio","sparito dopo il primo contatto"],
     ["altro","altro"]
   ];
-  // Gli stadi che si possono far avanzare a mano dalla console.
-  var AVANZA = ["discovery_fissata","discovery_fatta","offerta","vendita","persa"];
+  // Il passo successivo di ogni stato e' l'unico bottone della riga; il resto
+  // sta nel menu Altro. Con quattro controlli uguali per riga non si capiva
+  // quale fosse quello da premere.
+  var PROSSIMO = {
+    da_inviare:"inviata", inviata:"risposta", nessuna_risposta:"risposta",
+    non_consegnata:"risposta", risposta:"discovery_fissata",
+    discovery_fissata:"discovery_fatta", discovery_fatta:"offerta", offerta:"vendita"
+  };
+  var AZIONE = {
+    inviata:"Segna inviata", risposta:"Ha risposto", discovery_fissata:"Call fissata",
+    discovery_fatta:"Call fatta", offerta:"Offerta inviata", vendita:"Vendita chiusa",
+    persa:"Persa"
+  };
+  var TUTTE = ["inviata","risposta","discovery_fissata","discovery_fatta",
+               "offerta","vendita","persa"];
   var GIORNI_ATTESA = 21;
 
   function oggi(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
@@ -437,6 +501,58 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     return (s && s[campo]) || i[campo];
   }
 
+  // Cumulativi: chi ha una call fissata ha anche risposto. Contare solo chi e'
+  // fermo su "ha risposto" dava "0 risposte" accanto a un funnel che ne
+  // mostrava una: due numeri diversi per la stessa cosa, sulla stessa pagina.
+  var DOPO_RISPOSTA = {risposta:1, discovery_fissata:1, discovery_fatta:1,
+                       offerta:1, vendita:1};
+  function partita(i){ return statoDi(i) !== "da_inviare"; }
+  function rispose(i){ return !!(DOPO_RISPOSTA[statoDi(i)] || dataDi(i, "risposta")); }
+
+  // IndicePA scrive la provincia in sigla, ANAC per esteso: nella stessa lista
+  // comparivano "PU" e "PESARO E URBINO". Si mostra sempre il nome.
+  var SIGLE = {};
+  ("AG:Agrigento|AL:Alessandria|AN:Ancona|AO:Aosta|AP:Ascoli Piceno|AQ:L'Aquila|"+
+   "AR:Arezzo|AT:Asti|AV:Avellino|BA:Bari|BG:Bergamo|BI:Biella|BL:Belluno|"+
+   "BN:Benevento|BO:Bologna|BR:Brindisi|BS:Brescia|BT:Barletta-Andria-Trani|"+
+   "BZ:Bolzano|CA:Cagliari|CB:Campobasso|CE:Caserta|CH:Chieti|CL:Caltanissetta|"+
+   "CN:Cuneo|CO:Como|CR:Cremona|CS:Cosenza|CT:Catania|CZ:Catanzaro|EN:Enna|"+
+   "FC:Forl\u00ec-Cesena|FE:Ferrara|FG:Foggia|FI:Firenze|FM:Fermo|FR:Frosinone|"+
+   "GE:Genova|GO:Gorizia|GR:Grosseto|IM:Imperia|IS:Isernia|KR:Crotone|LC:Lecco|"+
+   "LE:Lecce|LI:Livorno|LO:Lodi|LT:Latina|LU:Lucca|MB:Monza e Brianza|MC:Macerata|"+
+   "ME:Messina|MI:Milano|MN:Mantova|MO:Modena|MS:Massa-Carrara|MT:Matera|NA:Napoli|"+
+   "NO:Novara|NU:Nuoro|OR:Oristano|PA:Palermo|PC:Piacenza|PD:Padova|PE:Pescara|"+
+   "PG:Perugia|PI:Pisa|PN:Pordenone|PO:Prato|PR:Parma|PT:Pistoia|PU:Pesaro e Urbino|"+
+   "PV:Pavia|PZ:Potenza|RA:Ravenna|RC:Reggio Calabria|RE:Reggio Emilia|RG:Ragusa|"+
+   "RI:Rieti|RM:Roma|RN:Rimini|RO:Rovigo|SA:Salerno|SI:Siena|SO:Sondrio|SP:La Spezia|"+
+   "SR:Siracusa|SS:Sassari|SU:Sud Sardegna|SV:Savona|TA:Taranto|TE:Teramo|TN:Trento|"+
+   "TO:Torino|TP:Trapani|TR:Terni|TS:Trieste|TV:Treviso|UD:Udine|VA:Varese|"+
+   "VB:Verbano-Cusio-Ossola|VC:Vercelli|VE:Venezia|VI:Vicenza|VR:Verona|VT:Viterbo|"+
+   "VV:Vibo Valentia").split("|").forEach(function(x){
+    var p = x.split(":"); SIGLE[p[0]] = p[1].toUpperCase();
+  });
+  function provNome(p){ return (p && SIGLE[p]) || p || ""; }
+
+  // Accorcia a fine parola: "integrazione con" a meta' frase sembra un errore.
+  function taglia(s, n){
+    s = String(s || "");
+    if(s.length <= n) return s;
+    var t = s.slice(0, n), sp = t.lastIndexOf(" ");
+    return (sp > n * 0.6 ? t.slice(0, sp) : t).replace(/[\s.,:;]+$/, "") + "…";
+  }
+
+  // I nomi ANAC arrivano tutti maiuscoli: dentro una frase si leggono male.
+  var MINUSCOLE = {di:1, del:1, della:1, dello:1, delle:1, dei:1, degli:1, per:1,
+                   e:1, il:1, la:1, lo:1, le:1, a:1, al:1, alla:1, allo:1, ai:1,
+                   agli:1, in:1};
+  function titolo(s){
+    s = String(s || "");
+    if(s !== s.toUpperCase()) return s;
+    return s.toLowerCase().split(" ").map(function(w, k){
+      return (k && MINUSCOLE[w]) ? w : w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(" ");
+  }
+
   /* ---------------------------------------------------------- riepilogo */
   function tessere(){
     var t = DATI.totali;
@@ -464,133 +580,221 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     }).join("") + '</div>';
   }
 
-  /* ------------------------------------------------------- tracker PEC */
+  /* ------------------------------------------------------ lotti e invii */
+  // Nomi per chi legge, non per chi ha scritto lo script: "pec-marche-generico"
+  // non dice a nessuno che e' il test senza contratto.
+  var NOMI_LOTTI = {
+    "pec": "Nazionale",
+    "pec-marche": "Marche \u00b7 primo lotto",
+    "pec-marche-comuni": "Marche \u00b7 comuni con contratto in scadenza",
+    "pec-marche-generico": "Marche \u00b7 test senza contratto"
+  };
   function nomeLotto(l){
-    return l === "pec" ? "Lotto nazionale" : l === "pec-marche" ? "Lotto Marche" : l;
+    if(NOMI_LOTTI[l]) return NOMI_LOTTI[l];
+    var s = String(l).replace(/^pec-?/, "").replace(/-/g, " ");
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Lotto";
+  }
+  function perLotto(){
+    var g = {};
+    DATI.invii.forEach(function(i){ (g[i.lotto] = g[i.lotto] || []).push(i); });
+    return g;
+  }
+  function nomiEnti(righe, max){
+    var n = righe.map(function(i){ return titolo(i.ente || "?"); });
+    return n.length > max ? n.slice(0, max).join(", ") + " e altri " + (n.length - max)
+                          : n.join(", ");
+  }
+  function ultimoInvio(righe){
+    return righe.reduce(function(m, i){
+      var d = dataDi(i, "inviata") || ""; return d > m ? d : m;
+    }, "");
   }
 
-  function tracker(){
-    var lotti = {};
-    DATI.invii.forEach(function(i){ (lotti[i.lotto] = lotti[i.lotto] || []).push(i); });
-    var tutti = Object.keys(lotti).sort();
-    var nomi = filtroLotto ? tutti.filter(function(l){ return l === filtroLotto; }) : tutti;
-    var mostrati = nomi.reduce(function(s,l){ return s + lotti[l].length; }, 0);
+  /* ------------------------------------------------------------ da fare */
+  // In cima perche' e' la domanda con cui si apre la pagina: cosa faccio
+  // adesso. Un compito per riga, dal piu' prezioso; i numeri del mercato
+  // stanno in fondo, servono una volta e non ogni mattina.
+  function daFare(){
+    var tutte = DATI.invii;
+    function con(st){ return tutte.filter(function(i){ return statoDi(i) === st; }); }
+    function eta(i){ var d = dataDi(i, "inviata"); return d ? -giorni(d) : 0; }
+    var voci = [];
 
-    var html = '<div class="pan"><h2>Invii PEC'+
-      '<select id="f-lotto" aria-label="Filtra per lotto" style="margin-left:auto;font-size:12px">'+
-        '<option value="">Tutti i lotti</option>'+
-        tutti.map(function(l){
-          return '<option value="'+esc(l)+'"'+(l===filtroLotto?' selected':'')+'>'+
-                 esc(nomeLotto(l))+' ('+lotti[l].length+')</option>';
-        }).join("")+
-      '</select>'+
-      '<span class="conta">'+mostrati+' destinatari</span></h2>'+
-      '<div class="aiuto">Le PEC già scritte, una per ente, con lo stato di '+
-      'ciascuna. <b>Invia PEC</b> apre l’anteprima e spedisce davvero; gli '+
-      'altri due bottoni servono a segnare a mano un invio o una risposta '+
-      'arrivata fuori da qui.</div>'+
-      dafare(nomi.reduce(function(s,l){ return s.concat(lotti[l]); }, []))+
-      '<div class="corpo">';
+    var call = con("discovery_fissata");
+    if(call.length) voci.push(["t-alta", call.length,
+      '<b>' + (call.length === 1 ? 'call fissata' : 'call fissate') + '</b>' +
+      (LOCALE ? ' \u2014 preparala: la scheda dell\u2019ente dice come compra e chi lo serve oggi.' : ''),
+      nomiEnti(call, 4) + (call.length === 1 && call[0].note
+        ? ' \u00b7 ' + taglia(call[0].note, 170) : '')]);
+
+    var fatte = con("discovery_fatta");
+    if(fatte.length) voci.push(["t-alta", fatte.length,
+      '<b>' + (fatte.length === 1 ? 'call fatta' : 'call fatte') + ', offerta da mandare</b>',
+      nomiEnti(fatte, 4)]);
+
+    var off = con("offerta");
+    if(off.length) voci.push(["", off.length,
+      '<b>' + (off.length === 1 ? 'offerta in attesa di risposta' : 'offerte in attesa di risposta') + '</b>',
+      nomiEnti(off, 4)]);
+
+    var ris = con("risposta");
+    if(ris.length) voci.push(["t-alta", ris.length,
+      '<b>' + (ris.length === 1 ? 'ha risposto' : 'hanno risposto') + '</b> \u2014 ' +
+      'ricontatta per fissare una call: \u00e8 la cosa che vale di pi\u00f9.',
+      nomiEnti(ris, 4)]);
+
+    var ko = tutte.filter(function(i){
+      var st = statoDi(i); return st === "non_consegnata" || (st === "inviata" && i.errore);
+    });
+    if(ko.length) voci.push(["t-err", ko.length,
+      '<b>' + (ko.length === 1 ? 'PEC non arrivata' : 'PEC non arrivate') + '</b> \u2014 ' +
+      'casella piena o indirizzo dismesso: verifica il recapito prima di riprovare.',
+      nomiEnti(ko, 4)]);
+
+    var soll = con("inviata").filter(function(i){
+      return i.consegnata && !i.sollecitata && eta(i) >= 12 && eta(i) <= GIORNI_ATTESA;
+    });
+    if(soll.length) voci.push(["", soll.length,
+      '<b>da sollecitare</b> \u2014 consegnate da oltre 12 giorni, nessuna risposta.' +
+      (LOCALE ? ' Si generano con <code>genera_pec.py --solleciti</code>.' : ''),
+      nomiEnti(soll, 4)]);
+
+    var gruppi = perLotto(), pronte = [], nPronte = 0;
+    Object.keys(gruppi).forEach(function(l){
+      var q = gruppi[l].filter(function(i){ return statoDi(i) === "da_inviare"; }).length;
+      if(q){ nPronte += q; pronte.push(q + " " + nomeLotto(l)); }
+    });
+    if(nPronte) voci.push(["", nPronte,
+      '<b>' + (nPronte === 1 ? 'PEC pronta da inviare' : 'PEC pronte da inviare') + '</b>' +
+      (LOCALE ? ' \u2014 apri il lotto e premi Invia PEC su ogni riga.' : ''),
+      pronte.join(" \u00b7 ")]);
+
+    var ferme = con("inviata").filter(function(i){ return eta(i) > GIORNI_ATTESA; });
+    if(ferme.length) voci.push(["t-quiet", ferme.length,
+      '<b>' + (ferme.length === 1 ? 'invio fermo' : 'invii fermi') + ' da oltre ' +
+      GIORNI_ATTESA + ' giorni</b> \u2014 non risponderanno pi\u00f9: vanno chiusi' +
+      (LOCALE ? ' con <code>invii.py --scadute</code>' : '') + '.', ""]);
+
+    var partite = tutte.filter(partita).length;
+    var risp = tutte.filter(rispose).length;
+    var nCall = tutte.filter(function(i){ return dataDi(i, "discovery_fissata"); }).length;
+    var vinte = tutte.filter(function(i){ return dataDi(i, "vendita"); }).length;
+    var finora = partite
+      ? 'Finora: <b>' + partite + '</b> PEC inviate \u00b7 <b>' + risp + '</b> ' +
+        (risp === 1 ? 'risposta' : 'risposte') + ' \u00b7 <b>' + nCall + '</b> call' +
+        (vinte ? ' \u00b7 <b>' + vinte + '</b> ' + (vinte === 1 ? 'vendita' : 'vendite') : '')
+      : 'Nessuna PEC ancora inviata.';
+
+    var corpo = voci.length
+      ? '<ul class="compiti">' + voci.map(function(v){
+          return '<li class="compito ' + v[0] + '"><span class="q">' + v[1] + '</span>' +
+            '<div><div class="t">' + v[2] + '</div>' +
+            (v[3] ? '<div class="det">' + esc(v[3]) + '</div>' : '') + '</div></li>';
+        }).join("") + '</ul>'
+      : '<p class="niente">Niente in sospeso.' + (LOCALE
+          ? ' Il prossimo territorio lo dice <code>python ingestion/territorio.py --prossimo</code>.'
+          : '') + '</p>';
+
+    return '<section class="oggi" aria-labelledby="t-oggi"><h2 id="t-oggi">Da fare</h2>' +
+      '<div class="finora">' + finora + '</div>' + corpo + '</section>';
+  }
+
+  // Un riquadro per lotto, chiuso: 63 righe aperte con quattro controlli
+  // ciascuna facevano 8.000 pixel di pagina, e il lotto che serviva si perdeva.
+  function lotti(){
+    var gruppi = perLotto();
+    // Prima i lotti con l'invio piu' recente: sono quelli su cui si lavora.
+    var nomi = Object.keys(gruppi).sort(function(a, b){
+      var ua = ultimoInvio(gruppi[a]), ub = ultimoInvio(gruppi[b]);
+      if(ua !== ub) return ua < ub ? 1 : -1;
+      return a < b ? -1 : 1;
+    });
+    var html = '<div class="pan"><h2>Invii PEC<span class="conta">' + nomi.length +
+      ' lotti \u00b7 ' + DATI.invii.length + ' destinatari</span></h2>' +
+      '<div class="aiuto">' + (LOCALE
+        ? 'Apri un lotto per inviare le PEC o segnare cosa \u00e8 successo. Il bottone ' +
+          'di ogni riga fa il passo successivo; gli altri sono in <b>Altro</b>.'
+        : 'Lo stato di ogni PEC, lotto per lotto. \u00c8 una copia da consultare: ' +
+          'si aggiorna ogni mattina.') + '</div>';
 
     nomi.forEach(function(lot){
-      var righe = lotti[lot];
-      html += '<div class="lotto-t">'+esc(nomeLotto(lot))+' &middot; '+righe.length+'</div>';
-      html += funnel(righe);
-
-      righe.forEach(function(i){
-        var st = statoDi(i), inv = dataDi(i,"inviata");
-        var coda = "";
-        if(st === "inviata" && inv){
-          var gg = -giorni(inv);
-          coda = gg + (gg===1?" giorno fa":" giorni fa");
-          // L'esito tecnico viene prima dell'attesa: una PEC mai consegnata
-          // non e' "in attesa di risposta", e aspettarla e' tempo buttato.
-          if(i.consegnata)        coda += " · consegnata";
-          else if(i.errore)       coda += " · " + i.errore;
-          else                    coda += " · consegna non confermata";
-          if(i.sollecitata)       coda += " · sollecitata il " + dataIt(i.sollecitata);
-          else if(gg > GIORNI_ATTESA) coda += " · da chiudere";
-        } else if(st === "risposta" && dataDi(i,"risposta")){
-          coda = "risposta il " + dataIt(dataDi(i,"risposta"));
-        }
-        // L'ente finisce in ogni aria-label: senza, da tastiera o con uno
-        // screen reader si sentono 38 bottoni "inviata" tutti uguali.
-        var chi = (i.ente || "?");
-        html += '<div class="riga">'+
-          '<span class="idx">'+i.n+'</span>'+
-          '<span class="chi"><div class="nome" title="'+esc(chi)+'">'+esc(chi)+'</div>'+
-          '<div class="meta">'+esc(i.prov||"—")+' · '+i.contratti+
-          (i.contratti===1?' contratto':' contratti')+(coda?' · '+esc(coda):'')+'</div></span>'+
-          '<span class="pillola '+CLASSI[st]+'">'+esc(ETICHETTE[st]||st)+'</span>'+
-          '<span class="azioni">'+
-            // Spedire richiede il server locale: l'artifact pubblicato non
-            // puo' parlare col provider PEC, e il bottone non deve comparire.
-            (LOCALE && (st==="da_inviare" || st==="non_consegnata")
-              ? '<button class="btn btn-pec" data-pec="'+esc(chiave(i))+'"'+
-                ' aria-label="Invia la PEC a '+esc(chi)+'">invia PEC</button>'
-              : (LOCALE ? '<span class="posto"></span>' : ''))+
-            '<button class="btn" data-az="inviata" data-k="'+esc(chiave(i))+'"'+
-              ' aria-label="Segna come già inviata la PEC a '+esc(chi)+'"'+
-              (st!=="da_inviare"?" disabled":"")+'>segna inviata</button>'+
-            '<button class="btn" data-az="risposta" data-k="'+esc(chiave(i))+'"'+
-              ' aria-label="Segna che '+esc(chi)+' ha risposto"'+
-              (st==="da_inviare"||st==="risposta"?" disabled":"")+'>ha risposto</button>'+
-            // Gli stadi oltre la risposta. Compaiono solo dopo che qualcosa e'
-            // partito: prima non c'e' niente da far avanzare.
-            (st==="da_inviare" ? '<span class="posto"></span>' :
-              '<select class="avanza" data-k="'+esc(chiave(i))+'"'+
-                ' aria-label="Fai avanzare '+esc(chi)+' di stadio">'+
-                '<option value="">avanza\u2026</option>'+
-                AVANZA.map(function(s){
-                  return '<option value="'+s+'"'+(st===s?" disabled":"")+'>'+
-                         esc(ETICHETTE[s])+'</option>';
-                }).join("")+'</select>')+
-          '</span></div>';
-      });
-
-      html += verdetto(righe);
+      var righe = gruppi[lot];
+      var q = conteggi(righe);
+      var partite = righe.filter(partita).length;
+      var risp = righe.filter(rispose).length;
+      var nCall = righe.filter(function(i){ return dataDi(i, "discovery_fissata"); }).length;
+      var pezzi = [];
+      if(q.da_inviare) pezzi.push('<b>' + q.da_inviare + '</b> da inviare');
+      if(partite){
+        pezzi.push('<b>' + partite + '</b> inviate');
+        pezzi.push('<b>' + risp + '</b> ' + (risp === 1 ? 'risposta' : 'risposte'));
+      }
+      if(nCall) pezzi.push('<b>' + nCall + '</b> call');
+      html += '<details class="lotto" data-lotto="' + esc(lot) + '"' + (aperti[lot] ? ' open' : '') + '>' +
+        '<summary><span class="l-nome">' + esc(nomeLotto(lot)) + '</span>' +
+        '<span class="l-conti">' + pezzi.join(' \u00b7 ') + '</span>' +
+        '<span class="l-dx">' + righe.length + ' destinatari</span></summary>' +
+        '<div class="dentro">' + funnel(righe) + righe.map(rigaInvio).join("") + '</div></details>';
     });
-    return html + '</div></div>';
+    return html + '</div>';
   }
 
-  /* Cosa c'e' da fare adesso. Aprire la console e vedere solo numeri non dice
-     a nessuno da dove cominciare: questa barra traduce lo stato in un compito. */
-  function dafare(righe){
-    var c = conteggi(righe);
-    var daInviare = c.da_inviare || 0;
-    var attesa    = c.inviata || 0;
-    var risposte  = c.risposta || 0;
+  function rigaInvio(i){
+    var st = statoDi(i), inv = dataDi(i, "inviata"), coda = "";
+    if(st === "inviata" && inv){
+      var gg = -giorni(inv);
+      coda = gg + (gg === 1 ? " giorno fa" : " giorni fa");
+      // L'esito tecnico viene prima dell'attesa: una PEC mai consegnata
+      // non e' "in attesa di risposta", e aspettarla e' tempo buttato.
+      if(i.consegnata)        coda += " \u00b7 consegnata";
+      else if(i.errore)       coda += " \u00b7 " + i.errore;
+      else                    coda += " \u00b7 consegna non confermata";
+      if(i.sollecitata)       coda += " \u00b7 sollecitata il " + dataIt(i.sollecitata);
+      else if(gg > GIORNI_ATTESA) coda += " \u00b7 da chiudere";
+    } else if(st !== "da_inviare" && dataDi(i, "risposta")){
+      coda = "risposta il " + dataIt(dataDi(i, "risposta"));
+    }
+    var chi = i.ente || "?";
+    var cosa = i.contratti
+      ? i.contratti + (i.contratti === 1 ? " contratto" : " contratti")
+      : "senza contratto";
 
-    // Le inviate da piu' di tre settimane non torneranno: vanno chiuse, se no
-    // restano a gonfiare "in attesa" e il tasso di risposta non si legge.
-    var scadute = righe.filter(function(i){
-      var inv = dataDi(i, "inviata");
-      return statoDi(i) === "inviata" && inv && -giorni(inv) > GIORNI_ATTESA;
-    }).length;
-
-    // Consegne fallite e solleciti dovuti: due cose che si scoprono solo
-    // leggendo le ricevute, e che valgono piu' di un altro invio a freddo.
-    var fallite = righe.filter(function(i){ return i.errore; }).length;
-    var daSollecitare = righe.filter(function(i){
-      var inv = dataDi(i, "inviata");
-      return statoDi(i) === "inviata" && i.consegnata && !i.sollecitata
-             && inv && -giorni(inv) >= 12;
-    }).length;
-
-    var prossima;
-    if(risposte)         prossima = '<b>'+risposte+(risposte===1?' ha risposto':' hanno risposto')+'</b> — ricontattali, è la cosa che vale di più.';
-    else if(fallite)     prossima = '<b>'+fallite+(fallite===1?' PEC non è arrivata':' PEC non sono arrivate')+'</b> — casella piena o indirizzo dismesso: verifica il recapito prima di riprovare.';
-    else if(daSollecitare) prossima = '<b>'+daSollecitare+(daSollecitare===1?' consegnata da oltre 12 giorni senza risposta':' consegnate da oltre 12 giorni senza risposta')+'</b> — genera i solleciti con <code>genera_pec.py --solleciti</code>.';
-    else if(scadute)     prossima = '<b>'+scadute+(scadute===1?' invio è fermo':' invii sono fermi')+' da oltre '+GIORNI_ATTESA+' giorni</b> — chiudili con <code>invii.py --scadute</code>.';
-    else if(daInviare)   prossima = 'Prossimo passo: <b>inviare le '+daInviare+' rimanenti</b>.';
-    else if(attesa)      prossima = 'Tutte inviate. Ora si aspetta: le risposte arrivano entro tre settimane, dopo non arrivano più.';
-    else                 prossima = 'Niente in sospeso.';
-
-    return '<div class="dafare">'+
-      '<span class="voce"><span class="q">'+daInviare+'</span><span class="e">da inviare</span></span>'+
-      '<span class="voce"><span class="q">'+attesa+'</span><span class="e">in attesa</span></span>'+
-      '<span class="voce"><span class="q">'+risposte+'</span><span class="e">'+(risposte===1?'risposta':'risposte')+'</span></span>'+
-      '<span class="prossima">'+prossima+'</span></div>';
+    // La copia condivisa e' da consultare: niente controlli. Quello che si
+    // segnasse li' verrebbe cancellato dall'aggiornamento del mattino dopo.
+    // L'ente finisce in ogni aria-label: senza, da tastiera o con uno screen
+    // reader si sentono decine di bottoni tutti uguali.
+    var azioni = "";
+    if(LOCALE){
+      var dopo = PROSSIMO[st], prim = "";
+      if(st === "da_inviare" || st === "non_consegnata"){
+        prim = '<button class="btn btn-pec" data-pec="' + esc(chiave(i)) + '"' +
+          ' aria-label="Invia la PEC a ' + esc(chi) + '">' +
+          (st === "da_inviare" ? "Invia PEC" : "Invia di nuovo") + '</button>';
+        if(st === "non_consegnata") dopo = null;
+      } else if(dopo){
+        prim = '<button class="btn btn-avanti" data-az="' + dopo + '" data-k="' + esc(chiave(i)) + '"' +
+          ' aria-label="' + esc(AZIONE[dopo]) + ': ' + esc(chi) + '">' + esc(AZIONE[dopo]) + '</button>';
+      }
+      var opz = TUTTE.filter(function(s){
+        if(s === st || (s === dopo && st !== "da_inviare")) return false;
+        if(st === "da_inviare") return s === "inviata";
+        return s !== "inviata";
+      });
+      azioni = '<span class="azioni">' + prim + (opz.length
+        ? '<select class="altro" data-k="' + esc(chiave(i)) + '"' +
+          ' aria-label="Altre azioni per ' + esc(chi) + '">' +
+          '<option value="">Altro\u2026</option>' + opz.map(function(s){
+            return '<option value="' + s + '">' +
+              esc(s === "inviata" ? "Segna inviata (spedita fuori da qui)" : AZIONE[s]) + '</option>';
+          }).join("") + '</select>'
+        : '') + '</span>';
+    }
+    return '<div class="riga"><span class="idx">' + i.n + '</span>' +
+      '<span class="chi"><div class="nome" title="' + esc(chi) + '">' + esc(titolo(chi)) + '</div>' +
+      '<div class="meta">' + esc(titolo(provNome(i.prov)) || "\u2014") + ' \u00b7 ' + cosa +
+      (coda ? ' \u00b7 ' + esc(coda) : '') + '</div></span>' +
+      '<span class="pillola ' + (CLASSI[st] || "") + '">' + esc(ETICHETTE[st] || st) + '</span>' +
+      azioni + '</div>';
   }
 
   /* R25 — il funnel. Il tasso di risposta dice se il messaggio funziona;
@@ -615,9 +819,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       // Due percentuali: sul totale (dove sono finiti) e sullo stadio prima
       // (dove si perde). La seconda e' quella che indica il buco.
       var prec = k ? n[k-1] : 0;
-      var sotto = k && prec ? Math.round(v/prec*100)+"% del passo prima"
-                            : (k ? "" : "contattabili");
-      return '<div class="passo'+(v?"":" zero")+'">'+
+      // Solo la cifra: "% del precedente" non ci stava e veniva troncato. Il
+      // significato sta nel tooltip.
+      var sotto = k && prec ? Math.round(v/prec*100)+"%" : "";
+      return '<div class="passo'+(v?"":" zero")+'"'+
+        (sotto ? ' title="'+sotto+' di '+esc(FUNNEL[k-1][0])+' ('+prec+')"' : '')+'>'+
         '<span class="q">'+v+'</span>'+
         '<span class="e">'+esc(f[0])+'</span>'+
         '<span class="p">'+esc(sotto)+'</span>'+
@@ -631,11 +837,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
              eur(vinto/partiti)+' di valore medio per invio.';
     } else if(offerto){
       coda = '<b>'+eur(offerto)+' offerti</b>, ancora nessuna vendita chiusa.';
-    } else if(n[3]){
-      coda = 'Il canale risponde ma non ha ancora prodotto fatturato: '+
-             '\u00e8 presto per dire se \u00e8 redditizio.';
     } else {
-      coda = 'Nessuna risposta ancora. Le risposte arrivano entro tre settimane.';
+      coda = verdettoTesto(righe);
     }
     if(perse){
       var quali = {};
@@ -656,36 +859,29 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
            '<p class="coda">'+coda+'</p></div>';
   }
 
-  function verdetto(righe){
-    var inviate = 0, risposte = 0;
-    righe.forEach(function(i){
-      var s = statoDi(i);
-      if(s==="inviata"||s==="risposta"||s==="nessuna_risposta") inviate++;
-      if(s==="risposta") risposte++;
-    });
-    if(!inviate) return '<div class="verdetto">Nessuna ancora inviata.</div>';
-    var t = Math.round(risposte/inviate*100);
-    var letto = "";
-    if(inviate >= 10){
-      letto = risposte === 0
-        ? " Zero risposte su un numero di invii sufficiente a dire qualcosa: la PEC arriva al protocollo ma non a chi decide. Conviene cercare il nome del responsabile del procedimento invece dell&rsquo;indirizzo generico."
+  // Il tasso di risposta con la sua lettura. Si contano come risposte anche
+  // quelle andate avanti (call, offerta, vendita): sono risposte anche loro.
+  function verdettoTesto(righe){
+    var inviate = righe.filter(partita).length;
+    var risposte = righe.filter(rispose).length;
+    var t = inviate ? Math.round(risposte / inviate * 100) : 0;
+    var letto = inviate < 10
+      ? "Troppo pochi invii per trarre conclusioni: se ne riparla dopo i primi dieci."
+      : !risposte
+        ? "Nessuna risposta su abbastanza invii: la PEC arriva al protocollo ma non a chi decide."
         : risposte <= 2
-          ? " &Egrave; il risultato normale di un primo contatto a freddo: il canale funziona, tienilo."
-          : " Risultato sopra la norma: vale la pena allargare a pi&ugrave; territori.";
-    } else {
-      letto = " Ancora troppo pochi invii per trarne una conclusione: se ne riparla dopo i primi dieci.";
-    }
-    return '<div class="verdetto"><b>'+risposte+' risposte su '+inviate+
-           ' inviate</b> &mdash; '+t+'%.'+letto+'</div>';
+          ? "\u00c8 il risultato normale di un primo contatto a freddo: il canale funziona."
+          : "Sopra la norma: vale la pena allargare ad altri territori.";
+    return '<b>' + risposte + (risposte === 1 ? ' risposta' : ' risposte') + ' su ' +
+           inviate + ' inviate</b> (' + t + '%). ' + letto;
   }
 
   /* ------------------------------------------------------- categorie */
   function categorie(){
     var max = Math.max.apply(null, DATI.categorie.map(function(c){ return c.n; }));
     return '<div class="pan"><h2>Di cosa si tratta<span class="conta">12 mesi</span></h2>'+
-      '<div class="aiuto">I contratti in scadenza divisi per tipo di servizio. '+
-      'La barra è il numero di contratti, non il valore: le categorie in alto '+
-      'sono quelle dove capitano più occasioni.</div>'+
+      '<div class="aiuto">I contratti in scadenza per tipo di servizio. '+
+      'La barra conta i contratti, non il valore.</div>'+
       '<div class="corpo">' + DATI.categorie.map(function(c){
         return '<div class="cat"><div class="cat-r"><span>'+esc(c.nome)+'</span>'+
           '<span class="n">'+c.n+' &middot; '+eur(c.val).replace("€ ","€&nbsp;")+'</span></div>'+
@@ -704,12 +900,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '<select id="f-terr" aria-label="Scegli la provincia" style="margin-left:auto;font-size:12px">'+
         DATI.territorio.map(function(x){
           return '<option value="'+esc(x.prov)+'"'+(x.prov===sel?' selected':'')+'>'+
-                 esc(x.prov)+' ('+x.tot+')</option>';
+                 esc(titolo(provNome(x.prov)))+' ('+x.tot+')</option>';
         }).join("")+
       '</select></h2>'+
-      '<div class="aiuto">Chi tiene oggi i contratti che stanno per scadere in '+
-      'quella provincia. Sono i fornitori che dovrai sostituire, e conoscerli '+
-      'in anticipo cambia come scrivi all’ente.</div>'+
+      '<div class="aiuto">Chi tiene oggi i contratti in scadenza in quella '+
+      'provincia: i fornitori da sostituire.</div>'+
       '<div class="corpo">'+
       t.forn.map(function(f){
         return '<div class="cat"><div class="cat-r"><span>'+esc(f.nome)+'</span>'+
@@ -724,10 +919,9 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   /* ------------------------------------------------------ competitor */
   function competitor(){
     return '<div class="pan"><h2>I grandi fornitori della PA<span class="conta">per valore vinto</span></h2>'+
-      '<div class="aiuto">Le dieci aziende che hanno vinto di più in Italia, su '+
-      'tutto lo storico. Non sono lead: servono a riconoscere un nome quando '+
-      'compare come fornitore uscente. Il <b>ribasso</b> è lo sconto medio con '+
-      'cui vincono le gare competitive.</div>'+
+      '<div class="aiuto">Le dieci aziende che vincono di più in Italia: non sono '+
+      'lead, servono a riconoscere un nome. Il <b>ribasso</b> è lo sconto medio '+
+      'con cui vincono.</div>'+
       '<div class="corpo">' + DATI.competitor.slice(0,10).map(function(c){
         return '<div class="riga"><span class="chi">'+
           '<div class="nome" title="'+esc(c.nome)+'">'+esc(c.nome)+'</div>'+
@@ -743,7 +937,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     var v = {};
     DATI.lead.forEach(function(l){ if(l[campo]) v[l[campo]] = 1; });
     return Object.keys(v).sort().map(function(x){
-      return '<option value="'+esc(x)+'"'+selezionato(scelto, x)+'>'+esc(x)+'</option>';
+      return '<option value="'+esc(x)+'"'+selezionato(scelto, x)+'>'+
+        esc(campo === "prov" ? titolo(provNome(x)) : x)+'</option>';
     }).join("");
   }
 
@@ -768,12 +963,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     }
     return '<div class="pan"><h2>Contratti in scadenza'+
       '<span class="conta" id="conta-lead"></span></h2>'+
-      '<div class="aiuto">Ogni riga è un contratto che sta per finire presso un '+
-      'ente con PEC nota. Sono le <b>400 col punteggio piu’ alto</b> entro 12 mesi. '+
-      'Il punteggio combina quanto e’ probabile che la scadenza diventi '+
-      'un’occasione vera, se il contratto e’ nella nostra fascia e se siamo '+
-      'nella finestra utile: passa il mouse sul numero. Clicca un’intestazione '+
-      'per ordinare.</div>'+
+      '<div class="aiuto">Le <b>400 scadenze con il punteggio più alto</b> nei '+
+      'prossimi 12 mesi. Il punteggio dice quanto vale la pena scrivere: passa il '+
+      'mouse sul numero.'+(LOCALE ? ' Clicca il nome di un ente per la sua scheda.' : '')+
+      '</div>'+
       '<div class="filtri">'+
         '<input type="search" id="f-testo" placeholder="Cerca ente, oggetto, fornitore…" '+
           'aria-label="Cerca fra le scadenze" value="'+esc(tab.testo)+'">'+
@@ -869,10 +1062,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<td class="gg '+cl+'">'+quanto+
           '<span class="quando">'+dataIt(l.scad)+'</span></td>'+
         '<td class="ente">'+
-          (l.cf ? '<button class="link-ente" data-ente="'+esc(l.cf)+'">'+esc(l.ente)+'</button>'
+          (l.cf && LOCALE ? '<button class="link-ente" data-ente="'+esc(l.cf)+'">'+esc(l.ente)+'</button>'
                 : esc(l.ente))+
           '<br><a href="mailto:'+esc(l.pec)+'" class="mono" style="font-size:11px">'+esc(l.pec)+'</a></td>'+
-        '<td>'+esc(l.prov||"—")+'</td>'+
+        '<td>'+esc(titolo(provNome(l.prov))||"—")+'</td>'+
         '<td><span class="tag">'+esc(l.cat||"non classificato")+'</span></td>'+
         '<td class="imp">'+num(l.imp)+'</td>'+
         '<td>'+esc((l.forn||"—").slice(0,34))+'</td>'+
@@ -929,12 +1122,14 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   function spia(){
     var eta = -(giorni(DATI.generato.slice(0,10)) || 0);
     var classe = eta > 21 ? " scaduta" : eta > 7 ? " vecchia" : "";
+    // Nella copia condivisa si dice subito che e' da consultare: i bottoni
+    // non ci sono, e chi la apre deve sapere perche'.
     var testo = LOCALE
       ? "in diretta dal database &middot; letti " + esc(dataOraIt(DATI.generato))
-      : (eta <= 0 ? "fotografia di oggi, " + esc(dataOraIt(DATI.generato))
-                  : "fotografia del " + esc(dataIt(DATI.generato)) +
-                    " &middot; " + eta + (eta === 1 ? " giorno fa" : " giorni fa") +
-                    (eta > 21 ? " — da rigenerare" : ""));
+      : "sola consultazione &middot; dati del " + esc(dataOraIt(DATI.generato)) +
+        (eta > 1 ? " (" + eta + " giorni fa)" : "") +
+        (eta > 2 ? " &mdash; l\u2019aggiornamento del mattino non \u00e8 partito"
+                 : " &middot; si aggiorna ogni mattina");
     return '<div class="spia'+classe+'"><span class="pallino"></span>'+testo+
       (STATO.salvato ? ' &middot; stato salvato ' + esc(STATO.salvato) : '')+'</div>';
   }
@@ -943,13 +1138,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     app.innerHTML =
       '<div class="wrap">'+
       '<header><div><h1>Radar Appalti</h1>'+
-      '<div class="sotto">Contratti informatici in scadenza presso la pubblica '+
-      'amministrazione, con il recapito PEC dell’ente. Serve a scrivere '+
-      '<b>prima</b> che il contratto venga rinnovato.</div></div>'+
+      '<div class="sotto">Contratti informatici della PA in scadenza, e le PEC per '+
+      'farsi conoscere <b>prima</b> che vengano rinnovati.</div></div>'+
       spia()+'</header>'+
-      tessere()+
-      '<div class="griglia"><div>'+tracker()+tabella()+'</div>'+
+      daFare()+
+      '<div class="griglia"><div>'+lotti()+tabella()+'</div>'+
       '<div>'+categorie()+territorio()+competitor()+'</div></div>'+
+      '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
       '<footer>Fonti: ANAC open data (CC BY-SA 4.0) e IndicePA (CC BY 4.0). '+
       'Elaborazione FlowLine, uso interno &mdash; i dati non vanno ridistribuiti a terzi.<br>'+
       'I giorni alla scadenza si ricalcolano a ogni apertura; il resto &egrave; '+
@@ -991,8 +1186,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       });
     });
 
-    var fl = document.getElementById("f-lotto");
-    if(fl) fl.addEventListener("change", function(){ filtroLotto = fl.value; disegna(); });
+    // Quali lotti sono aperti lo ricorda la vista: dopo un clic su una riga la
+    // pagina si ridisegna, e il lotto su cui si lavora deve restare aperto.
+    Array.prototype.forEach.call(app.querySelectorAll("details.lotto"), function(d){
+      d.addEventListener("toggle", function(){ aperti[d.getAttribute("data-lotto")] = d.open; });
+    });
     var ft = document.getElementById("f-terr");
     if(ft) ft.addEventListener("change", function(){ filtroProv = ft.value; disegna(); });
     var bc = document.getElementById("b-csv");
@@ -1281,15 +1479,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     disegna();
   }
 
-  // R25 — far avanzare di stadio. Offerta e Vendita chiedono l'importo:
-  // senza, "3 vendite" non dice se il canale ripaga il lavoro.
-  app.addEventListener("change", function(e){
-    var s = e.target.closest("select.avanza");
-    if(!s || !s.value) return;
-    var az = s.value, k = s.getAttribute("data-k");
-    s.value = "";
+  // Un solo punto per cambiare stato, dal bottone della riga o dal menu Altro.
+  // Offerta e Vendita chiedono l'importo: senza, "3 vendite" non dice se il
+  // canale ripaga il lavoro. Persa chiede il motivo, da una lista chiusa.
+  function applica(k, az){
     var extra = {};
-
     if(az === "offerta" || az === "vendita"){
       var r = prompt("Importo " + (az === "vendita" ? "della vendita" : "dell\u2019offerta") +
                      ", in euro (vuoto = non lo registro):", "");
@@ -1305,7 +1499,6 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       if(!(idx >= 0 && idx < MOTIVI.length)) return;
       extra.motivo = MOTIVI[idx][0];
     }
-
     var voce = STATO.invii[k] || {};
     voce.stato = az;
     voce[az] = new Date().toISOString().slice(0,10);
@@ -1316,6 +1509,14 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     STATO.invii[k] = voce;
     disegna();
     salva(k, voce, extra);
+  }
+
+  app.addEventListener("change", function(e){
+    var s = e.target.closest("select.altro");
+    if(!s || !s.value) return;
+    var az = s.value;
+    s.value = "";
+    applica(s.getAttribute("data-k"), az);
   });
 
   app.addEventListener("click", function(e){
@@ -1324,14 +1525,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     var p = e.target.closest("button[data-pec]");
     if(p && !p.disabled){ anteprima(p.getAttribute("data-pec")); return; }
     var b = e.target.closest("button[data-az]");
-    if(!b || b.disabled) return;
-    var k = b.getAttribute("data-k"), az = b.getAttribute("data-az");
-    var voce = STATO.invii[k] || {};
-    voce.stato = az;
-    voce[az] = new Date().toISOString().slice(0,10);
-    STATO.invii[k] = voce;
-    disegna();
-    salva(k, voce);
+    if(b && !b.disabled) applica(b.getAttribute("data-k"), b.getAttribute("data-az"));
   });
 
   if(LOCALE){

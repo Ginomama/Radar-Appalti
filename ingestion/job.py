@@ -448,8 +448,13 @@ def stato():
             ultima = "mai"
         print(f"  {t['nome']:28s} prossima {_leggi(campi, 'prossima')}")
         print(f"  {'':28s} ultima   {ultima}  esito {esito}")
+        # "Solo interattivo" = gira solo con l'utente collegato. Con
+        # "Esegui indipendentemente..." schtasks scrive "Interattivo/Background":
+        # contiene "interattivo" anche lui, e il controllo di prima dava
+        # l'allarme proprio quando il problema era stato risolto.
         accesso = _leggi(campi, "accesso").lower()
-        if "interattiv" in accesso or "interactive" in accesso:
+        if (("interattiv" in accesso or "interactive" in accesso)
+                and "background" not in accesso):
             print(f"  {'':28s} gira solo con l'utente collegato")
     print(f"\n=== ultimi log ({LOGDIR}) ===\n")
     if not os.path.isdir(LOGDIR):

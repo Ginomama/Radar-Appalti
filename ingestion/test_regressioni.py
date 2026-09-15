@@ -279,6 +279,33 @@ class PECSenzaContratto(unittest.TestCase):
 
 
 # =====================================================================
+class Istantanea(unittest.TestCase):
+    """La pagina condivisa con i dati dentro (istantanea.py)."""
+
+    HTML = ('<title>x</title><div id="app"></div>'
+            '<script id="dati" type="application/json"></script>'
+            '<script id="codice">var a=1;</script>')
+
+    def test_script_nel_testo_non_rompe_la_pagina(self):
+        """Un oggetto di gara con '</script>' chiuderebbe il blocco dei dati
+        a meta': pagina bianca, e nessun errore da nessuna parte."""
+        import json
+        import re
+        import istantanea
+        dati = {"lead": [{"ogg": "fornitura </script><script>x()</script>"}]}
+        out = istantanea.componi_pagina(self.HTML, dati)
+        self.assertEqual(out.count("</script>"), 2)
+        blocco = re.search(r'<script id="dati" type="application/json">(.*?)'
+                           r'</script>', out, re.S).group(1)
+        self.assertEqual(json.loads(blocco), dati)
+
+    def test_pagina_senza_blocco_dati_e_un_errore(self):
+        import istantanea
+        with self.assertRaises(ValueError):
+            istantanea.componi_pagina("<div></div>", {})
+
+
+# =====================================================================
 class MediaCheIgnoraIZeri(unittest.TestCase):
     """Due volte lo stesso errore, con due facce.
 

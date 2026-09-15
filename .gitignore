@@ -12,10 +12,13 @@ recon_out/
 ingestion/recon_out/
 
 # Materiale operativo: PEC generate, liste di contatti, estratti
-docs/pec/
-docs/pec-marche/
+# pec*/ e non l'elenco dei lotti: ogni lotto nuovo (pec-roma, pec-marche-
+# comuni...) e' una cartella nuova, e un elenco a mano se ne dimentica una.
+docs/pec*/
 docs/lista-outreach.csv
 docs/console-dati.json
+# L'istantanea condivisa (istantanea.py) ha dentro i dati veri, PEC comprese.
+docs/condivisa/
 
 # Output generati. I report contengono estratti ANAC con nomi di enti veri
 # (e nella versione --contatti anche le PEC): sono il prodotto, non il codice.

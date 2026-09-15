@@ -244,6 +244,41 @@ class FormatoPEC(unittest.TestCase):
 
 
 # =====================================================================
+class PECSenzaContratto(unittest.TestCase):
+    """Il testo del lotto di test senza contratto (genera_pec --generico).
+
+    Non deve citare ANAC ne' un CIG: non ce ne sono, e una fonte citata a
+    vuoto fa sembrare il testo copiato da un altro. Fonte del recapito e
+    cancellazione invece devono restare: sono le cautele del §3 di liceita.
+    """
+
+    RIGA = ("Comune di Prova", "AN", "prova@pec.it", "00000000000")
+
+    def setUp(self):
+        import genera_pec
+        self.g = genera_pec
+
+    def test_niente_anac_ne_cig(self):
+        _, ogg, corpo, _, _, n, prima = self.g.componi_generico(self.RIGA)
+        self.assertNotIn("ANAC", corpo)
+        self.assertNotIn("CIG", ogg + corpo)
+        self.assertEqual((n, prima), (0, None))
+
+    def test_fonte_e_cancellazione_restano(self):
+        _, _, corpo, *_ = self.g.componi_generico(self.RIGA)
+        self.assertIn("IndicePA", corpo)
+        self.assertIn("cancellazione", corpo)
+        self.assertIn(self.g.MITTENTE["piva"], corpo)
+
+    def test_sede_solo_a_chi_sta_nella_stessa_regione(self):
+        """'Con sede nelle Marche' e' un argomento ad Ancona e rumore a Roma."""
+        _, _, vicino, *_ = self.g.componi_generico(self.RIGA, self.g.SEDE_REGIONE)
+        _, _, lontano, *_ = self.g.componi_generico(self.RIGA, "Lazio")
+        self.assertIn(self.g.SEDE_TESTO, vicino)
+        self.assertNotIn(self.g.SEDE_TESTO, lontano)
+
+
+# =====================================================================
 class MediaCheIgnoraIZeri(unittest.TestCase):
     """Due volte lo stesso errore, con due facce.
 

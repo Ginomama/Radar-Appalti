@@ -180,6 +180,29 @@ personale è nello schema. La misura c'è, il trattamento no.
 via 3 (nominare la persona nella PEC istituzionale, senza conservarne l'email), il
 lavoro tecnico è di circa un'ora e il trattamento resta minimo.
 
+## 8. Il lotto senza contratto — 15 settembre 2026
+
+Fin qui ogni PEC citava un contratto in scadenza preso da ANAC. È quello che rende il
+contatto pertinente: si parla all'ente di una cosa sua, con una data. L'unica risposta
+arrivata finora (ERDIS, 15/09/2026) è arrivata proprio perché la PEC nominava il suo
+contratto.
+
+Il 15/09/2026 è stato generato un **lotto di test di 18 comuni delle Marche senza
+contratto citato** (`docs/pec-marche-generico/`, `genera_pec.py --generico`), per
+misurare quanto vale quel gancio.
+
+Cosa resta uguale al §3: è una richiesta di iscrizione all'elenco degli operatori
+economici, a un ente, sulla sua PEC istituzionale, con la fonte del recapito e la
+possibilità di cancellazione. Nessun dato personale.
+
+Cosa cambia: viene meno la pertinenza specifica. Lo stesso testo mandato a tutti i comuni
+di una regione somiglia di più a una comunicazione promozionale in serie, ed è il caso in
+cui la domanda §6.2 pesa di più.
+
+**Regola adottata:** il test resta a 18 enti. L'estensione ai circa 200 comuni restanti
+si fa **solo se** (a) il test risponde e (b) la domanda §6.2 ha una risposta, anche
+informale, per questo caso specifico.
+
 ---
 
 ---
@@ -190,6 +213,7 @@ lavoro tecnico è di circa un'ora e il trattamento resta minimo.
 |---|---|
 | Si può **costruire e usare internamente** il database? | Sì, con attribuzione |
 | Si può **fare outreach via PEC agli enti**? | Probabile, ma da confermare (§3) |
+| Si può scrivere a **tutti i comuni**, anche senza un contratto da citare? | Solo il test da 18, poi si decide (§8) |
 | Si può **vendere il prodotto a terzi**? | ⚠️ **dipende dal ShareAlike** (§2) |
 | Si possono usare **nominativi di persone**? | Non ora: non li memorizziamo (§1) |
 

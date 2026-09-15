@@ -14,6 +14,9 @@ Uso:
     python genera_pec.py                      # 20 destinatari, in docs/pec/
     python genera_pec.py --limite 40
     python genera_pec.py --provincia PD,VE,TV
+    python genera_pec.py --cf 00332510429,00155670425   # solo questi enti
+    python genera_pec.py --generico --regione Marche --cartella pec-x --cf ...
+                                              # senza contratto: solo per test
 
 Dipendenza: psycopg.
 """
@@ -38,6 +41,23 @@ MITTENTE = {
     "telefono": "3468278078",
     "email": "leonardo.foschi@flowline.it",
 }
+
+# Dove ha sede il mittente (la P.IVA e' nelle Marche). Si dice solo a chi sta
+# nella stessa regione: li' e' un argomento — un fornitore del territorio —
+# altrove e' rumore. Nel lotto senza contratto e' l'unico gancio che resta.
+SEDE_REGIONE = "Marche"                     # come la scrive IndicePA
+SEDE_TESTO = "con sede nelle Marche"
+PROVINCE_SEDE = ("ANCONA", "ASCOLI PICENO", "FERMO", "MACERATA",
+                 "PESARO E URBINO")         # come le scrive ANAC
+
+
+def chi_siamo(locale):
+    """La riga su chi scrive, con la sede solo se il destinatario e' vicino."""
+    if locale:
+        return (f"operatore economico {SEDE_TESTO},\n"
+                "attivo nei servizi di automazione dei processi e\n")
+    return ("operatore economico attivo nei servizi di automazione dei "
+            "processi e\n")
 
 # Categorie che FlowLine sa davvero servire. Fuori licenze (rivendita),
 # connettivita' (telco) e datacenter (infrastruttura).
@@ -174,7 +194,7 @@ def gia_contattati(cur, lotto_corrente):
 
 
 def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
-                escludi=None):
+                escludi=None, solo_cf=None):
     # Si legge da v_scadenze e non da v_lead_90gg: su un territorio ristretto
     # la finestra dei 90 giorni lascia troppo poco (nelle Marche 5 lead contro
     # 116 su 12 mesi), e per un comune scrivere con sei mesi di anticipo va
@@ -189,13 +209,23 @@ def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
           AND tipologia_amm = 'Pubbliche Amministrazioni'
           AND pec IS NOT NULL
           AND giorni_alla_scadenza BETWEEN %s AND %s
-          AND importo_aggiudicazione BETWEEN %s AND %s
+          AND (importo_aggiudicazione BETWEEN %s AND %s
+               -- Con --importo-min 0 si chiede "qualunque importo", e un
+               -- importo che ANAC non riporta e' qualunque: BETWEEN da solo
+               -- scartava in silenzio Caldarola e San Severino Marche.
+               OR (%s <= 0 AND importo_aggiudicazione IS NULL))
           AND categoria = ANY(%s)
     """
-    par = [gg_min, gg_max, imp_min, imp_max, list(RILEVANTI)]
+    par = [gg_min, gg_max, imp_min, imp_max, imp_min, list(RILEVANTI)]
     if province:
         q += " AND provincia = ANY(%s)"
         par.append(province)
+    # --cf: una scelta fatta a mano sopra i filtri. Serve quando il
+    # classificatore mette in "Sviluppo software" un piano antenne o un
+    # autovelox, e l'unico modo di non scrivere a sproposito e' dire chi si.
+    if solo_cf:
+        q += " AND cf_ente = ANY(%s)"
+        par.append(solo_cf)
     q += " ORDER BY importo_aggiudicazione DESC NULLS LAST"
     cur.execute(q, par)
 
@@ -283,8 +313,7 @@ def componi(contratti):
     corpo = f"""Spett.le {ente}
 {a_chi}
 il sottoscritto {MITTENTE['nome']},{insegna}
-operatore economico attivo nei servizi di automazione dei processi e
-integrazione di sistemi informativi, chiede di essere inserito fra gli
+{chi_siamo(prov in PROVINCE_SEDE)}integrazione di sistemi informativi, chiede di essere inserito fra gli
 operatori economici da consultare per le categorie {cat_txt}.
 
 {rilievo}
@@ -311,6 +340,96 @@ P.IVA {MITTENTE['piva']}
 tel. {MITTENTE['telefono']} — {MITTENTE['email']}
 """
     return pec, oggetto, corpo, ente, prov, n, prima
+
+
+# ------------------------------------------------------- senza contratto
+# Una PEC che non ha un contratto da citare. Esiste per un TEST, non come
+# canale: l'unica risposta finora (ERDIS, 15/09/2026) e' arrivata perche' la
+# PEC citava il suo contratto in scadenza. Quanto si perde senza quel gancio
+# lo dice solo il funnel del lotto generico messo accanto a quello dei lotti
+# agganciati — per questo va sempre in un lotto a parte, mai mescolato.
+
+def destinatari_generici(regione, solo_cf, limite, escludi):
+    """I comuni di una regione, da IndicePA, senza passare da ANAC.
+
+    Con solo_cf l'ordine e' quello dato (per il test: i piu' popolosi);
+    senza, tutti i comuni della regione in ordine alfabetico.
+    """
+    cx = sqlite3.connect(f"file:{DB_LOCALE}?mode=ro", uri=True)
+    try:
+        righe = cx.execute(
+            "SELECT denominazione_ipa, provincia, pec, cf_ente "
+            "FROM ente_contatti WHERE regione = ? AND pec IS NOT NULL "
+            "AND tipologia_istat LIKE 'Comuni%' ORDER BY denominazione_ipa",
+            (regione,)).fetchall()
+    finally:
+        cx.close()
+    if solo_cf:
+        per_cf = {r[3]: r for r in righe}
+        mancanti = [cf for cf in solo_cf if cf not in per_cf]
+        if mancanti:
+            # Un CF sbagliato non deve accorciare il lotto in silenzio.
+            print(f"[avviso] {len(mancanti)} CF non trovati fra i comuni "
+                  f"di {regione}: {', '.join(mancanti)}")
+        righe = [per_cf[cf] for cf in solo_cf if cf in per_cf]
+    fuori, saltati = [], []
+    for r in righe:
+        voce = (escludi or {}).get(r[2].lower())
+        if voce:
+            saltati.append((r[0], r[2], voce))
+        else:
+            fuori.append(r)
+    return fuori[:limite], saltati
+
+
+def componi_generico(riga, regione=None):
+    ente, prov, pec, cf = riga
+    uff, pec_uff = ufficio_di(cf)
+    if pec_uff:
+        pec = pec_uff
+    oggetto = ("Richiesta iscrizione elenco operatori economici — "
+               "servizi informatici")
+    if uff:
+        oggetto = (f"{uff[:52]} — iscrizione elenco operatori economici, "
+                   f"servizi IT")
+    a_chi = f"\nAlla cortese attenzione di: {uff}\n" if uff else ""
+    insegna = (f"\nche opera con il nome commerciale {MITTENTE['insegna']},"
+               if MITTENTE.get("insegna") else "")
+
+    # Al posto del contratto, una domanda a cui si risponde in una riga: e'
+    # la risposta piu' facile da dare, e senza un aggancio serve abbassare
+    # il costo di rispondere, non alzare il tono.
+    corpo = f"""Spett.le {ente}
+{a_chi}
+il sottoscritto {MITTENTE['nome']},{insegna}
+{chi_siamo(regione == SEDE_REGIONE)}integrazione di sistemi informativi, chiede di essere inserito fra gli
+operatori economici da consultare per i servizi informatici: sviluppo di
+applicativi, integrazione fra sistemi e gestione documentale.
+
+Se l'Ente gestisce l'elenco degli operatori economici su una piattaforma
+telematica, e' sufficiente indicarci quale: provvediamo noi all'iscrizione.
+
+Cosa facciamo, in concreto:
+{GENERICO}
+
+Non vendiamo licenze ne' abbonamenti: il risultato resta di proprieta'
+dell'ente, che puo' farlo mantenere anche da altri fornitori.
+
+Se ritenete utile un approfondimento, possiamo trasmettere una presentazione
+delle competenze e delle referenze, oppure analizzare senza impegno un
+processo dell'ente che oggi richiede passaggi manuali.
+
+Il recapito PEC e' stato reperito dall'Indice dei domicili digitali della
+pubblica amministrazione (IndicePA). Restiamo a disposizione per ogni
+chiarimento e per l'eventuale cancellazione dai nostri contatti.
+
+Cordiali saluti
+
+{MITTENTE['nome']}
+P.IVA {MITTENTE['piva']}
+tel. {MITTENTE['telefono']} — {MITTENTE['email']}
+"""
+    return pec, oggetto, corpo, ente, prov, 0, None
 
 
 # -------------------------------------------------------------- solleciti
@@ -420,7 +539,16 @@ def main():
     ap.add_argument("--solleciti", action="store_true",
                     help="genera i secondi contatti invece di un lotto nuovo")
     ap.add_argument("--giorni-sollecito", type=int, default=GIORNI_SOLLECITO)
+    ap.add_argument("--cf", help="codici fiscali separati da virgola: solo "
+                                 "questi enti (con --generico, nell'ordine dato)")
+    ap.add_argument("--generico", action="store_true",
+                    help="PEC senza contratto citato, ai comuni di --regione "
+                         "(e' un test: sempre in un lotto a parte)")
+    ap.add_argument("--regione", help="con --generico, es. Marche")
     a = ap.parse_args()
+    if a.generico and not a.regione:
+        raise SystemExit("--generico vuole --regione, es. --regione Marche")
+    solo_cf = [x.strip() for x in a.cf.split(",") if x.strip()] if a.cf else None
 
     if a.solleciti:
         dsn = leggi_dsn()
@@ -440,10 +568,14 @@ def main():
     try:
         with psycopg.connect(dsn) as pg, pg.cursor() as cur:
             escludi = None if a.consenti_doppioni else gia_contattati(cur, a.cartella)
-            gruppi, saltati = destinatari(cur, a.limite, province,
-                                          a.giorni_min, a.giorni_max,
-                                          a.importo_min, a.importo_max,
-                                          escludi)
+            if a.generico:
+                gruppi, saltati = destinatari_generici(a.regione, solo_cf,
+                                                       a.limite, escludi)
+            else:
+                gruppi, saltati = destinatari(cur, a.limite, province,
+                                              a.giorni_min, a.giorni_max,
+                                              a.importo_min, a.importo_max,
+                                              escludi, solo_cf)
     except Exception as e:
         raise SystemExit(maschera(f"{type(e).__name__}: {e}", dsn))
 
@@ -470,20 +602,25 @@ def main():
     indice = ["# PEC da inviare — generate il " + datetime.now().strftime("%d/%m/%Y"),
               "", "Un file per ente. Firma: " + MITTENTE["nome"] + ".", ""]
     indice += avviso
+    if a.generico:
+        indice += ["", "**Lotto SENZA contratto citato.** E' un test: il suo "
+                   "tasso di risposta va letto accanto a quello dei lotti "
+                   "agganciati a una scadenza (`invii.py --funnel --tutti`)."]
     indice += ["",
               "| # | Ente | Prov | Contratti | Prima scadenza | PEC | File |",
               "|---|---|---|---|---|---|---|"]
 
     registro = []
     for i, gruppo in enumerate(gruppi, 1):
-        pec, oggetto, corpo, ente, prov, n, prima = componi(gruppo)
+        pec, oggetto, corpo, ente, prov, n, prima = (
+            componi_generico(gruppo, a.regione) if a.generico else componi(gruppo))
         nome = f"{i:02d}-{slug(ente)}.txt"
         with open(os.path.join(OUT, nome), "w", encoding="utf-8") as f:
             f.write(f"A:       {pec}\nOGGETTO: {oggetto}\n\n{'-'*70}\n\n{corpo}")
         indice.append(f"| {i} | {ente[:44]} | {prov or '?'} | {n} | "
-                      f"{data_it(prima)} | `{pec}` | `{nome}` |")
+                      f"{data_it(prima) if prima else '—'} | `{pec}` | `{nome}` |")
         registro.append((a.cartella, i, nome, ente, prov, pec,
-                         ",".join(c[4] for c in gruppo), n))
+                         "" if a.generico else ",".join(c[4] for c in gruppo), n))
         print(f"  {i:2d}. {ente[:46]:48s} {n} contr.  -> {nome}")
 
     # Rigenerare cambia la numerazione quando cambiano gli enti in finestra, e

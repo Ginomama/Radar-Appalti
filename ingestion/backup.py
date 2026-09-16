@@ -147,7 +147,18 @@ def ruota(cartella, prefisso, tieni):
 
 # ------------------------------------------------------------- verifica
 def verifica(percorso):
-    """Un backup mai riletto non e' un backup: si apre e si contano le righe."""
+    """Un backup mai riletto non e' un backup: si apre e si contano le righe.
+
+    Due formati, due controlli — non e' lo stesso file compresso due volte:
+    l'operativo e' JSON (poche righe, va bene una rilettura in memoria), il
+    completo e' un intero SQLite (centinaia di MB: qui conta l'integrita'
+    del file, non il contenuto riga per riga)."""
+    if os.path.basename(percorso).startswith("radar-"):
+        return _verifica_sqlite(percorso)
+    return _verifica_operative(percorso)
+
+
+def _verifica_operative(percorso):
     with gzip.open(percorso, "rt", encoding="utf-8") as f:
         d = json.load(f)
     print(f"  generato il {d.get('generato', '?')}")
@@ -161,6 +172,37 @@ def verifica(percorso):
         print(f"  radar.{t:12s} {len(blocco['righe']):6d} righe, "
               f"{len(blocco['colonne'])} colonne")
     return ok
+
+
+def _verifica_sqlite(percorso):
+    """Scompatta in un file temporaneo e lo apre davvero: un .db.gz che si
+    decomprime ma non si apre con sqlite3 non e' un file diverso da uno
+    corrotto, e ZIP/gzip non lo direbbero da soli."""
+    grezzo = os.path.join(os.path.dirname(percorso), ".tmp-verifica.db")
+    try:
+        with gzip.open(percorso, "rb") as sorgente, open(grezzo, "wb") as dest:
+            shutil.copyfileobj(sorgente, dest, 1024 * 1024)
+        cx = sqlite3.connect(grezzo)
+        try:
+            esito = cx.execute("PRAGMA integrity_check").fetchone()[0]
+            if esito != "ok":
+                print(f"  PRAGMA integrity_check: {esito}")
+                return False
+            tabelle = [r[0] for r in cx.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "ORDER BY name")]
+            print(f"  integrita' ok, {len(tabelle)} tabelle")
+            for t in tabelle[:12]:
+                n = cx.execute(f"SELECT count(*) FROM \"{t}\"").fetchone()[0]
+                print(f"  {t:24s} {n:8d} righe")
+            if len(tabelle) > 12:
+                print(f"  ... e altre {len(tabelle) - 12}")
+        finally:
+            cx.close()
+        return True
+    finally:
+        if os.path.exists(grezzo):
+            os.remove(grezzo)
 
 
 def ultimo(cartella, prefisso="operative-"):
@@ -266,6 +308,14 @@ def main():
         if q:
             print(f"  -> {os.path.basename(q)} "
                   f"({os.path.getsize(q)/1e6:.0f} MB)")
+            # Stessa disciplina dell'operativo: scritto e mai riletto non e'
+            # un backup. Qui il rischio e' piu' concreto, non meno: e' l'unica
+            # copia dello storico ANAC, e VACUUM INTO su un file che il
+            # processo sta ancora scrivendo altrove potrebbe restituire un
+            # file tecnicamente valido ma con dentro meno di quanto pensi.
+            print("\n  rilettura di controllo:")
+            if not verifica(q):
+                sys.exit("il backup SQLite appena scritto non e' valido.")
             ruota(cartella, "radar-", GENERAZIONI_COMPLETE)
 
     print("\nfatto.")

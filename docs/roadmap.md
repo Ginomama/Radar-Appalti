@@ -521,7 +521,7 @@ Da rilanciare prima di ogni esposizione, e dopo ogni migrazione che crea tabelle
 > richiama nessuno, e non scopre mai com'è finita la scadenza. Sono i tre buchi
 > che separano uno strumento da un processo.
 
-### R15 — Leggere le ricevute PEC via IMAP · ✅ SCRITTO 2026-09-06 · ⚠️ da provare
+### R15 — Leggere le ricevute PEC via IMAP · ✅ FATTO E VERIFICATO 2026-09-16
 
 Il buco più grosso. `pec_smtp.py` spedisce, ma **nessuno legge le ricevute**: se
 una casella è piena, l'indirizzo è dismesso o il dominio rifiuta, la riga resta
@@ -546,7 +546,16 @@ nelle note.
 Vale anche come prova legale: la ricevuta di consegna è ciò che dimostra che
 l'ente ha ricevuto, e va conservata.
 
-### R16 — Sollecito automatico a 12 giorni · ✅ SCRITTO 2026-09-06 · ⚠️ dipende da R15
+⚠️ **Era bloccato da Avast, non dal codice.** Il Mail Shield intercettava e rifirmava
+`imaps.pec.aruba.it:993`: il certificato non superava la verifica (`Basic Constraints of
+CA cert not marked critical`) e `--leggi` non poteva connettersi. `diagnosi_tls.py`
+l'aveva già diagnosticato l'11/09. Risolto il 16/09 con un'eccezione di dominio in Avast
+(non su `pec_imap.py`: quello era corretto da subito). Primo giro reale: **80 messaggi
+esaminati, 56 ricevute (28 accettazioni, 28 consegne), 46 righe aggiornate** — tutte e 18
+`pec-marche` più le 7 `pec-marche-comuni` inviate quella mattina risultano confermate
+consegnate.
+
+### R16 — Sollecito automatico a 12 giorni · ✅ FATTO E VERIFICATO 2026-09-16
 
 Il primo messaggio a freddo a una PA finisce al protocollo e spesso si ferma lì.
 Il secondo contatto è dove arriva la maggior parte delle risposte, e oggi non
@@ -559,6 +568,12 @@ senza aver mai riprovato.
   PEC mai consegnata è rumore).
 - R16.3 un solo sollecito per ente, mai due.
 - R16.4 stato `sollecitata`, e la finestra dei 21 giorni riparte da lì.
+
+**Sbloccato insieme a R15 il 16/09.** Primo giro reale su `pec-marche`: un ente a 12
+giorni esatti dall'invio, consegnato, senza risposta — Agenzia Regionale per la
+Protezione Ambientale delle Marche. `genera_pec.py --solleciti --cartella pec-marche`
+l'ha trovato da solo e scritto il testo in `docs/pec-marche/sollecito-03-*.txt`; l'invio
+resta manuale (`pec_smtp.py --lotto pec-marche --sollecito --invia 3`), come ogni PEC.
 
 ### R17 — Che fine ha fatto la scadenza · ✅ FATTO 2026-09-07
 
@@ -1012,16 +1027,16 @@ APERTO, E NON E' UN LAVORO
                                    da docs/liceita.md §7
 ```
 
-**La domanda vera, adesso.** La roadmap tecnica e' finita. Restano tre cose, e nessuna
-delle tre e' codice:
+**La domanda vera, adesso.** La roadmap tecnica e' finita. Restano due cose, e nessuna
+delle due e' codice — la terza, **Avast**, era la stessa intercettazione HTTPS gia' nota
+per Python/winget su questa macchina: risolta il 16/09 con un'eccezione di dominio per
+`imaps.pec.aruba.it`, R15 e R16 sono verificati e girano da soli.
 
-1. **Avast** blocca la lettura delle ricevute PEC (`ingestion/diagnosi_tls.py` dice
-   esattamente perche'). Le consegne sono confermate a mano, ma il canale automatico e'
-   fermo.
-2. **18 consegnate, 0 risposte.** Il messaggio arriva e non produce niente. R28 ha
-   escluso che si risolva con un ufficio diverso (2,7% di copertura utile); resta il nome
-   del responsabile, che e' una decisione sul trattamento dei dati personali.
-3. **Le referenze** per l'allegato di R21. Due o tre righe vere: nessuno puo' scriverle
+1. **26 consegnate, 0 risposte prima del 15/09** — poi ERDIS ha risposto, con call
+   fissata. R28 ha escluso che si risolva con un ufficio diverso (2,7% di copertura
+   utile); resta il nome del responsabile, che e' una decisione sul trattamento dei dati
+   personali (`docs/liceita.md` §7).
+2. **Le referenze** per l'allegato di R21. Due o tre righe vere: nessuno puo' scriverle
    al posto di chi le ha.
 
 

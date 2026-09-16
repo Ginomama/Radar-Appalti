@@ -856,8 +856,11 @@ altre. Scrive sempre nel lotto fisso `pec-auto`.
 
 **Bottone "Genera PEC".** Sulla riga della tabella "Contratti in scadenza", solo in
 locale, solo se l'ente non e' gia' in un altro lotto. Endpoint `/api/genera` in
-`console_live.py`. Nessuna conferma: a differenza dell'invio, genera solo una bozza —
-non e' irreversibile.
+`console_live.py`. Prima versione: generava e basta, e la bozza restava da andare a
+cercare nel pannello "Invii PEC" — confuso, cambiato lo stesso giorno dopo il primo
+uso vero. Ora il click apre subito la STESSA anteprima/conferma di ogni altra PEC
+(`anteprima()` → `mostraModale()`, riuso diretto, zero codice nuovo): si vede il testo
+e si decide li' se inviarla, un passaggio solo invece di due schermate da imparare.
 
 **Job notturno.** `auto_genera.py`, nuovo step nel piano `giornaliero` di `job.py`, dopo
 la lettura delle ricevute PEC (l'anti-duplicato deve vedere lo stato di oggi, non quello

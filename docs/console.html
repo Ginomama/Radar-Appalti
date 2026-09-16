@@ -1167,9 +1167,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   }
 
   // R30 — genera la PEC per un ente direttamente dalla tabella scadenze,
-  // senza passare da genera_pec.py a riga di comando. Nessuna conferma: a
-  // differenza dell'invio non e' irreversibile, crea solo una bozza in
-  // 'pec-auto' che resta da rivedere e inviare come le altre.
+  // senza passare da genera_pec.py a riga di comando. Dopo la generazione
+  // si apre subito la STESSA anteprima/conferma di ogni altra PEC
+  // (anteprima() → mostraModale()): non si "sparisce" in un altro pannello
+  // da andare a cercare, si vede il testo e si decide li' se inviarla —
+  // un'interazione sola invece di due schermate diverse da imparare.
   //
   // Niente 'disabled' sul bottone in caso di errore: .btn[disabled] e'
   // invisible-by-design altrove (un'azione non applicabile si nasconde), ma
@@ -1189,7 +1191,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       if(d.generato){
         return fetch("/api/dati").then(function(r){ return r.json(); }).then(function(nuovi){
           DATI = nuovi;
-          disegna();
+          anteprima(d.lotto + "#" + d.progressivo, false);
         });
       }
       if(btn){

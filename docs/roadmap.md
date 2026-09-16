@@ -796,6 +796,34 @@ minimizzazione. C'è anche una via intermedia che vale la pena valutare per prim
 **nominare la persona scrivendo comunque alla PEC istituzionale**, che ottiene quasi lo
 stesso effetto di smistamento senza conservare recapiti personali.
 
+### R29 — Albi fornitori/OE sui siti comunali · VALUTATO 2026-09-16 · no, non così
+
+Idea: agganciare ogni PEC del lotto Marche all'elenco operatori economici del suo
+comune, come trovato a mano per San Benedetto del Tronto (`docs/pec-sbt/`). Prima
+di scriverci uno script, misurato su 8 comuni del lotto in corso (7 pec-marche-comuni
++ Civitanova Marche) con ricerca web mirata.
+
+**Risultato: nessuna piattaforma comune.** In 8 comuni, almeno quattro sistemi diversi:
+Net4market/`albofornitori.it` (Civitanova Marche, link diretto trovato), un portale
+dedicato + **GT-MULTIE della Regione Marche** — la stessa piattaforma di ERDIS — per
+Fabriano, Amministrazione Trasparente su Gazzetta Amministrativa o Halley per altri, e
+per due comuni (Vallefoglia, Caldarola) nessun elenco riconoscibile in una ricerca.
+
+**Verdetto: non vale uno script.** Uno script che indovina l'URL per piattaforma
+(`albo_comune<slug>` su albofornitori.it, `<slug>.tuttogare.it`...) avrebbe troppi falsi
+negativi per fidarsene — 8 comuni bastano a vederlo. La ricerca mirata (come qui, e come
+per San Benedetto) resta manuale: costa un minuto a comune ed è quello che l'ha trovata
+davvero. Da rivalutare solo se un domani servisse una chiave di ricerca via API (Bing/Google)
+invece che interattiva — oggi non c'è, e costerebbe una credenziale a pagamento per un
+guadagno non misurato.
+
+**Due cose usabili subito, trovate nel giro:**
+- **Civitanova Marche** (lotto generico): albo fornitori su Net4market,
+  https://app.albofornitori.it/alboeproc/albo_comunecivitanova — si può citare nella PEC.
+- **Fabriano** (lotto comuni): l'albo fornitori telematico richiede accreditamento **MEPA
+  CONSIP + GT-MULTIE Regione Marche** — la stessa piattaforma della gara ERDIS: un aggancio
+  in più per quella PEC.
+
 ### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
 
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si

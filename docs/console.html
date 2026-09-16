@@ -614,7 +614,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     "pec-sbt": "San Benedetto del Tronto",
     "pec-lazio": "Lazio · primo lotto",
     "pec-lazio-2": "Lazio · secondo lotto",
-    "pec-piemonte": "Piemonte · primo lotto"
+    "pec-piemonte": "Piemonte · primo lotto",
+    "pec-auto": "Generate automaticamente (R30)"
   };
   function nomeLotto(l){
     if(NOMI_LOTTI[l]) return NOMI_LOTTI[l];
@@ -628,7 +629,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // d'Italia), San Benedetto non si deduce dal suo id: le eccezioni stanno
   // in questa mappa, tutto il resto si deriva dal nome del lotto, cosi' un
   // domani "pec-lazio-comuni" cade da solo sotto "Lazio" senza toccare qui.
-  var REGIONE_LOTTI = {"pec": "Nazionale", "pec-sbt": "Marche"};
+  var REGIONE_LOTTI = {"pec": "Nazionale", "pec-sbt": "Marche",
+                       "pec-auto": "Automatiche"};
   function regioneDi(l){
     if(REGIONE_LOTTI[l]) return REGIONE_LOTTI[l];
     var s = String(l).replace(/^pec-?/, "").split("-")[0];
@@ -1115,6 +1117,18 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         'questi filtri. <b>Azzera filtri</b> per rivederli tutti.</td></tr>';
       return;
     }
+    // Un ente e' "gia' contattato" se compare in un qualunque lotto — per
+    // PEC o per nome, non solo per PEC. R28 puo' scrivere a un ufficio con
+    // una PEC diversa da quella istituzionale che questa tabella mostra: se
+    // si guardasse solo la PEC, un ente cosi' risulterebbe "mai contattato"
+    // anche subito dopo avergli generato una bozza. Stessa doppia chiave
+    // gia' usata da scheda_ente() in console_live.py, stesso motivo.
+    var contattati = {};
+    DATI.invii.forEach(function(i){
+      if(i.pec) contattati["p:" + i.pec.toLowerCase()] = true;
+      if(i.ente) contattati["e:" + i.ente.toUpperCase()] = true;
+    });
+
     tb.innerHTML = righe.map(function(l){
       var gg = giorni(l.scad);
       var cl = gg <= 30 ? "g-alta" : gg <= 90 ? "g-media" : "g-bassa";
@@ -1126,6 +1140,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
               : pt >= 35 ? "p-buono" : pt >= 18 ? "p-medio" : "p-basso";
       var spiega = pt == null ? "non ancora valutato"
                  : "probabilita di porta aperta " + (l.pr*100).toFixed(1) + "%";
+      var giaContattato = !!((l.pec && contattati["p:" + l.pec.toLowerCase()]) ||
+                            (l.ente && contattati["e:" + l.ente.toUpperCase()]));
       return '<tr>'+
         '<td class="pt"><span class="pallino '+clp+'" title="'+esc(spiega)+'">'+
           (pt == null ? "–" : pt)+'</span></td>'+
@@ -1134,7 +1150,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<td class="ente">'+
           (l.cf && LOCALE ? '<button class="link-ente" data-ente="'+esc(l.cf)+'">'+esc(l.ente)+'</button>'
                 : esc(l.ente))+
-          '<br><a href="mailto:'+esc(l.pec)+'" class="mono" style="font-size:11px">'+esc(l.pec)+'</a></td>'+
+          '<br><a href="mailto:'+esc(l.pec)+'" class="mono" style="font-size:11px">'+esc(l.pec)+'</a>'+
+          (!LOCALE ? '' : giaContattato
+            ? '<br><span class="tag" style="margin-top:3px">già contattato</span>'
+            : (l.cf ? '<br><button class="btn" data-genera="'+esc(l.cf)+'" '+
+                      'style="margin-top:4px" aria-label="Genera la PEC per '+esc(l.ente)+'">'+
+                      'Genera PEC</button>' : ''))+
+        '</td>'+
         '<td>'+esc(titolo(provNome(l.prov))||"—")+'</td>'+
         '<td><span class="tag">'+esc(l.cat||"non classificato")+'</span></td>'+
         '<td class="imp">'+num(l.imp)+'</td>'+
@@ -1142,6 +1164,46 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<td class="ogg">'+esc((l.ogg||"").slice(0,90))+'</td>'+
       '</tr>';
     }).join("");
+  }
+
+  // R30 — genera la PEC per un ente direttamente dalla tabella scadenze,
+  // senza passare da genera_pec.py a riga di comando. Nessuna conferma: a
+  // differenza dell'invio non e' irreversibile, crea solo una bozza in
+  // 'pec-auto' che resta da rivedere e inviare come le altre.
+  //
+  // Niente 'disabled' sul bottone in caso di errore: .btn[disabled] e'
+  // invisible-by-design altrove (un'azione non applicabile si nasconde), ma
+  // qui il testo con il motivo e' il punto — dev'essere leggibile, non
+  // sparire. dataset.busy fa lo stesso lavoro di 'disabled' contro il
+  // doppio click, senza quell'effetto collaterale.
+  function generaPec(cf, btn){
+    if(btn){
+      if(btn.dataset.busy) return;
+      btn.dataset.busy = "1";
+      btn.textContent = "genero…";
+    }
+    fetch("/api/genera", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({cf: cf})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d.generato){
+        return fetch("/api/dati").then(function(r){ return r.json(); }).then(function(nuovi){
+          DATI = nuovi;
+          disegna();
+        });
+      }
+      if(btn){
+        delete btn.dataset.busy;
+        btn.textContent = "non generata";
+        btn.title = d.motivo || "";
+      }
+    }).catch(function(){
+      if(btn){
+        delete btn.dataset.busy;
+        btn.textContent = "server non raggiungibile";
+        btn.title = "console_live.py è ancora in esecuzione?";
+      }
+    });
   }
 
   /* ------------------------------------------------------ salvataggio */
@@ -1602,6 +1664,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     if(se){ schedaEnte(se.getAttribute("data-ente"), se.textContent); return; }
     var p = e.target.closest("button[data-pec]");
     if(p && !p.disabled){ anteprima(p.getAttribute("data-pec"), p.hasAttribute("data-sollecito")); return; }
+    var g = e.target.closest("button[data-genera]");
+    if(g){ generaPec(g.getAttribute("data-genera"), g); return; }
     var b = e.target.closest("button[data-az]");
     if(b && !b.disabled) applica(b.getAttribute("data-k"), b.getAttribute("data-az"));
   });

@@ -247,6 +247,27 @@ def manda_pec(dsn, lotto, n, prova, forza, sollecito=False):
     return e
 
 
+def genera_pec_ente(dsn, cf):
+    """Bottone 'Genera PEC' sulla riga della tabella scadenze (R30).
+
+    L'import e' qui e non in cima, come in manda_pec: se genera_pec.py
+    cambia o manca una dipendenza, la console continua a mostrare i dati.
+    Scrive nel lotto fisso 'pec-auto' — sia il bottone sia il job notturno
+    ci aggiungono righe, mai svuotato ne' rigenerato.
+    """
+    import genera_pec
+    with psycopg.connect(dsn, connect_timeout=30) as pg, pg.cursor() as cur:
+        r = genera_pec.genera_singolo(cur, cf, lotto="pec-auto")
+        if r.get("generato"):
+            pg.commit()
+        else:
+            pg.rollback()
+    if r.get("generato"):
+        with _lock:                   # il prossimo giro rilegge
+            _cache["dati"] = None
+    return r
+
+
 def pagina_html():
     with open(PAGINA, encoding="utf-8") as f:
         h = f.read()
@@ -338,10 +359,32 @@ def crea_handler(dsn):
         def do_POST(self):
             try:
                 if not (self.path.startswith("/api/invio")
-                        or self.path.startswith("/api/pec")):
+                        or self.path.startswith("/api/pec")
+                        or self.path.startswith("/api/genera")):
                     return self._invia(404, '{"errore":"non trovato"}')
                 n = int(self.headers.get("Content-Length") or 0)
                 c = json.loads(self.rfile.read(n) or b"{}")
+
+                if self.path.startswith("/api/genera"):
+                    cf = (c.get("cf") or "").strip()
+                    if not cf:
+                        return self._invia(200, json.dumps(
+                            {"generato": False, "motivo": "manca il codice fiscale"},
+                            ensure_ascii=False))
+                    try:
+                        r = genera_pec_ente(dsn, cf)
+                    except Exception as err:
+                        return self._invia(200, json.dumps(
+                            {"generato": False, "motivo": maschera(str(err), dsn)[:200]},
+                            ensure_ascii=False))
+                    self._invia(200, json.dumps(r, ensure_ascii=False))
+                    try:
+                        print(f"  genera-pec {cf} -> " + (
+                            f"OK {r.get('ente')}" if r.get("generato")
+                            else f"no: {r.get('motivo')}"))
+                    except Exception:
+                        pass
+                    return
 
                 if self.path.startswith("/api/pec"):
                     prova = bool(c.get("prova"))

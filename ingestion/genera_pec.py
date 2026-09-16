@@ -342,6 +342,54 @@ tel. {MITTENTE['telefono']} — {MITTENTE['email']}
     return pec, oggetto, corpo, ente, prov, n, prima
 
 
+def genera_singolo(cur, cf, lotto="pec-auto",
+                   gg_min=30, gg_max=365, imp_min=20000, imp_max=500000):
+    """Genera la PEC per UN ente e la aggiunge al lotto, senza rigenerarlo.
+
+    Il resto dello script rilegge l'intera cartella a ogni run e la
+    riscrive da capo (vedi 'scritti' piu' sotto): va bene per un lotto
+    deciso a tavolino, ma un bottone o un job che aggiungono un ente alla
+    volta devono poter scrivere una riga senza cancellare le altre. La usano
+    sia il bottone 'Genera PEC' della console sia auto_genera.py.
+    """
+    escludi = gia_contattati(cur, lotto)
+    gruppi, saltati = destinatari(cur, 1, None, gg_min, gg_max,
+                                  imp_min, imp_max, escludi, solo_cf=[cf])
+    if saltati:
+        _, _, (altro, stato, quando) = saltati[0]
+        return {"generato": False,
+                "motivo": f"gia' nel lotto '{altro}' ({stato})"}
+    if not gruppi:
+        return {"generato": False,
+                "motivo": f"nessun contratto rilevante fra {gg_min} e "
+                          f"{gg_max} giorni, importo {imp_min}-{imp_max}"}
+
+    contratti = gruppi[0]
+    pec, oggetto, corpo, ente, prov, n, prima = componi(contratti)
+    cig_inclusi = ",".join(c[4] for c in contratti)
+
+    cartella = os.path.join(QUI, "..", "docs", lotto)
+    os.makedirs(cartella, exist_ok=True)
+    # Il progressivo si legge dal database, non si conta sui file su disco:
+    # sono la stessa fonte di verita' che usa l'anti-duplicato, e restano
+    # allineati anche se un file viene spostato o cancellato a mano.
+    cur.execute("SELECT coalesce(max(progressivo),0)+1 FROM radar.invio "
+                "WHERE lotto = %s", (lotto,))
+    progressivo = cur.fetchone()[0]
+    nome = f"{progressivo:02d}-{slug(ente)}.txt"
+    with open(os.path.join(cartella, nome), "w", encoding="utf-8") as f:
+        f.write(f"A:       {pec}\nOGGETTO: {oggetto}\n\n{'-'*70}\n\n{corpo}")
+
+    cur.execute(
+        "INSERT INTO radar.invio (lotto, progressivo, file, ente, "
+        "provincia, pec, cig_inclusi, n_contratti) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+        (lotto, progressivo, nome, ente, prov, pec, cig_inclusi, n))
+
+    return {"generato": True, "ente": ente, "pec": pec, "lotto": lotto,
+            "progressivo": progressivo, "file": nome, "n_contratti": n}
+
+
 # ------------------------------------------------------- senza contratto
 # Una PEC che non ha un contratto da citare. Esiste per un TEST, non come
 # canale: l'unica risposta finora (ERDIS, 15/09/2026) e' arrivata perche' la

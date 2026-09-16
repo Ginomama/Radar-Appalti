@@ -91,6 +91,13 @@ PIANI = {
         dict(id="ricevute", argv=["pec_imap.py", "--leggi"],
              descr="lettura ricevute PEC", minuti=15,
              richiede=("DSN", "PEC_USER", "PEC_PASSWORD")),
+        # Dopo 'ricevute' e non prima: l'anti-duplicato guarda chi e' gia'
+        # in radar.invio, e vale la pena farlo con lo stato di oggi, non con
+        # quello di ieri sera. Soglia e tetto sono in auto_genera.py, non
+        # qui: sono una scelta commerciale (R30), non l'orario di un job.
+        dict(id="auto-genera", argv=["auto_genera.py"],
+             descr="bozze PEC automatiche per i lead migliori (R30)", minuti=10,
+             richiede=("DSN",)),
         # TED e' nel giornaliero e non nel mensile: una gara aperta ha una
         # scadenza per presentare offerta, e scoprirla il mese dopo vuol dire
         # scoprirla quando e' chiusa. Costa una chiamata HTTP.

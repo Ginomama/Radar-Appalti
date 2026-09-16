@@ -839,6 +839,56 @@ guadagno non misurato.
   CONSIP + GT-MULTIE Regione Marche** — la stessa piattaforma della gara ERDIS: un aggancio
   in più per quella PEC.
 
+### R30 — Genera PEC direttamente dalla tabella scadenze · ✅ FATTO E VERIFICATO 2026-09-16
+
+Due leve, non una: un bottone manuale nella console e un job notturno automatico. Entrambe
+chiamano la stessa funzione nuova, `genera_pec.genera_singolo(cur, cf, lotto)` — non
+duplicano il motore di R7/R27, lo riusano per un ente alla volta invece che per un lotto
+intero.
+
+**Il problema tecnico vero.** Il resto di `genera_pec.py` rigenera l'intera cartella a ogni
+run: `enumerate(gruppi,1)` riparte da 1 e cancella i file il cui numero non torna piu' nel
+nuovo giro. Va bene per un lotto deciso a tavolino, ma un bottone o un job che aggiungono un
+ente alla volta userebbero quello stesso meccanismo per **distruggere** le righe generate
+prima. `genera_singolo()` legge il prossimo progressivo da database (`max(progressivo)+1`,
+la stessa fonte di verita' dell'anti-duplicato) e scrive una riga sola, senza toccare le
+altre. Scrive sempre nel lotto fisso `pec-auto`.
+
+**Bottone "Genera PEC".** Sulla riga della tabella "Contratti in scadenza", solo in
+locale, solo se l'ente non e' gia' in un altro lotto. Endpoint `/api/genera` in
+`console_live.py`. Nessuna conferma: a differenza dell'invio, genera solo una bozza —
+non e' irreversibile.
+
+**Job notturno.** `auto_genera.py`, nuovo step nel piano `giornaliero` di `job.py`, dopo
+la lettura delle ricevute PEC (l'anti-duplicato deve vedere lo stato di oggi, non quello
+di ieri sera). Ogni notte genera fino a **5** bozze per gli enti con punteggio **60+**
+(banda "eccezionale" di R18) non ancora contattati. Soglia e tetto sono scelte
+commerciali fatte da Leonardo, non tecniche — quanto ci si fida del punteggio, quante
+bozze si riesce a rivedere ogni mattina.
+
+**Indicatore "già contattato".** Prerequisito per non offrire due volte lo stesso ente:
+la tabella confronta ogni riga con `radar.invio` per PEC *e per nome ente*. Solo la PEC
+non basta — trovato verificando dal vivo: R28 puo' sostituire la PEC istituzionale con
+quella di un ufficio specifico (`ufficio_di()`), e quella sostituita e' quella che finisce
+in `radar.invio.pec`. Comune di Milano, verificato in questa sessione: PEC istituzionale
+`protocollo@postacert.comune.milano.it`, PEC registrata dopo la generazione
+`siad.amministrazione@postacert.comune.milano.it`. Stessa doppia chiave gia' usata da
+`scheda_ente()` per lo stesso motivo.
+
+⚠️ **Lo stesso problema esiste, piu' in profondo, nell'anti-duplicato di R20**
+(`gia_contattati()` in `genera_pec.py`, usato da `destinatari()` per tutti i lotti, non solo
+`pec-auto`): e' keyed solo per PEC, quindi un ente con un ufficio R28 potrebbe in teoria
+essere ricontattato da un lotto futuro che lo trova con la sua PEC istituzionale. Non
+corretto qui perche' e' una modifica al meccanismo usato da tutta la generazione PEC, non
+solo da R30 — segnalato come task a parte.
+
+**Verificato dal vivo, non solo compilato:** `auto_genera.py` lanciato per davvero ha
+generato 5 bozze rispettando soglia e tetto, scartando correttamente un ente gia' in
+`pec-piemonte`; il bottone della console testato su due enti reali — uno rifiutato con
+motivo corretto (nessun contratto nella finestra 30-365gg/20k-500k€), uno andato a buon
+fine (Comune di Milano, 17 contratti raggruppati in una PEC sola, progressivo calcolato
+senza collisioni dopo le 5 righe del job).
+
 ### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
 
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si

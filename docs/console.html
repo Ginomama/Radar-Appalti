@@ -746,6 +746,30 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         ""]);
     }
 
+    // R9 — i log dicono se lo script e' andato a buon fine; schtasks dice se
+    // Windows lo ha lanciato per niente. E' la distinzione che ha trovato il
+    // guasto del 16/09: il task 'console-locale' esisteva ma girava solo con
+    // l'utente collegato. Qui si avvisa solo se c'e' un problema — un job
+    // che gira bene non ha bisogno di essere ripetuto ogni giorno.
+    (DATI.task || []).forEach(function(t){
+      if(!LOCALE) return;
+      var problema = !t.installata ? 'non risulta installato'
+        : t.solo_interattivo ? 'gira solo con l’utente collegato: si ferma al logout'
+        : (t.esito && t.esito !== 'ok' && t.esito !== 'mai eseguita')
+          ? 'l’ultimo giro e’ fallito (esito ' + t.esito + ')'
+        // 'mai eseguita' e' normale per il mensile appena installato (la
+        // prima corsa e' il 3 del mese prossimo): un allarme solo per il
+        // giornaliero, che dovrebbe essere gia' partito almeno una volta.
+        : (t.esito === 'mai eseguita' && t.ritmo === 'giornaliero')
+          ? 'non e’ mai partito' : '';
+      if(problema) voci.push(["t-err", 1,
+        '<b>job ‘' + t.ritmo + '’</b> — ' + problema + '.' +
+        (LOCALE ? (t.installata
+          ? ' Controlla con <code>python job.py --stato</code>.'
+          : ' Installalo con <code>python job.py --installa</code>.') : ''),
+        t.installata ? 'ultima esecuzione: ' + t.ultima : ""]);
+    });
+
     var ferme = con("inviata").filter(function(i){ return eta(i) > GIORNI_ATTESA; });
     if(ferme.length) voci.push(["t-quiet", ferme.length,
       '<b>' + (ferme.length === 1 ? 'invio fermo' : 'invii fermi') + ' da oltre ' +

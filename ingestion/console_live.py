@@ -36,6 +36,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import psycopg
 
+import job
 import scheda
 from push_supabase import leggi_dsn, maschera
 
@@ -141,7 +142,22 @@ def raccogli(cur):
 
     D["generato"] = datetime.now().isoformat(timespec="seconds")
     D["auto_genera"] = leggi_stato_auto_genera()
+    D["task"] = leggi_stato_task()
     return D
+
+
+def leggi_stato_task():
+    """Interroga schtasks per i due job pianificati (R9).
+
+    Non i log: quelli dicono se lo script e' andato a buon fine, questo dice
+    se Windows lo ha lanciato per niente. E' cosi' che si e' scoperto il
+    guasto del 16/09 sul task console-locale."""
+    try:
+        return job.stato_dict()
+    except Exception:
+        # schtasks non esiste fuori da Windows, o l'utente non ha ancora
+        # installato i task: la console deve funzionare lo stesso.
+        return []
 
 
 def leggi_stato_auto_genera():

@@ -437,6 +437,38 @@ def _leggi(campi, quale):
     return "?"
 
 
+def stato_dict():
+    """Stessa lettura di stato(), come dati invece che stampa.
+
+    La console (R9+) la usa per dire se un task e' partito davvero — non se
+    lo script e' andato a buon fine (quello lo dice gia' il file di log), ma
+    se Windows lo ha lanciato per niente. E' la distinzione che ha trovato
+    il guasto vero del 16/09: il task 'console-locale' esisteva ma girava
+    solo con l'utente collegato, e si e' fermato al logout."""
+    righe = []
+    for ritmo, t in TASKS.items():
+        rc, out = schtasks("/query", "/tn", t["nome"], "/v", "/fo", "list")
+        if rc != 0:
+            righe.append(dict(ritmo=ritmo, nome=t["nome"], installata=False))
+            continue
+        campi = _campi(out)
+        esito = _leggi(campi, "esito")
+        if any(m in esito for m in MAI_ESEGUITA):
+            esito = "mai eseguita"
+        elif esito == "0":
+            esito = "ok"
+        ultima = _leggi(campi, "ultima")
+        if ultima.startswith("30/11/1999") or ultima.startswith("11/30/1999"):
+            ultima = "mai"
+        accesso = _leggi(campi, "accesso").lower()
+        solo_interattivo = (("interattiv" in accesso or "interactive" in accesso)
+                             and "background" not in accesso)
+        righe.append(dict(ritmo=ritmo, nome=t["nome"], installata=True,
+                          prossima=_leggi(campi, "prossima"), ultima=ultima,
+                          esito=esito, solo_interattivo=solo_interattivo))
+    return righe
+
+
 def stato():
     print("=== attivita' pianificate ===\n")
     for ritmo, t in TASKS.items():

@@ -615,7 +615,20 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     "pec-lazio": "Lazio · primo lotto",
     "pec-lazio-2": "Lazio · secondo lotto",
     "pec-piemonte": "Piemonte · primo lotto",
-    "pec-auto": "Generate automaticamente (R30)"
+    "pec-auto": "Generate automaticamente (R30)",
+    "pec-veneto": "Veneto · primo lotto",
+    "pec-lombardia": "Lombardia · primo lotto",
+    "pec-toscana": "Toscana · primo lotto",
+    "pec-emilia": "Emilia-Romagna · primo lotto",
+    "pec-sardegna": "Sardegna · primo lotto",
+    "pec-friuli": "Friuli-Venezia Giulia · primo lotto",
+    "pec-trentino": "Trentino-Alto Adige · primo lotto",
+    "pec-sicilia": "Sicilia · primo lotto",
+    "pec-puglia": "Puglia · primo lotto",
+    "pec-campania": "Campania · primo lotto",
+    "pec-basilicata": "Basilicata · primo lotto",
+    "pec-liguria": "Liguria · primo lotto",
+    "pec-aosta": "Valle d'Aosta · primo lotto"
   };
   function nomeLotto(l){
     if(NOMI_LOTTI[l]) return NOMI_LOTTI[l];
@@ -629,8 +642,15 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // d'Italia), San Benedetto non si deduce dal suo id: le eccezioni stanno
   // in questa mappa, tutto il resto si deriva dal nome del lotto, cosi' un
   // domani "pec-lazio-comuni" cade da solo sotto "Lazio" senza toccare qui.
+  // Le uniche eccezioni in piu' sono le regioni il cui nome vero ha un
+  // trattino: la derivazione automatica si fermerebbe al primo pezzo
+  // ("pec-emilia" -> "Emilia", non "Emilia-Romagna").
   var REGIONE_LOTTI = {"pec": "Nazionale", "pec-sbt": "Marche",
-                       "pec-auto": "Automatiche"};
+                       "pec-auto": "Automatiche",
+                       "pec-emilia": "Emilia-Romagna",
+                       "pec-friuli": "Friuli-Venezia Giulia",
+                       "pec-trentino": "Trentino-Alto Adige",
+                       "pec-aosta": "Valle d'Aosta"};
   function regioneDi(l){
     if(REGIONE_LOTTI[l]) return REGIONE_LOTTI[l];
     var s = String(l).replace(/^pec-?/, "").split("-")[0];

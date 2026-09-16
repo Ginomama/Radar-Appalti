@@ -197,16 +197,44 @@ def segna(dsn, lotto, n, stato, quando, motivo=None, valore=None):
     return tocc
 
 
-def manda_pec(dsn, lotto, n, prova, forza):
+def manda_pec(dsn, lotto, n, prova, forza, sollecito=False):
     """Anteprima (prova=True) o invio vero di una PEC gia' generata.
 
     L'import e' qui e non in cima di proposito: se un giorno manca la
     configurazione PEC o cambia qualcosa in pec_smtp, la console continua a
     mostrare i dati — si spegne solo il bottone di invio.
+
+    Con sollecito=True il testo non e' pre-generato da `genera_pec.py
+    --solleciti`: lo scrive qui, fresco, con gli stessi dati che la riga ha
+    in quel momento (`componi_sollecito`, la stessa funzione della riga di
+    comando — un posto solo, non due testi che possono disallinearsi). Se il
+    bottone e' comparso, la riga ha gia' passato i requisiti in JavaScript
+    (consegnata, non ancora sollecitata, 12+ giorni); qui non si ricontrolla
+    quello — lo ricontrolla `pec_smtp.spedisci` leggendo `sollecitata_il` da
+    database, che e' la fonte di verita' e puo' essere cambiata da un'altra
+    scheda aperta nel frattempo.
     """
     import pec_smtp
     with psycopg.connect(dsn, connect_timeout=30) as pg, pg.cursor() as cur:
-        e = pec_smtp.spedisci(cur, lotto, int(n), prova=prova, forza=forza)
+        if sollecito:
+            import genera_pec
+            cur.execute(
+                "SELECT ente, pec, cig_inclusi, inviata_il, file FROM radar.invio "
+                "WHERE lotto = %s AND progressivo = %s", (lotto, int(n)))
+            riga_db = cur.fetchone()
+            if not riga_db:
+                raise LookupError(f"{lotto}#{n} non trovato in radar.invio")
+            ente, pec, cigs, inviata_il, nomefile = riga_db
+            if not nomefile:
+                raise RuntimeError(f"{lotto}#{n} non ha un file di origine registrato")
+            oggetto, corpo = genera_pec.componi_sollecito(ente, pec, cigs, inviata_il)
+            cartella = os.path.join(genera_pec.QUI, "..", "docs", lotto)
+            os.makedirs(cartella, exist_ok=True)
+            with open(os.path.join(cartella, "sollecito-" + nomefile),
+                      "w", encoding="utf-8") as f:
+                f.write(f"A:       {pec}\nOGGETTO: {oggetto}\n\n{'-'*70}\n\n{corpo}")
+        e = pec_smtp.spedisci(cur, lotto, int(n), prova=prova, forza=forza,
+                              sollecito=sollecito)
         # Commit solo se e' partita davvero: l'anteprima non deve lasciare
         # tracce, e una spedizione fallita non deve marcare la riga.
         if e.get("inviata"):
@@ -317,9 +345,10 @@ def crea_handler(dsn):
 
                 if self.path.startswith("/api/pec"):
                     prova = bool(c.get("prova"))
+                    sollecito = bool(c.get("sollecito"))
                     try:
                         e = manda_pec(dsn, c.get("lotto"), c.get("n"),
-                                      prova, bool(c.get("forza")))
+                                      prova, bool(c.get("forza")), sollecito)
                     except (LookupError, FileNotFoundError,
                             ValueError, RuntimeError) as err:
                         # Errori attesi: il testo e' gia' leggibile e non
@@ -331,7 +360,8 @@ def crea_handler(dsn):
                         etichetta = ("anteprima" if prova else
                                      ("INVIATA" if e.get("inviata")
                                       else "bloccata"))
-                        print(f"  PEC {c.get('lotto')}#{c.get('n')} -> "
+                        print(f"  PEC {c.get('lotto')}#{c.get('n')}"
+                              f"{' (sollecito)' if sollecito else ''} -> "
                               f"{etichetta}"
                               + (f"  {e['message_id']}"
                                  if e.get("message_id") else ""))

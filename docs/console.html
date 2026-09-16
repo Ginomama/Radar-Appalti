@@ -450,6 +450,16 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var TUTTE = ["inviata","risposta","discovery_fissata","discovery_fatta",
                "offerta","vendita","persa"];
   var GIORNI_ATTESA = 21;
+  // Stessa soglia di GIORNI_SOLLECITO in genera_pec.py: sotto e' fretta, sopra
+  // si esce dalla memoria di chi ha letto la prima PEC.
+  var GIORNI_SOLLECITO = 12;
+
+  // Una riga e' sollecitabile se e' stata consegnata davvero (sollecitare nel
+  // vuoto e' rumore), non lo e' gia' stata, e sono passati almeno 12 giorni.
+  function sollecitabile(i){
+    return statoDi(i) === "inviata" && !!dataDi(i, "consegnata") &&
+      !dataDi(i, "sollecitata") && -giorni(dataDi(i, "inviata")) >= GIORNI_SOLLECITO;
+  }
 
   function oggi(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
   function giorni(iso){
@@ -657,7 +667,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     });
     if(soll.length) voci.push(["", soll.length,
       '<b>da sollecitare</b> \u2014 consegnate da oltre 12 giorni, nessuna risposta.' +
-      (LOCALE ? ' Si generano con <code>genera_pec.py --solleciti</code>.' : ''),
+      (LOCALE ? ' Apri il lotto: la riga ha il bottone <b>Sollecita</b>.' : ''),
       nomiEnti(soll, 4)]);
 
     var gruppi = perLotto(), pronte = [], nPronte = 0;
@@ -750,7 +760,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       if(i.consegnata)        coda += " \u00b7 consegnata";
       else if(i.errore)       coda += " \u00b7 " + i.errore;
       else                    coda += " \u00b7 consegna non confermata";
-      if(i.sollecitata)       coda += " \u00b7 sollecitata il " + dataIt(i.sollecitata);
+      var sollIl = dataDi(i, "sollecitata");
+      if(sollIl)              coda += " \u00b7 sollecitata il " + dataIt(sollIl);
       else if(gg > GIORNI_ATTESA) coda += " \u00b7 da chiudere";
     } else if(st !== "da_inviare" && dataDi(i, "risposta")){
       coda = "risposta il " + dataIt(dataDi(i, "risposta"));
@@ -767,7 +778,17 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     var azioni = "";
     if(LOCALE){
       var dopo = PROSSIMO[st], prim = "";
-      if(st === "da_inviare" || st === "non_consegnata"){
+      if(sollecitabile(i)){
+        // Primario perche' e' il compito piu' utile su questa riga in
+        // questo momento: la prima PEC e' consegnata, non ha risposto, e il
+        // secondo contatto e' dove arriva la maggior parte delle risposte.
+        // "Ha risposto" resta raggiungibile in Altro (dopo=null lo lascia
+        // nella lista invece di escluderlo come bottone primario).
+        prim = '<button class="btn btn-pec" data-pec="' + esc(chiave(i)) + '" data-sollecito="1"' +
+          ' aria-label="Sollecita ' + esc(chi) + ', consegnata da oltre ' +
+          GIORNI_SOLLECITO + ' giorni senza risposta">Sollecita</button>';
+        dopo = null;
+      } else if(st === "da_inviare" || st === "non_consegnata"){
         prim = '<button class="btn btn-pec" data-pec="' + esc(chiave(i)) + '"' +
           ' aria-label="Invia la PEC a ' + esc(chi) + '">' +
           (st === "da_inviare" ? "Invia PEC" : "Invia di nuovo") + '</button>';
@@ -1269,20 +1290,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     return fetch("/api/pec", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({lotto: p[0], n: parseInt(p[1], 10),
-                            prova: !!opz.prova, forza: !!opz.forza})
+                            prova: !!opz.prova, forza: !!opz.forza,
+                            sollecito: !!opz.sollecito})
     }).then(function(r){ return r.json(); });
   }
 
-  function anteprima(k){
+  function anteprima(k, sollecito){
     var b = app.querySelector('button[data-pec="' + k + '"]');
     if(b){ b.disabled = true; b.textContent = "leggo…"; }
-    apiPec(k, {prova: true}).then(function(d){
+    apiPec(k, {prova: true, sollecito: sollecito}).then(function(d){
       disegna();
-      mostraModale(k, d);
+      mostraModale(k, d, sollecito);
     }).catch(function(){
       disegna();
       mostraModale(k, {errore: "Server locale non raggiungibile: "
-        + "console_live.py è ancora in esecuzione?"});
+        + "console_live.py è ancora in esecuzione?"}, sollecito);
     });
   }
 
@@ -1410,14 +1432,15 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     if(b){ b.addEventListener("click", chiudiModale); b.focus(); }
   }
 
-  function mostraModale(k, d){
+  function mostraModale(k, d, sollecito){
     chiudiModale();
     var bloccata = !!(d.errore || (d.problemi && d.problemi.length));
     var v = document.createElement("div");
     v.className = "velo";
     v.innerHTML =
       '<div class="modale" role="dialog" aria-modal="true" aria-label="Conferma invio PEC">'+
-        '<h3>Invio PEC' + (d.ente ? ' &middot; ' + esc(d.ente) : '') + '</h3>'+
+        '<h3>' + (sollecito ? "Sollecito" : "Invio") + ' PEC' +
+        (d.ente ? ' &middot; ' + esc(d.ente) : '') + '</h3>'+
         (d.errore
           ? '<div class="blocco" style="margin:14px 18px">' + esc(d.errore) + '</div>'
           : '<div class="campi">'+
@@ -1451,30 +1474,36 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       c.addEventListener("click", function(){
         c.disabled = true;
         c.textContent = "invio in corso…";
-        apiPec(k, {}).then(function(r){ esitoInvio(k, r); }).catch(function(){
+        apiPec(k, {sollecito: sollecito}).then(function(r){ esitoInvio(k, r, sollecito); }).catch(function(){
           // Timeout dopo il POST: non si sa se la PEC e' partita. Non si
           // segna nulla e si manda a guardare le ricevute, perche' un
           // reinvio alla cieca crea il doppione.
           esitoInvio(k, {errore: "Il server non ha risposto in tempo. "
             + "Controlla la finestra di console_live.py e le ricevute nella "
             + "tua casella PEC prima di riprovare: il messaggio potrebbe "
-            + "essere partito."});
+            + "essere partito."}, sollecito);
         });
       });
       c.focus();
     }
   }
 
-  function esitoInvio(k, r){
+  function esitoInvio(k, r, sollecito){
     if(r.errore || (r.problemi && r.problemi.length)){
-      mostraModale(k, r);
+      mostraModale(k, r, sollecito);
       return;
     }
     // Il server ha gia' scritto in radar.invio e svuotato la sua cache:
-    // questo e' solo l'aggiornamento immediato della vista.
+    // questo e' solo l'aggiornamento immediato della vista. Un sollecito non
+    // e' un invio nuovo — lo stato resta 'inviata' — ma segna sollecitata,
+    // che e' quello che spegne di nuovo il bottone "Sollecita".
     var voce = STATO.invii[k] || {};
-    voce.stato = "inviata";
-    voce.inviata = new Date().toISOString().slice(0, 10);
+    if(sollecito){
+      voce.sollecitata = new Date().toISOString().slice(0, 10);
+    } else {
+      voce.stato = "inviata";
+      voce.inviata = new Date().toISOString().slice(0, 10);
+    }
     STATO.invii[k] = voce;
     chiudiModale();
     disegna();
@@ -1524,7 +1553,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     var se = e.target.closest("button[data-ente]");
     if(se){ schedaEnte(se.getAttribute("data-ente"), se.textContent); return; }
     var p = e.target.closest("button[data-pec]");
-    if(p && !p.disabled){ anteprima(p.getAttribute("data-pec")); return; }
+    if(p && !p.disabled){ anteprima(p.getAttribute("data-pec"), p.hasAttribute("data-sollecito")); return; }
     var b = e.target.closest("button[data-az]");
     if(b && !b.disabled) applica(b.getAttribute("data-k"), b.getAttribute("data-az"));
   });

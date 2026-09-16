@@ -48,7 +48,7 @@ h1,h2,h3{font-family:Archivo,"IBM Plex Sans",system-ui,sans-serif; text-wrap:bal
 .num{font-variant-numeric:tabular-nums}
 
 /* intestazione */
-header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px 24px; margin-bottom:26px}
+header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px 24px; margin-bottom:20px}
 h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
 .sotto{color:var(--ink-2); font-size:13.5px; margin-top:3px}
 .spia{margin-left:auto; display:flex; align-items:center; gap:7px; font-size:11.5px;
@@ -58,9 +58,9 @@ h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
 .puntino{width:7px; height:7px; border-radius:50%; background:var(--accento); flex:none}
 
 /* tessere di riepilogo */
-.tessere{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:12px; margin-bottom:30px}
+.tessere{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:10px; margin-bottom:22px}
 .tess{background:var(--surface); border:1px solid var(--rule); border-radius:5px;
-  padding:13px 15px 14px; box-shadow:var(--ombra)}
+  padding:11px 13px 12px; box-shadow:var(--ombra)}
 .tess .et{font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
   color:var(--ink-3); font-weight:600}
 .tess .v{font-family:Archivo,sans-serif; font-size:25px; font-weight:600;
@@ -68,7 +68,7 @@ h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
 .tess .n{font-size:12px; color:var(--ink-2); margin-top:1px}
 
 /* pannelli */
-.griglia{display:grid; grid-template-columns:1.55fr 1fr; gap:20px; align-items:start}
+.griglia{display:grid; grid-template-columns:1.55fr 1fr; gap:16px; align-items:start}
 @media (max-width:900px){ .griglia{grid-template-columns:1fr} }
 /* Senza questo una colonna della griglia non scende sotto la larghezza minima
    del suo contenuto — e la tabella delle scadenze ha sette colonne. Risultato:
@@ -76,9 +76,9 @@ h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
    orizzontale invece di far scorrere la sola tabella. */
 .griglia > *{min-width:0}
 .pan{background:var(--surface); border:1px solid var(--rule); border-radius:5px;
-  box-shadow:var(--ombra); overflow:hidden; margin-bottom:20px; min-width:0}
+  box-shadow:var(--ombra); overflow:hidden; margin-bottom:14px; min-width:0}
 .pan > h2{font-size:14px; font-weight:600; letter-spacing:-.01em;
-  padding:13px 16px; border-bottom:1px solid var(--rule); display:flex;
+  padding:11px 16px; border-bottom:1px solid var(--rule); display:flex;
   align-items:center; gap:10px}
 .pan > h2 .conta{margin-left:auto; font-size:11.5px; color:var(--ink-3);
   font-family:"IBM Plex Mono",monospace; font-weight:400}
@@ -87,7 +87,7 @@ h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
 /* tracker PEC */
 .lotto-t{font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
   color:var(--ink-3); font-weight:600; padding:12px 16px 6px}
-.riga{display:flex; align-items:center; gap:11px; padding:8px 16px;
+.riga{display:flex; align-items:center; gap:11px; padding:6px 16px;
   border-bottom:1px solid var(--rule)}
 .riga:last-child{border-bottom:none}
 .riga:hover{background:var(--surface-2)}
@@ -167,12 +167,12 @@ button{font:inherit; cursor:pointer}
    segno della console: la si scorre e si sa quanto lavoro c'e' oggi. */
 .oggi{background:var(--surface); border:1px solid var(--rule);
   border-left:3px solid var(--accento); border-radius:5px; box-shadow:var(--ombra);
-  padding:16px 18px 6px; margin-bottom:24px}
+  padding:14px 16px 4px; margin-bottom:16px}
 .oggi h2{font-size:19px; font-weight:700; letter-spacing:-.015em}
 .oggi .finora{font-size:12.5px; color:var(--ink-2); margin-top:3px}
 .oggi .finora b{color:var(--ink); font-weight:600}
 .compiti{list-style:none; margin:12px 0 0; padding:0}
-.compito{display:flex; gap:16px; align-items:baseline; padding:11px 0;
+.compito{display:flex; gap:16px; align-items:baseline; padding:9px 0;
   border-top:1px solid var(--rule)}
 .compito .q{font-family:Archivo,sans-serif; font-size:28px; font-weight:700;
   letter-spacing:-.03em; line-height:1; min-width:46px; text-align:right;
@@ -189,7 +189,7 @@ code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--su
 
 /* intestazione di regione: raggruppa i lotti quando diventano tanti */
 .regione-testa{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
-  padding:13px 16px 4px; border-top:1px solid var(--rule)}
+  padding:10px 16px 4px; border-top:1px solid var(--rule)}
 .pan > .aiuto + .regione-testa{border-top:none}
 .regione-testa + details.lotto{border-top:none}
 .tag-regione{font-family:"IBM Plex Mono",monospace; font-size:10.5px;
@@ -202,7 +202,7 @@ code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--su
 details.lotto{border-top:1px solid var(--rule)}
 .pan > .aiuto + details.lotto{border-top:none}
 details.lotto > summary{list-style:none; cursor:pointer; display:flex; flex-wrap:wrap;
-  align-items:baseline; gap:3px 14px; padding:13px 16px}
+  align-items:baseline; gap:3px 14px; padding:10px 16px}
 details.lotto > summary::-webkit-details-marker{display:none}
 details.lotto > summary::before{content:"\203A"; color:var(--ink-3); width:10px;
   display:inline-block; transition:transform .15s; font-size:16px; line-height:1}

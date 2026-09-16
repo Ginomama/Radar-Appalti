@@ -185,6 +185,17 @@ button{font:inherit; cursor:pointer}
 code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--surface-2);
   padding:1px 4px; border-radius:3px}
 
+/* intestazione di regione: raggruppa i lotti quando diventano tanti */
+.regione-testa{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  padding:13px 16px 4px; border-top:1px solid var(--rule)}
+.pan > .aiuto + .regione-testa{border-top:none}
+.regione-testa + details.lotto{border-top:none}
+.tag-regione{font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--accento); padding:2px 7px; border:1px solid var(--accento);
+  border-radius:2px; flex:none}
+.regione-testa .info{font-size:11.5px; color:var(--ink-3)}
+
 /* un riquadro per lotto, chiuso finche' non serve */
 details.lotto{border-top:1px solid var(--rule)}
 .pan > .aiuto + details.lotto{border-top:none}
@@ -598,12 +609,26 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     "pec-marche": "Marche \u00b7 primo lotto",
     "pec-marche-comuni": "Marche \u00b7 comuni con contratto in scadenza",
     "pec-marche-generico": "Marche \u00b7 test senza contratto",
-    "pec-sbt": "San Benedetto del Tronto"
+    "pec-sbt": "San Benedetto del Tronto",
+    "pec-lazio": "Lazio · primo lotto"
   };
   function nomeLotto(l){
     if(NOMI_LOTTI[l]) return NOMI_LOTTI[l];
     var s = String(l).replace(/^pec-?/, "").replace(/-/g, " ");
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Lotto";
+  }
+
+  // A che regione appartiene un lotto: raggruppa la lista invii quando i
+  // lotti diventano tanti — la lista piatta reggeva con due regioni, non
+  // con cinque. "pec" e' nazionale per costruzione (i 20 maggiori enti
+  // d'Italia), San Benedetto non si deduce dal suo id: le eccezioni stanno
+  // in questa mappa, tutto il resto si deriva dal nome del lotto, cosi' un
+  // domani "pec-lazio-comuni" cade da solo sotto "Lazio" senza toccare qui.
+  var REGIONE_LOTTI = {"pec": "Nazionale", "pec-sbt": "Marche"};
+  function regioneDi(l){
+    if(REGIONE_LOTTI[l]) return REGIONE_LOTTI[l];
+    var s = String(l).replace(/^pec-?/, "").split("-")[0];
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Altro";
   }
   function perLotto(){
     var g = {};
@@ -720,6 +745,17 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       if(ua !== ub) return ua < ub ? 1 : -1;
       return a < b ? -1 : 1;
     });
+
+    // Raggruppati per regione, ma l'ordine delle regioni resta quello
+    // dell'attivita': la regione del lotto piu' recente va in cima, non
+    // l'ordine alfabetico \u2014 e' li' che si sta lavorando adesso.
+    var perRegione = {}, ordineRegioni = [];
+    nomi.forEach(function(lot){
+      var r = regioneDi(lot);
+      if(!perRegione[r]){ perRegione[r] = []; ordineRegioni.push(r); }
+      perRegione[r].push(lot);
+    });
+
     var html = '<div class="pan"><h2>Invii PEC<span class="conta">' + nomi.length +
       ' lotti \u00b7 ' + DATI.invii.length + ' destinatari</span></h2>' +
       '<div class="aiuto">' + (LOCALE
@@ -728,7 +764,14 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         : 'Lo stato di ogni PEC, lotto per lotto. \u00c8 una copia da consultare: ' +
           'si aggiorna ogni mattina.') + '</div>';
 
-    nomi.forEach(function(lot){
+    ordineRegioni.forEach(function(reg){
+      var lottiReg = perRegione[reg];
+      var destReg = lottiReg.reduce(function(s, l){ return s + gruppi[l].length; }, 0);
+      html += '<div class="regione-testa"><span class="tag-regione">' + esc(reg) + '</span>' +
+        '<span class="info">' + lottiReg.length + (lottiReg.length === 1 ? ' lotto' : ' lotti') +
+        ' \u00b7 ' + destReg + ' destinatari</span></div>';
+
+      lottiReg.forEach(function(lot){
       var righe = gruppi[lot];
       var q = conteggi(righe);
       var partite = righe.filter(partita).length;
@@ -746,6 +789,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<span class="l-conti">' + pezzi.join(' \u00b7 ') + '</span>' +
         '<span class="l-dx">' + righe.length + ' destinatari</span></summary>' +
         '<div class="dentro">' + funnel(righe) + righe.map(rigaInvio).join("") + '</div></details>';
+      });
     });
     return html + '</div>';
   }

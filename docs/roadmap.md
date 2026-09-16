@@ -380,7 +380,7 @@ Sorgente in `docs/console.html`, payload in `docs/console-dati.json`.
 
 ## Sprint 4 — Robustezza (non nella lista originale, ma serve)
 
-### R9 — Job schedulati · ✅ FATTO 2026-09-06 · ⚠️ da installare
+### R9 — Job schedulati · ✅ FATTO 2026-09-06 · ✅ installato
 
 `ingestion/job.py`. Due ritmi invece di uno: le ricevute PEC arrivano in minuti, leggerle
 una volta al mese vorrebbe dire scoprire a fine mese che metà delle PEC non erano mai
@@ -412,8 +412,15 @@ sull'mtime. Se qualcosa fallisce parte un avviso Telegram, quando sarà configur
 agli IP dei cloud provider. Da qui l'Utilità di pianificazione di Windows sulla macchina
 locale.
 
-Resta da fare: `python job.py --installa` (registra le due attività in Windows; è una
-modifica permanente alla macchina, quindi la lancia Leonardo). Verifica: `--stato`.
+Installato il 2026-09-15: `Radar\radar-giornaliero` e `Radar\radar-mensile` su Utilità
+di pianificazione di Windows, LogonType=Password, non si fermano a batteria. Verifica:
+`python job.py --stato`.
+
+Il 2026-09-16 è nato un terzo task, di natura diversa — non un job a orario fisso ma un
+**servizio sempre acceso**: `Radar\radar-console-locale` fa partire `console_live.py`
+(127.0.0.1:8420) a ogni accesso a Windows e lo riavvia da solo se si ferma (fino a 999
+volte, nessun limite di durata). Prima girava come processo tenuto in vita da una
+sessione Claude, e moriva con lei — è così che si è fermato la mattina del 16/09.
 
 ### R10 — Sentinella sul drift dello schema ANAC · ✅ FATTO 2026-09-06
 

@@ -731,6 +731,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       (LOCALE ? ' \u2014 apri il lotto e premi Invia PEC su ogni riga.' : ''),
       pronte.join(" \u00b7 ")]);
 
+    // R30 — l'unico modo per sapere se il job di stanotte e' partito davvero:
+    // le bozze restano nel lotto finche' non vengono inviate, quindi il loro
+    // numero da solo non lo direbbe (potrebbero essere li' ferme da giorni).
+    var auto = DATI.auto_genera;
+    if(auto && LOCALE){
+      var oreFa = (Date.now() - new Date(auto.eseguito_il.replace(" ","T"))) / 3600000;
+      var fermo = !(oreFa >= 0) || oreFa > 30;
+      voci.push(["t-quiet", auto.generate,
+        '<b>Automatiche (R30)</b> — ' + (fermo
+          ? 'nessun giro nelle ultime 30 ore: controlla che il job giornaliero giri.'
+          : 'ultimo giro il ' + dataOraIt(auto.eseguito_il) + ': ' + auto.generate +
+            ' di ' + auto.tetto + ' bozze generate (soglia ' + auto.soglia + '+).'),
+        ""]);
+    }
+
     var ferme = con("inviata").filter(function(i){ return eta(i) > GIORNI_ATTESA; });
     if(ferme.length) voci.push(["t-quiet", ferme.length,
       '<b>' + (ferme.length === 1 ? 'invio fermo' : 'invii fermi') + ' da oltre ' +

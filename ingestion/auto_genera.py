@@ -23,6 +23,9 @@ Dipendenza: psycopg.
 """
 
 import argparse
+import json
+import os
+from datetime import datetime
 
 import psycopg
 
@@ -30,6 +33,24 @@ import genera_pec
 from push_supabase import leggi_dsn, maschera
 
 LOTTO = "pec-auto"
+QUI = os.path.dirname(os.path.abspath(__file__))
+# Stesso posto dei log di job.py, gia' fuori da git: la console legge questo
+# file per dire se il job di stanotte e' partito davvero, non solo se
+# esistono bozze (che restano li' finche' non vengono inviate).
+STATO = os.path.join(QUI, "logs", "auto-genera-stato.json")
+
+
+def scrivi_stato(soglia, tetto, generate, saltati):
+    os.makedirs(os.path.dirname(STATO), exist_ok=True)
+    corpo = {
+        "eseguito_il": datetime.now().isoformat(timespec="seconds"),
+        "soglia": soglia,
+        "tetto": tetto,
+        "generate": len(generate),
+        "candidati_scartati": len(saltati),
+    }
+    with open(STATO, "w", encoding="utf-8") as f:
+        json.dump(corpo, f, ensure_ascii=False, indent=2)
 
 
 def candidati(cur, soglia, tetto):
@@ -77,6 +98,8 @@ def main():
                     pg.rollback()
     except Exception as e:
         raise SystemExit(maschera(f"{type(e).__name__}: {e}", dsn))
+
+    scrivi_stato(a.soglia, a.tetto, generate, saltati)
 
     print(f"{len(generate)} bozze generate in '{LOTTO}' "
           f"(soglia {a.soglia}, tetto {a.tetto}):")

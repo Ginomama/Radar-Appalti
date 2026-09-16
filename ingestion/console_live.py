@@ -140,7 +140,22 @@ def raccogli(cur):
         key=lambda x: -x["tot"])[:40]
 
     D["generato"] = datetime.now().isoformat(timespec="seconds")
+    D["auto_genera"] = leggi_stato_auto_genera()
     return D
+
+
+def leggi_stato_auto_genera():
+    """L'ultimo giro di auto_genera.py (R30), se l'ha mai scritto.
+
+    E' un file, non una query: le bozze restano nel lotto finche' non
+    vengono inviate, quindi contarle non direbbe se il job di stanotte e'
+    partito davvero o se sono ferme li' da giorni."""
+    percorso = os.path.join(QUI, "logs", "auto-genera-stato.json")
+    try:
+        with open(percorso, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
 
 def dati(dsn):

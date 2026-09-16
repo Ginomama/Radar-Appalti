@@ -51,9 +51,11 @@ h1,h2,h3{font-family:Archivo,"IBM Plex Sans",system-ui,sans-serif; text-wrap:bal
 header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px 24px; margin-bottom:26px}
 h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
 .sotto{color:var(--ink-2); font-size:13.5px; margin-top:3px}
-.spia{margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12px;
-  color:var(--ink-2); font-family:"IBM Plex Mono",monospace}
-.pallino{width:7px; height:7px; border-radius:50%; background:var(--accento)}
+.spia{margin-left:auto; display:flex; align-items:center; gap:7px; font-size:11.5px;
+  color:var(--ink-2); font-family:"IBM Plex Mono",monospace;
+  border:1px solid var(--rule); border-radius:20px; padding:5px 12px 5px 10px;
+  background:var(--surface)}
+.puntino{width:7px; height:7px; border-radius:50%; background:var(--accento); flex:none}
 
 /* tessere di riepilogo */
 .tessere{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:12px; margin-bottom:30px}
@@ -253,9 +255,9 @@ td.gg .quando{display:block; font-size:10.5px; color:var(--ink-3);
   font-weight:400; margin-top:1px}
 
 /* spia di freschezza: diventa ambra e poi rossa quando i dati invecchiano */
-.spia.vecchia .pallino{background:var(--media)}
-.spia.scaduta .pallino{background:var(--alta)}
-.spia.scaduta{color:var(--alta)}
+.spia.vecchia .puntino{background:var(--media)}
+.spia.scaduta .puntino{background:var(--alta)}
+.spia.scaduta{color:var(--alta); border-color:var(--alta); background:var(--alta-bg)}
 
 @media (max-width:760px){
   .wrap{padding:20px 14px 56px}
@@ -1196,7 +1198,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         (eta > 1 ? " (" + eta + " giorni fa)" : "") +
         (eta > 2 ? " &mdash; l\u2019aggiornamento del mattino non \u00e8 partito"
                  : " &middot; si aggiorna ogni mattina");
-    return '<div class="spia'+classe+'"><span class="pallino"></span>'+testo+
+    return '<div class="spia'+classe+'"><span class="puntino"></span>'+testo+
       (STATO.salvato ? ' &middot; stato salvato ' + esc(STATO.salvato) : '')+'</div>';
   }
 

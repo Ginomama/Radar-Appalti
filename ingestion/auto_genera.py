@@ -18,6 +18,7 @@ nel piano di job.py, non qui dentro.
 Uso:
     python auto_genera.py                 # soglia 60, tetto 5
     python auto_genera.py --soglia 35 --tetto 10
+    python auto_genera.py --forza         # ignora il giro gia' fatto oggi
 
 Dipendenza: psycopg.
 """
@@ -25,7 +26,7 @@ Dipendenza: psycopg.
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import date, datetime
 
 import psycopg
 
@@ -38,6 +39,22 @@ QUI = os.path.dirname(os.path.abspath(__file__))
 # file per dire se il job di stanotte e' partito davvero, non solo se
 # esistono bozze (che restano li' finche' non vengono inviate).
 STATO = os.path.join(QUI, "logs", "auto-genera-stato.json")
+
+
+def gia_girato_oggi():
+    """Un secondo giro nello stesso giorno non e' il job di stanotte: e' un
+    rilancio a mano (verifica, test), e non deve consumare una seconda volta
+    il tetto commerciale del giorno. Trovato il 16/09: un `schtasks /run`
+    manuale per riverificare il job dopo un fix ha generato altre 5 bozze
+    reali oltre alle 5 gia' fatte quel giorno."""
+    if not os.path.exists(STATO):
+        return False
+    try:
+        with open(STATO, encoding="utf-8") as f:
+            quando = json.load(f).get("eseguito_il", "")
+        return date.fromisoformat(quando[:10]) == date.today()
+    except (ValueError, OSError):
+        return False
 
 
 def scrivi_stato(soglia, tetto, generate, saltati):
@@ -77,7 +94,13 @@ def main():
                     help="punteggio minimo (bande R18: 60 eccezionale, 35 ottimo)")
     ap.add_argument("--tetto", type=int, default=5,
                     help="numero massimo di bozze generate in un giro")
+    ap.add_argument("--forza", action="store_true",
+                    help="genera anche se un giro e' gia' stato fatto oggi")
     a = ap.parse_args()
+
+    if not a.forza and gia_girato_oggi():
+        print("gia' girato oggi: niente da fare (--forza per rilanciarlo lo stesso).")
+        return
 
     dsn = leggi_dsn()
     if not dsn:

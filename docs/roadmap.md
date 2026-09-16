@@ -936,6 +936,23 @@ Oggi: **633 enti in 52 province, 36 settimane** a questo ritmo. `--prossimo` sta
 comando esatto da lanciare, che è la differenza fra un piano e una tabella che nessuno
 traduce in azione. L'anti-duplicato di R20 salta da solo chi è già stato contattato.
 
+**2026-09-16 — prima esecuzione su scala nazionale.** Fino a qui solo Marche (casa) e
+Lazio/Piemonte (due prove). Generato un lotto per ciascuna delle 13 regioni ancora scoperte
+che compaiono nella classifica di `--province` (una provincia rappresentativa a testa, la
+più promettente): Veneto, Lombardia, Toscana, Emilia-Romagna, Sardegna, Friuli-Venezia
+Giulia, Trentino-Alto Adige, Sicilia, Puglia, Campania, Basilicata, Liguria, Valle d'Aosta.
+Quattro regioni (Umbria, Molise, Abruzzo, Calabria) non compaiono affatto nella classifica:
+nessuna provincia lì ha abbastanza lead di punteggio sufficiente da meritare un lotto —
+non trascurate, semplicemente non ci sono candidati.
+
+⚠️ **Trovati e corretti 9 doppioni fra lotti diversi**, tutti riconducibili allo stesso
+buco di R20 segnalato sopra (PEC istituzionale in un lotto, PEC di un ufficio R28 in un
+altro — la chiave non torna). Non un caso isolato: 8 dei 18 enti di `pec-lazio-2` erano
+già in `pec-lazio` sotto un'altra PEC. Rimossi (righe da `radar.invio` e file `.txt`),
+nessuno era stato spedito. Finché quel bug non è chiuso, generare un nuovo lotto per una
+provincia già toccata da un lotto precedente va controllato a mano prima di fidarsi
+dell'anti-duplicato.
+
 ### R25 — Funnel completo, non solo la risposta · ✅ FATTO 2026-09-07
 
 Il tracciamento si fermava a `risposta`, e *«tasso di risposta 8%»* non dice se il canale è

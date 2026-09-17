@@ -87,8 +87,14 @@ def dati(cur, giorni_max):
                count(*)                                       AS lead,
                round(avg(punteggio)::numeric, 1)              AS punti_medi,
                count(*) FILTER (WHERE peso_uscente <= %s)     AS uscenti_piccoli,
+               -- Doppia chiave, come l'anti-duplicato di genera_pec.py: R28
+               -- puo' scrivere in radar.invio.pec la PEC dell'ufficio, non
+               -- quella istituzionale che v_scadenze mostra qui. Contando
+               -- solo per PEC, un ente gia' scritto tramite il suo ufficio
+               -- risultava ancora "da fare" e gonfiava 'rimasti'.
                count(DISTINCT cf_ente) FILTER (
                    WHERE lower(pec) IN (SELECT lower(pec) FROM radar.invio)
+                      OR upper(ente) IN (SELECT upper(ente) FROM radar.invio)
                )                                              AS gia_fatti,
                min(cf_ente)                                   AS campione
         FROM base

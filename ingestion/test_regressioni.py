@@ -615,5 +615,133 @@ class DatiWebhookN8N(unittest.TestCase):
                          "n8n wrappa il payload HTTP dentro .body")
 
 
+# =====================================================================
+class AntiDuplicatoPerUfficio(unittest.TestCase):
+    """COMUNE DI MILANO scritto due volte perche' R28 cambia la PEC (2026-09-16).
+
+    componi() puo' sostituire la PEC istituzionale con quella dell'ufficio
+    (ufficio_di(), R28), ed e' la sostituita che finisce in radar.invio.pec.
+    L'anti-duplicato (R20) leggeva solo per PEC: un lotto successivo che
+    pesca lo stesso ente con la PEC istituzionale di v_scadenze non trovava
+    corrispondenza e lo riscriveva. Caso reale: COMUNE DI MILANO registrato
+    con siad.amministrazione@postacert.comune.milano.it (ufficio), mentre
+    v_scadenze mostra protocollo@postacert.comune.milano.it (istituzionale)
+    per lo stesso ente.
+    """
+
+    class FakeCursor:
+        """Ignora la query, ritorna righe canned: qui si testa la logica
+        Python dell'esclusione, non l'SQL vero (serve Postgres per quello)."""
+        def __init__(self, righe):
+            self.righe = righe
+
+        def execute(self, q, par=None):
+            pass
+
+        def fetchall(self):
+            return self.righe
+
+    RIGA_MILANO = ("COMUNE DI MILANO", "MI",
+                   "protocollo@postacert.comune.milano.it",
+                   "Sviluppo software", "CIG123", None, 60, 50000, None,
+                   "oggetto", "CF001")
+
+    def setUp(self):
+        import genera_pec
+        self.g = genera_pec
+
+    def test_pec_sola_non_bastava_il_bug_reale(self):
+        """La prova che il bug esiste: un dizionario tenuto solo per PEC non
+        riconosce l'ente scritto tramite la PEC del suo ufficio."""
+        pec_istituzionale = "protocollo@postacert.comune.milano.it"
+        pec_ufficio_registrata = "siad.amministrazione@postacert.comune.milano.it"
+
+        vecchio = {pec_ufficio_registrata.lower(): ("pec-piemonte-2", "inviata", None)}
+        self.assertIsNone(
+            vecchio.get(pec_istituzionale.lower()),
+            "con la chiave solo-PEC, l'ente ripescato con la PEC "
+            "istituzionale non trova la riga registrata con la PEC "
+            "dell'ufficio: e' il bug reale che ha scritto due volte a Milano")
+
+    def test_gia_contattati_tiene_anche_la_chiave_per_ente(self):
+        cur = self.FakeCursor([
+            ("siad.amministrazione@postacert.comune.milano.it",
+             "COMUNE DI MILANO", "pec-piemonte-2", "inviata", None),
+        ])
+        escludi = self.g.gia_contattati(cur, "lotto-corrente")
+        self.assertIn("e:COMUNE DI MILANO", escludi)
+        self.assertIn("p:siad.amministrazione@postacert.comune.milano.it", escludi)
+
+    def test_destinatari_esclude_per_ente_anche_se_la_pec_e_diversa(self):
+        """Il fix visto dal lato di destinatari(): l'ente pescato con la PEC
+        istituzionale va comunque escluso se e' gia' in radar.invio con la
+        PEC dell'ufficio."""
+        escludi = {"e:COMUNE DI MILANO": ("pec-piemonte-2", "inviata", None)}
+        cur = self.FakeCursor([self.RIGA_MILANO])
+        gruppi, saltati = self.g.destinatari(
+            cur, 20, None, 30, 365, 0, 500000, escludi=escludi)
+        self.assertEqual(gruppi, [])
+        self.assertEqual(len(saltati), 1)
+        self.assertEqual(saltati[0][0], "COMUNE DI MILANO")
+
+    def test_destinatari_senza_lo_scontro_non_esclude(self):
+        """Controprova: un ente davvero diverso, mai contattato, non deve
+        sparire — l'esclusione per ente non deve diventare troppo larga."""
+        cur = self.FakeCursor([self.RIGA_MILANO])
+        gruppi, saltati = self.g.destinatari(
+            cur, 20, None, 30, 365, 0, 500000,
+            escludi={"e:COMUNE DI TORINO": ("altro-lotto", "inviata", None)})
+        self.assertEqual(len(gruppi), 1)
+        self.assertEqual(saltati, [])
+
+
+# =====================================================================
+class PianoTerritorioContaGiaFatti(unittest.TestCase):
+    """'gia_fatti' in territorio.py sottostimava chi era gia' stato scritto.
+
+    Stessa causa di AntiDuplicatoPerUfficio: R28 puo' scrivere in
+    radar.invio.pec la PEC dell'ufficio, non quella istituzionale che
+    v_scadenze mostra. Contando solo per PEC, un ente gia' contattato
+    tramite il suo ufficio restava 'da fare' e gonfiava 'rimasti' nel piano
+    di copertura territoriale.
+    """
+
+    def setUp(self):
+        self.cx = sqlite3.connect(":memory:")
+        self.cx.executescript("""
+            CREATE TABLE base (cf_ente TEXT, ente TEXT, pec TEXT);
+            CREATE TABLE invio (pec TEXT, ente TEXT);
+            INSERT INTO base VALUES
+              ('CF1','COMUNE DI MILANO','protocollo@postacert.comune.milano.it'),
+              ('CF2','COMUNE DI TORINO','protocollo@postacert.comune.torino.it');
+            INSERT INTO invio VALUES
+              ('siad.amministrazione@postacert.comune.milano.it','COMUNE DI MILANO');
+        """)
+
+    def test_solo_pec_sottostima_il_bug_reale(self):
+        """La prova che il bug esiste: con la sola PEC, Milano non risulta
+        gia' contattata pur essendo gia' in radar.invio."""
+        n = self.cx.execute(
+            "SELECT count(DISTINCT cf_ente) FROM base WHERE lower(pec) IN "
+            "(SELECT lower(pec) FROM invio)").fetchone()[0]
+        self.assertEqual(n, 0)
+
+    def test_doppia_chiave_la_trova(self):
+        n = self.cx.execute(
+            "SELECT count(DISTINCT cf_ente) FROM base WHERE lower(pec) IN "
+            "(SELECT lower(pec) FROM invio) OR upper(ente) IN "
+            "(SELECT upper(ente) FROM invio)").fetchone()[0]
+        self.assertEqual(n, 1)
+
+    def test_territorio_usa_la_doppia_chiave(self):
+        """Che il codice vero lo faccia, non solo che SQL si comporti cosi'."""
+        with io.open(os.path.join(QUI, "territorio.py"), encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn(
+            "upper(ente) IN (SELECT upper(ente) FROM radar.invio)", src,
+            "gia_fatti conta solo per PEC: un ente scritto tramite la PEC "
+            "del suo ufficio (R28) risulta ancora 'da fare'")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

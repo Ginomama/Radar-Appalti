@@ -181,16 +181,29 @@ def ufficio_di(cf_ente):
 
 
 def gia_contattati(cur, lotto_corrente):
-    """Le PEC gia' presenti in un ALTRO lotto, con lotto e stato.
+    """Le PEC e gli enti gia' presenti in un ALTRO lotto, con lotto e stato.
 
-    La chiave e' la casella, non l'ente: e' li' che arriva il messaggio, e due
-    lotti diversi possono chiamare lo stesso ente con nomi diversi. Il lotto
-    corrente si esclude perche' rigenerarlo deve poter riscrivere le sue righe.
+    Doppia chiave, "p:"+pec e "e:"+ENTE: componi() puo' sostituire la PEC
+    istituzionale con quella dell'ufficio (R28, ufficio_di()), ed e' quella
+    sostituita che finisce in radar.invio.pec. Se l'anti-duplicato guardasse
+    solo la PEC, un ente gia' scritto tramite il suo ufficio risulterebbe
+    "mai contattato" la volta dopo che lo si pesca con la PEC istituzionale
+    che v_scadenze mostra — stesso ente, due caselle diverse. Stessa doppia
+    chiave gia' usata da scheda_ente() in console_live.py e dalla console
+    (docs/console.html), stesso motivo. Il lotto corrente si esclude perche'
+    rigenerarlo deve poter riscrivere le sue righe.
     """
     cur.execute("""
-        SELECT lower(pec), lotto, stato, inviata_il
+        SELECT lower(pec), upper(ente), lotto, stato, inviata_il
         FROM radar.invio WHERE lotto <> %s""", (lotto_corrente,))
-    return {p: (lot, st, quando) for p, lot, st, quando in cur.fetchall()}
+    mappa = {}
+    for pec, ente, lot, st, quando in cur.fetchall():
+        voce = (lot, st, quando)
+        if pec:
+            mappa["p:" + pec] = voce
+        if ente:
+            mappa["e:" + ente] = voce
+    return mappa
 
 
 def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
@@ -241,9 +254,14 @@ def destinatari(cur, limite, province, gg_min, gg_max, imp_min, imp_max,
     saltati = []
     if escludi:
         for pec in list(per_ente):
-            voce = escludi.get((pec or "").lower())
+            ente_nome = per_ente[pec][0][0]
+            # Doppia chiave (vedi gia_contattati): la PEC del gruppo e' quella
+            # istituzionale di v_scadenze, ma l'ente potrebbe essere gia'
+            # stato scritto tramite la PEC del suo ufficio (R28).
+            voce = (escludi.get("p:" + (pec or "").lower())
+                    or escludi.get("e:" + (ente_nome or "").upper()))
             if voce:
-                saltati.append((per_ente[pec][0][0], pec, voce))
+                saltati.append((ente_nome, pec, voce))
                 del per_ente[pec]
 
     ordinati = sorted(per_ente.values(),
@@ -422,7 +440,10 @@ def destinatari_generici(regione, solo_cf, limite, escludi):
         righe = [per_cf[cf] for cf in solo_cf if cf in per_cf]
     fuori, saltati = [], []
     for r in righe:
-        voce = (escludi or {}).get(r[2].lower())
+        # Stessa doppia chiave di destinatari(): anche qui la PEC puo' essere
+        # gia' stata sostituita con quella dell'ufficio in un lotto precedente.
+        voce = (escludi or {}).get("p:" + r[2].lower()) or \
+               (escludi or {}).get("e:" + (r[0] or "").upper())
         if voce:
             saltati.append((r[0], r[2], voce))
         else:

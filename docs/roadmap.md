@@ -1103,17 +1103,52 @@ APERTO, E NON E' UN LAVORO
                                    da docs/liceita.md §7
 ```
 
-**La domanda vera, adesso.** La roadmap tecnica e' finita. Restano due cose, e nessuna
-delle due e' codice — la terza, **Avast**, era la stessa intercettazione HTTPS gia' nota
-per Python/winget su questa macchina: risolta il 16/09 con un'eccezione di dominio per
-`imaps.pec.aruba.it`, R15 e R16 sono verificati e girano da soli.
+**La domanda vera, adesso.** La roadmap tecnica e' quasi finita. **Avast** ha
+intercettato di nuovo `imaps.pec.aruba.it` il 16/09 nonostante l'eccezione messa lo
+stesso giorno — risolto una seconda volta il 17/09; R15/R16 sono verificati e girano
+da soli, ma la stabilita' dell'eccezione va tenuta d'occhio.
 
-1. **26 consegnate, 0 risposte prima del 15/09** — poi ERDIS ha risposto, con call
-   fissata. R28 ha escluso che si risolva con un ufficio diverso (2,7% di copertura
-   utile); resta il nome del responsabile, che e' una decisione sul trattamento dei dati
-   personali (`docs/liceita.md` §7).
-2. **Le referenze** per l'allegato di R21. Due o tre righe vere: nessuno puo' scriverle
+**26 PEC inviate, 2 risposte** (ERDIS con call fissata; San Benedetto del Tronto,
+17/09, telefonata — confermano entrambe che R28 funziona: la PEC arriva ed e'
+instradata internamente).
+
+## Checklist verso il 100% — 2026-09-17
+
+### A. Decisioni non tecniche (bloccano il resto, solo Leonardo)
+1. **Parere legale sulla licenza ANAC** (CC BY-SA 4.0, ShareAlike) — `liceita.md` §6
+   domanda 1: puo' cambiare il modello di business.
+2. **Nome del RTD nella PEC** (R28 parte 2) — `liceita.md` §7, tre domande (base
+   giuridica, informativa, minimizzazione). Via consigliata: nominare la persona
+   scrivendo comunque alla PEC istituzionale, ~1 ora di lavoro una volta decisa.
+3. **Referenze vere** per l'allegato di R21 — due o tre righe, nessuno puo' scriverle
    al posto di chi le ha.
+
+### B. Configurazione one-off (10-30 min, sblocca automazioni gia' pronte)
+4. Bot Telegram (`docs/setup-notifiche.md` passo 1) — sblocca la notifica giornaliera
+   lead nuovi, oggi sempre "non configurato" nei log del giornaliero.
+5. Password app SMTP per il digest email settimanale (`setup-notifiche.md` passo 2).
+6. Rigenerare l'API key di n8n (Settings → n8n API) — quella attuale da'
+   `AUTHENTICATION_ERROR`.
+7. Credenziali Postgres + Telegram nel Credentials Manager n8n — attiva "Allerta TED"
+   (workflow gia' pronto e validato, mai acceso).
+
+### C. Verifiche tecniche residue
+8. Chiudere R20 — il fix anti-duplicato (PEC istituzionale vs PEC d'ufficio R28) e' in
+   lavorazione da oltre 24 ore in un'altra sessione: verificare se e' bloccata.
+9. Riaudit doppioni dopo che R20 chiude — l'ultimo controllo (pulito) era prima del fix.
+10. Drill di ripristino backup vero su un ambiente non di produzione — oggi verificata
+    solo l'integrita' dei file (`backup.py --verifica`), non un ripristino end-to-end.
+
+### D. Prodotto — non ancora costruito
+11. Vista "per ente" che aggrega gli invii sparsi su piu' lotti in una scheda sola.
+12. Grafico funnel nel tempo (invii→risposte→call per settimana).
+13. R26 GoHighLevel — rinviato finche' non c'e' una seconda persona o 20+ conversazioni
+    aperte insieme.
+
+### E. Esecuzione — lavoro commerciale, non codice
+14. Proseguire R27: 633 enti in 52 province, ~18/settimana, ~36 settimane per coprire
+    il piano attuale.
+15. Lavorare le risposte in arrivo (San Benedetto, ERDIS) fino a call/offerta/vendita.
 
 
 **Perché in quest'ordine.**

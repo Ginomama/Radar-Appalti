@@ -180,6 +180,20 @@ personale è nello schema. La misura c'è, il trattamento no.
 via 3 (nominare la persona nella PEC istituzionale, senza conservarne l'email), il
 lavoro tecnico è di circa un'ora e il trattamento resta minimo.
 
+### ✅ Decisione presa il 2026-09-17 — via 3
+
+Confermato con Leonardo: si nomina il RTD nel testo, si scrive comunque alla PEC
+istituzionale, non si conserva la sua email da nessuna parte. Base giuridica:
+legittimo interesse (il RTD è pubblicato proprio perché raggiungibile su questi
+temi, CAD art. 17). Informativa: coperta dalla riga di fonte/licenza già presente in
+ogni PEC di `genera_pec.py`. Minimizzazione: `ingestion/rtd.py` restituisce solo
+nome e cognome, mai scritti in una tabella — né SQLite né Supabase.
+
+Costruito e verificato lo stesso giorno: copertura **92,7%** confermata dal vivo
+(17.346 su 18.711 enti), identica alla misura di settembre. Resta da agganciare a
+`genera_pec.py` (`rtd.nome_di(cf_ente)` accanto al nome ufficio già in testa
+all'oggetto) — rimandato perché quel file era in lavorazione altrove per R20.
+
 ## 8. Il lotto senza contratto — 15 settembre 2026
 
 Fin qui ogni PEC citava un contratto in scadenza preso da ANAC. È quello che rende il

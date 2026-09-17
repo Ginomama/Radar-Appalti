@@ -1117,9 +1117,10 @@ instradata internamente).
 ### A. Decisioni non tecniche (bloccano il resto, solo Leonardo)
 1. **Parere legale sulla licenza ANAC** (CC BY-SA 4.0, ShareAlike) — `liceita.md` §6
    domanda 1: puo' cambiare il modello di business.
-2. **Nome del RTD nella PEC** (R28 parte 2) — `liceita.md` §7, tre domande (base
-   giuridica, informativa, minimizzazione). Via consigliata: nominare la persona
-   scrivendo comunque alla PEC istituzionale, ~1 ora di lavoro una volta decisa.
+2. ✅ **Nome del RTD nella PEC** (R28 parte 2) — **deciso il 17/09**: via 3, nominare
+   senza conservare l'email (`liceita.md` §7). `ingestion/rtd.py` costruito e
+   verificato (92,7% di copertura confermata dal vivo). Resta solo l'aggancio a
+   `genera_pec.py`, in coda dietro al fix R20 sullo stesso file.
 3. **Referenze vere** per l'allegato di R21 — due o tre righe, nessuno puo' scriverle
    al posto di chi le ha.
 

@@ -1143,11 +1143,12 @@ instradata internamente).
    Rivisto il diff, committato e pushato (`30d5f4d`).
 9. ✅ **Riaudit doppioni dopo R20** — **fatto il 17/09**: 205 righe in `radar.invio`,
    nessun doppione per PEC ne' per ente su lotti diversi.
-10. Drill di ripristino backup vero su un ambiente non di produzione — bloccato:
-    servirebbe un branch Supabase (costo reale, $0.01344/ora), e il classificatore
-    di sicurezza della sessione rifiuta la conferma spesa anche con l'ok dell'utente
-    in chat. Da fare dalla dashboard Supabase direttamente, o in una sessione dove
-    l'approvazione arriva in modo diretto.
+10. ✅ **Drill di ripristino backup vero** — **fatto il 17/09**: il branch Supabase
+    era dietro un upgrade di piano (non solo il costo orario), quindi si e' usato
+    un PostgreSQL 17 locale come ambiente non di produzione (gratis, stessa major
+    version del Supabase reale). Backup vero (209 righe, 23 lotti) -> ripristino
+    sul locale -> verificato che i dati coincidano. Il meccanismo di
+    `backup.py --ripristina` e' provato end-to-end, non solo sulla carta.
 
 ### D. Prodotto — non ancora costruito
 11. ✅ **Vista "per ente"** — **verificato il 17/09**: gia' coperta dalla scheda R19

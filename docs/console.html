@@ -906,12 +906,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         prim = '<button class="btn btn-avanti" data-az="' + dopo + '" data-k="' + esc(chiave(i)) + '"' +
           ' aria-label="' + esc(AZIONE[dopo]) + ': ' + esc(chi) + '">' + esc(AZIONE[dopo]) + '</button>';
       }
+      // "Rileggi" — il testo esatto mandato resta nel file .txt sul disco,
+      // che apiPec(prova:true) rilegge sempre (funziona anche a riga gia'
+      // inviata: il "problema" restituito e' solo "gia' inviata", e la
+      // modale lo mostra come sola lettura). Senza, l'unico modo per
+      // rivedere cosa si e' scritto era andare a cercarlo sulla webmail PEC.
+      var rileggi = st !== "da_inviare"
+        ? '<button class="btn" data-pec="' + esc(chiave(i)) + '"' +
+          ' aria-label="Rileggi la PEC mandata a ' + esc(chi) + '">Rileggi</button>'
+        : "";
       var opz = TUTTE.filter(function(s){
         if(s === st || (s === dopo && st !== "da_inviare")) return false;
         if(st === "da_inviare") return s === "inviata";
         return s !== "inviata";
       });
-      azioni = '<span class="azioni">' + prim + (opz.length
+      azioni = '<span class="azioni">' + prim + rileggi + (opz.length
         ? '<select class="altro" data-k="' + esc(chiave(i)) + '"' +
           ' aria-label="Altre azioni per ' + esc(chi) + '">' +
           '<option value="">Altro\u2026</option>' + opz.map(function(s){

@@ -796,6 +796,12 @@ Anche la seconda è onestamente piccola: il 95% degli enti dichiara *«Ufficio p
 transizione al Digitale»*, che ogni PA ha dovuto istituire per il CAD. Corretto, non
 distintivo. Costa zero e si misura sul prossimo lotto.
 
+⚠️ **Prima conferma reale, 2026-09-17**: il Comune di San Benedetto del Tronto ha
+chiamato — la persona in segreteria smista l'email all'ufficio "trasformazione
+tecnologica". È la prova che la strada scelta (nome dell'ufficio in oggetto, PEC
+istituzionale) funziona davvero, non solo sulla carta: la PEC arriva, viene letta e
+instradata a chi deve vederla. Segnato come `risposta` su `pec-sbt#1`.
+
 #### La terza strada è ferma, ed è una decisione, non un lavoro
 
 Il 92,7% degli enti ha un RTD con nome e email nel dataset IndicePA — pubblicato per

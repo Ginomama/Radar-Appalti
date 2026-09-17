@@ -1134,13 +1134,13 @@ instradata internamente).
    solo interattivo come gli altri due — richiede il PC acceso e collegato).
 5. Password app SMTP per il digest email settimanale (`setup-notifiche.md` passo 2) —
    rimandata per scelta di Leonardo ("fai solo telegram per ora").
-6. Rigenerare l'API key di n8n (Settings → n8n API) — **chiave nuova verificata
-   funzionante** (HTTP 200 diretto su n8n) e gia' salvata in `.mcp.json`, ma la
-   connessione MCP di questa sessione gira su un processo partito prima
-   dell'aggiornamento: serve un riavvio della sessione per ripartire pulita.
-7. Credenziali Postgres + Telegram nel Credentials Manager n8n — attiva "Allerta TED"
-   (workflow gia' pronto e validato, mai acceso). Bloccata da 6: serve la
-   connessione MCP funzionante per toccare Credentials Manager.
+6. ✅ **Rigenerare l'API key di n8n** — **fatto il 17/09**: nuova chiave verificata
+   (HTTP 200 diretto su n8n), salvata in `.mcp.json`, connessione MCP funzionante
+   dopo il riavvio della sessione.
+7. ❌ **"Allerta TED"** — depennato il 17/09: cercato in tutti i 177 workflow
+   dell'istanza (incluso gli archiviati), non esiste e non e' mai esistito.
+   Non e' un "accendilo": se serve, e' un workflow nuovo da progettare e
+   costruire da zero, non piu' un item da 10-30 minuti della sezione B.
 
 ### C. Verifiche tecniche residue
 8. ✅ **Chiudere R20** — **fatto il 17/09**: la sessione che lavorava il fix non era

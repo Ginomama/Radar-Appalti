@@ -1129,13 +1129,18 @@ instradata internamente).
    `PEC_ALLEGATO=1`.
 
 ### B. Configurazione one-off (10-30 min, sblocca automazioni gia' pronte)
-4. Bot Telegram (`docs/setup-notifiche.md` passo 1) — sblocca la notifica giornaliera
-   lead nuovi, oggi sempre "non configurato" nei log del giornaliero.
-5. Password app SMTP per il digest email settimanale (`setup-notifiche.md` passo 2).
-6. Rigenerare l'API key di n8n (Settings → n8n API) — quella attuale da'
-   `AUTHENTICATION_ERROR`.
+4. ✅ **Bot Telegram** — **fatto il 17/09**: token e chat id in `.env.local`, invio di
+   prova ricevuto, job "Radar - alert Telegram" installato (ogni giorno 08:00,
+   solo interattivo come gli altri due — richiede il PC acceso e collegato).
+5. Password app SMTP per il digest email settimanale (`setup-notifiche.md` passo 2) —
+   rimandata per scelta di Leonardo ("fai solo telegram per ora").
+6. Rigenerare l'API key di n8n (Settings → n8n API) — **chiave nuova verificata
+   funzionante** (HTTP 200 diretto su n8n) e gia' salvata in `.mcp.json`, ma la
+   connessione MCP di questa sessione gira su un processo partito prima
+   dell'aggiornamento: serve un riavvio della sessione per ripartire pulita.
 7. Credenziali Postgres + Telegram nel Credentials Manager n8n — attiva "Allerta TED"
-   (workflow gia' pronto e validato, mai acceso).
+   (workflow gia' pronto e validato, mai acceso). Bloccata da 6: serve la
+   connessione MCP funzionante per toccare Credentials Manager.
 
 ### C. Verifiche tecniche residue
 8. ✅ **Chiudere R20** — **fatto il 17/09**: la sessione che lavorava il fix non era

@@ -743,5 +743,45 @@ class PianoTerritorioContaGiaFatti(unittest.TestCase):
             "del suo ufficio (R28) risulta ancora 'da fare'")
 
 
+# =====================================================================
+class NomeRTDNellaPEC(unittest.TestCase):
+    """A2 — il nome del RTD nel corpo della PEC (docs/liceita.md §7, deciso
+    il 17/09/2026). a_chi_di() e' pura apposta: la scelta fra nome, ufficio,
+    entrambi o niente non deve dipendere da rete o database per essere
+    testata."""
+
+    def setUp(self):
+        import genera_pec
+        self.g = genera_pec
+
+    def test_nome_e_ufficio_entrambi(self):
+        r = self.g.a_chi_di("Ufficio Transizione Digitale", "Giuseppe Coccia")
+        self.assertIn("Giuseppe Coccia", r)
+        self.assertIn("Ufficio Transizione Digitale", r)
+
+    def test_solo_nome_dice_il_ruolo(self):
+        r = self.g.a_chi_di(None, "Giuseppe Coccia")
+        self.assertIn("Giuseppe Coccia", r)
+        self.assertIn("Responsabile della Transizione al Digitale", r)
+
+    def test_solo_ufficio_come_prima_di_R28(self):
+        r = self.g.a_chi_di("Ufficio Transizione Digitale", None)
+        self.assertIn("Ufficio Transizione Digitale", r)
+
+    def test_ne_nome_ne_ufficio_niente_riga(self):
+        self.assertEqual(self.g.a_chi_di(None, None), "")
+
+    def test_rtd_di_non_esplode_se_rtd_py_non_disponibile(self):
+        """Il nome e' un miglioramento, non un requisito: un errore nel
+        recupero del nome non deve impedire di scrivere la PEC."""
+        vecchia = self.g._CACHE_RTD
+        self.g._CACHE_RTD = {"CF_DI_PROVA": "Mario Rossi"}
+        try:
+            self.assertEqual(self.g.rtd_di("CF_DI_PROVA"), "Mario Rossi")
+            self.assertIsNone(self.g.rtd_di("CF_CHE_NON_ESISTE"))
+        finally:
+            self.g._CACHE_RTD = vecchia
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

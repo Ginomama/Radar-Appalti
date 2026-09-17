@@ -180,6 +180,52 @@ def ufficio_di(cf_ente):
     return (des or "").strip() or None, diversa
 
 
+_CACHE_RTD = None
+
+
+def rtd_di(cf_ente):
+    """Nome del Responsabile della Transizione al Digitale per l'ente, o
+    None (docs/liceita.md §7, deciso il 17/09/2026 — via 3: nominare la
+    persona senza conservarne il recapito).
+
+    Cache in-processo: un solo download e parse dell'XLSX IndicePA per
+    l'intero run (rtd.indice() scarica un file da qualche MB), non uno per
+    PEC — genera_pec.py puo' comporre decine di messaggi in una chiamata
+    sola. Se rtd.py non e' disponibile o IndicePA non risponde, si scrive
+    comunque: il nome e' un miglioramento sul destinatario, non un
+    requisito per mandare la PEC.
+    """
+    global _CACHE_RTD
+    if _CACHE_RTD is None:
+        try:
+            import rtd
+            _CACHE_RTD = rtd.indice()
+        except Exception:
+            _CACHE_RTD = {}
+    return _CACHE_RTD.get(cf_ente)
+
+
+def a_chi_di(uff, rtd_nome):
+    """La riga 'Alla cortese attenzione di' del corpo — mai l'oggetto: il
+    nome del RTD e' dato personale, e va nel testo dove c'e' gia' la
+    consueta informativa di fine PEC (fonte, licenza, cancellazione), non
+    in una riga che si legge anche solo aprendo la lista della posta.
+
+    Nominare la persona (quando IndicePA la dichiara) sposta la PEC dal
+    protocollo generale a chi decide, piu' di quanto faccia il solo nome
+    dell'ufficio (R28); dove manca il nome, resta l'ufficio come prima.
+    """
+    if rtd_nome and uff:
+        chi = f"{rtd_nome} — {uff}"
+    elif rtd_nome:
+        chi = f"{rtd_nome}, Responsabile della Transizione al Digitale"
+    elif uff:
+        chi = uff
+    else:
+        return ""
+    return f"\nAlla cortese attenzione di: {chi}\n"
+
+
 def gia_contattati(cur, lotto_corrente):
     """Le PEC e gli enti gia' presenti in un ALTRO lotto, con lotto e stato.
 
@@ -326,7 +372,7 @@ def componi(contratti):
         oggetto = f"{uff[:52]} — " + oggetto.replace(
             "Richiesta iscrizione elenco operatori economici — servizi "
             "informatici", "iscrizione elenco operatori economici, servizi IT")
-    a_chi = f"\nAlla cortese attenzione di: {uff}\n" if uff else ""
+    a_chi = a_chi_di(uff, rtd_di(cf))
 
     corpo = f"""Spett.le {ente}
 {a_chi}
@@ -461,7 +507,7 @@ def componi_generico(riga, regione=None):
     if uff:
         oggetto = (f"{uff[:52]} — iscrizione elenco operatori economici, "
                    f"servizi IT")
-    a_chi = f"\nAlla cortese attenzione di: {uff}\n" if uff else ""
+    a_chi = a_chi_di(uff, rtd_di(cf))
     insegna = (f"\nche opera con il nome commerciale {MITTENTE['insegna']},"
                if MITTENTE.get("insegna") else "")
 

@@ -1132,8 +1132,8 @@ instradata internamente).
 4. ✅ **Bot Telegram** — **fatto il 17/09**: token e chat id in `.env.local`, invio di
    prova ricevuto, job "Radar - alert Telegram" installato (ogni giorno 08:00,
    solo interattivo come gli altri due — richiede il PC acceso e collegato).
-5. Password app SMTP per il digest email settimanale (`setup-notifiche.md` passo 2) —
-   rimandata per scelta di Leonardo ("fai solo telegram per ora").
+5. ❌ **Digest email settimanale** — depennato il 17/09, scelta esplicita di
+   Leonardo: solo Telegram, niente digest via email. Non e' un rimando, e' un no.
 6. ✅ **Rigenerare l'API key di n8n** — **fatto il 17/09**: nuova chiave verificata
    (HTTP 200 diretto su n8n), salvata in `.mcp.json`, connessione MCP funzionante
    dopo il riavvio della sessione.

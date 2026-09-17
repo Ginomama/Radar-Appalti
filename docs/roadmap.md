@@ -1121,8 +1121,11 @@ instradata internamente).
    senza conservare l'email (`liceita.md` §7). `ingestion/rtd.py` costruito e
    verificato (92,7% di copertura confermata dal vivo). Resta solo l'aggancio a
    `genera_pec.py`, in coda dietro al fix R20 sullo stesso file.
-3. **Referenze vere** per l'allegato di R21 — due o tre righe, nessuno puo' scriverle
-   al posto di chi le ha.
+3. ✅ **Referenze vere** per l'allegato di R21 — **fatto il 17/09**: una referenza reale
+   (gestionale Perfettibile Pro, dal contratto firmato), risultato qualitativo — nessun
+   numero misurato disponibile, e le stime proposte non sono state usate perche' non
+   confermate dal cliente. `presentazione.py --controlla` ora passa; pronto con
+   `PEC_ALLEGATO=1`.
 
 ### B. Configurazione one-off (10-30 min, sblocca automazioni gia' pronte)
 4. Bot Telegram (`docs/setup-notifiche.md` passo 1) — sblocca la notifica giornaliera

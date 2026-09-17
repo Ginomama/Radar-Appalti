@@ -1144,8 +1144,12 @@ instradata internamente).
     solo l'integrita' dei file (`backup.py --verifica`), non un ripristino end-to-end.
 
 ### D. Prodotto — non ancora costruito
-11. Vista "per ente" che aggrega gli invii sparsi su piu' lotti in una scheda sola.
-12. Grafico funnel nel tempo (invii→risposte→call per settimana).
+11. ✅ **Vista "per ente"** — **verificato il 17/09**: gia' coperta dalla scheda R19
+    esistente (`schedaEnte`/`mostraScheda` in console.html), che aggrega gli invii su
+    piu' lotti per PEC/ente. Non serviva costruire niente, solo controllare che ci fosse.
+12. ✅ **Grafico funnel nel tempo** — **fatto il 17/09**: pannello "Il funnel nel tempo"
+    in console.html, coorti per settimana ISO di invio attraverso tutti i lotti
+    (diverso dal funnel per singolo lotto di R25). Verificato dal vivo.
 13. R26 GoHighLevel — rinviato finche' non c'e' una seconda persona o 20+ conversazioni
     aperte insieme.
 

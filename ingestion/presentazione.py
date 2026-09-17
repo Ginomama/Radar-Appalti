@@ -34,10 +34,20 @@ NOME = "flowline-presentazione.pdf"
 
 SEGNAPOSTO = re.compile(r"\[DA COMPILARE[^\]]*\]")
 
-# Le referenze. Vuoto di proposito: vanno scritte da chi le ha, non generate.
-# Ogni voce e' (ente o settore, cosa e' stato fatto, risultato misurabile).
+# Le referenze. Ogni voce e' (ente o settore, cosa e' stato fatto, risultato).
+# Il terzo campo e' un numero misurato quando c'e', altrimenti resta
+# qualitativo ma vero — mai un numero indovinato per sembrare piu' forte:
+# un allegato mandato a un ente pubblico non si puo' correggere dopo, e un
+# risultato inventato che il cliente stesso smentirebbe costa piu' di uno
+# onesto ma senza cifra. Vedi la voce di lavoro in docs/roadmap.md (R21).
 REFERENZE = [
-    # ("Comune di ...", "automazione del protocollo", "3 ore/settimana"),
+    ("Azienda leader nel settore della ventilazione industriale",
+     "gestionale su misura per approvvigionamento, magazzino e commesse: "
+     "preventivi automatizzati con comparatore fornitori, ordini di "
+     "acquisto, tracciamento consegne e gestione non conformita' "
+     "conforme ISO 9001",
+     "sostituisce email sparse e fogli Excel con un flusso unico e "
+     "tracciabile, da richiesta materiali a chiusura commessa"),
 ]
 
 # Le domande che un RUP fa davvero, nell'ordine in cui le fa. Sono la parte

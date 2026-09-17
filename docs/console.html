@@ -524,6 +524,30 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     return (s && s[campo]) || i[campo];
   }
 
+  // Settimana ISO 8601 di una data "AAAA-MM-GG", e il lunedi' corrispondente
+  // per l'etichetta. Serve solo al funnel nel tempo (D12): raggruppa le
+  // coorti per la settimana in cui la PEC e' partita, non per quando sono
+  // arrivate le risposte, cosi' ogni riga confronta lo stesso punto di
+  // partenza anche se le risposte arrivano settimane dopo.
+  function settimanaDi(dataStr){
+    var d = new Date(dataStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    var inizioAnno = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    var sett = Math.ceil((((d - inizioAnno) / 86400000) + 1) / 7);
+    return d.getUTCFullYear() + "-W" + (sett < 10 ? "0" : "") + sett;
+  }
+  function lunediDi(chiaveSettimana){
+    var p = chiaveSettimana.split("-W"), anno = +p[0], sett = +p[1];
+    var gen4 = new Date(Date.UTC(anno, 0, 4));
+    var lunPrima = new Date(gen4);
+    lunPrima.setUTCDate(gen4.getUTCDate() - ((gen4.getUTCDay() || 7) - 1));
+    var d = new Date(lunPrima);
+    d.setUTCDate(lunPrima.getUTCDate() + (sett - 1) * 7);
+    var gg = String(d.getUTCDate()).padStart(2, "0");
+    var mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    return gg + "/" + mm;
+  }
+
   // Cumulativi: chi ha una call fissata ha anche risposto. Contare solo chi e'
   // fermo su "ha risposto" dava "0 risposte" accanto a un funnel che ne
   // mostrava una: due numeri diversi per la stessa cosa, sulla stessa pagina.
@@ -1016,6 +1040,38 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
            inviate + ' inviate</b> (' + t + '%). ' + letto;
   }
 
+  /* -------------------------------------------------- D12: funnel nel tempo */
+  // Non il funnel di un lotto (R25, sopra): questo attraversa tutti i lotti
+  // e raggruppa per settimana di invio, per vedere se il canale migliora o
+  // peggiora settimana su settimana, non solo il totale a oggi.
+  function funnelTempo(){
+    var righe = (DATI.invii || []).filter(function(i){ return dataDi(i, "inviata"); });
+    if(!righe.length) return "";
+    var per = {};
+    righe.forEach(function(i){
+      var k = settimanaDi(dataDi(i, "inviata"));
+      (per[k] = per[k] || []).push(i);
+    });
+    var chiavi = Object.keys(per).sort();
+    var max = Math.max.apply(null, chiavi.map(function(k){ return per[k].length; }));
+    var righeHtml = chiavi.map(function(k){
+      var r = per[k];
+      var inviate = r.length;
+      var risposte = r.filter(rispose).length;
+      var call = r.filter(function(i){ return dataDi(i, "discovery_fissata"); }).length;
+      var pct = inviate ? Math.round(risposte / inviate * 100) : 0;
+      return '<div class="cat"><div class="cat-r"><span>settimana del '+lunediDi(k)+'</span>'+
+        '<span class="n">'+inviate+' inviate &middot; '+risposte+' risp. ('+pct+'%) &middot; '+
+        call+' call</span></div>'+
+        '<div class="barra"><i style="width:'+(inviate/max*100).toFixed(1)+'%"></i></div></div>';
+    }).join("");
+    return '<div class="pan"><h2>Il funnel nel tempo<span class="conta">per settimana di invio</span></h2>'+
+      '<div class="aiuto">Ogni riga è la coorte di PEC partite quella settimana: '+
+      'quante hanno risposto e quante sono arrivate a una call, ad oggi — le '+
+      'risposte possono ancora arrivare per le settimane più recenti.</div>'+
+      '<div class="corpo">'+righeHtml+'</div></div>';
+  }
+
   /* ------------------------------------------------------- categorie */
   function categorie(){
     var max = Math.max.apply(null, DATI.categorie.map(function(c){ return c.n; }));
@@ -1345,7 +1401,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       spia()+'</header>'+
       daFare()+
       tabella()+
-      '<div class="griglia"><div>'+lotti()+'</div>'+
+      '<div class="griglia"><div>'+funnelTempo()+lotti()+'</div>'+
       '<div>'+categorie()+territorio()+competitor()+'</div></div>'+
       '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
       '<footer>Fonti: ANAC open data (CC BY-SA 4.0) e IndicePA (CC BY 4.0). '+

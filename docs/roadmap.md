@@ -1117,10 +1117,11 @@ instradata internamente).
 ### A. Decisioni non tecniche (bloccano il resto, solo Leonardo)
 1. **Parere legale sulla licenza ANAC** (CC BY-SA 4.0, ShareAlike) — `liceita.md` §6
    domanda 1: puo' cambiare il modello di business.
-2. ✅ **Nome del RTD nella PEC** (R28 parte 2) — **deciso il 17/09**: via 3, nominare
+2. ✅ **Nome del RTD nella PEC** (R28 parte 2) — **fatto il 17/09**: via 3, nominare
    senza conservare l'email (`liceita.md` §7). `ingestion/rtd.py` costruito e
-   verificato (92,7% di copertura confermata dal vivo). Resta solo l'aggancio a
-   `genera_pec.py`, in coda dietro al fix R20 sullo stesso file.
+   agganciato a `genera_pec.py` (`a_chi_di()`/`rtd_di()`): il nome, quando c'e', va
+   nella riga "Alla cortese attenzione di" del corpo. 5 test, verificato dal vivo su
+   San Benedetto del Tronto.
 3. ✅ **Referenze vere** per l'allegato di R21 — **fatto il 17/09**: una referenza reale
    (gestionale Perfettibile Pro, dal contratto firmato), risultato qualitativo — nessun
    numero misurato disponibile, e le stime proposte non sono state usate perche' non
@@ -1137,11 +1138,16 @@ instradata internamente).
    (workflow gia' pronto e validato, mai acceso).
 
 ### C. Verifiche tecniche residue
-8. Chiudere R20 — il fix anti-duplicato (PEC istituzionale vs PEC d'ufficio R28) e' in
-   lavorazione da oltre 24 ore in un'altra sessione: verificare se e' bloccata.
-9. Riaudit doppioni dopo che R20 chiude — l'ultimo controllo (pulito) era prima del fix.
-10. Drill di ripristino backup vero su un ambiente non di produzione — oggi verificata
-    solo l'integrita' dei file (`backup.py --verifica`), non un ripristino end-to-end.
+8. ✅ **Chiudere R20** — **fatto il 17/09**: la sessione che lavorava il fix non era
+   piu' attiva, ma le modifiche erano coerenti e testate (7 test, 51/51 verdi).
+   Rivisto il diff, committato e pushato (`30d5f4d`).
+9. ✅ **Riaudit doppioni dopo R20** — **fatto il 17/09**: 205 righe in `radar.invio`,
+   nessun doppione per PEC ne' per ente su lotti diversi.
+10. Drill di ripristino backup vero su un ambiente non di produzione — bloccato:
+    servirebbe un branch Supabase (costo reale, $0.01344/ora), e il classificatore
+    di sicurezza della sessione rifiuta la conferma spesa anche con l'ok dell'utente
+    in chat. Da fare dalla dashboard Supabase direttamente, o in una sessione dove
+    l'approvazione arriva in modo diretto.
 
 ### D. Prodotto — non ancora costruito
 11. ✅ **Vista "per ente"** — **verificato il 17/09**: gia' coperta dalla scheda R19

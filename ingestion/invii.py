@@ -23,16 +23,22 @@ Uso:
     python invii.py --funnel                 # il funnel del lotto
     python invii.py --funnel --tutti         # tutti i lotti insieme
     python invii.py --non-consegnata 9
+    python invii.py --verifica-file            # .txt mancanti su disco, un lotto
+    python invii.py --verifica-file --tutti    # stessa cosa, tutti i lotti
 
 Dipendenza: psycopg.
 """
 
 import argparse
+import os
 import sys
 from datetime import date
 
 import psycopg
 from push_supabase import leggi_dsn, maschera
+
+QUI = os.path.dirname(os.path.abspath(__file__))
+DOCS = os.path.join(QUI, "..", "docs")
 
 # Gli stati, in ordine di avanzamento. I nomi dopo "risposta" sono quelli
 # degli stage GoHighLevel gia' in uso sui clienti: se un domani questo funnel
@@ -311,6 +317,30 @@ def stato(cur, lotto):
         print("\n  nessuna ancora inviata.")
 
 
+def verifica_file(cur, lotto=None):
+    """Righe con il file .txt sparito da disco (task C, trovato 2026-09-18
+    testando la console: pec-piemonte#1 non aveva piu' il suo docs/*.txt).
+
+    Non e' un guasto del database: genera_pec.py scrive i .txt fuori da git
+    (docs/<lotto>/*.txt non e' versionato), quindi una cartella pulita a mano
+    o un checkout diverso da quello che li ha generati li perde in silenzio —
+    e senza il file, anteprima e invio falliscono a sorpresa sulla riga
+    sbagliata, quando serve davvero.
+    """
+    dove = "WHERE file IS NOT NULL" + (" AND lotto = %s" if lotto else "")
+    par = (lotto,) if lotto else ()
+    cur.execute(f"SELECT lotto, progressivo, ente, file FROM radar.invio "
+                f"{dove} ORDER BY lotto, progressivo", par)
+    mancanti = [(lot, p, ente, f) for lot, p, ente, f in cur.fetchall()
+               if not os.path.exists(os.path.join(DOCS, lot, f))]
+    if not mancanti:
+        print("  tutti i file .txt sono presenti su disco.")
+        return
+    print(f"  {len(mancanti)} righe senza il file sorgente:\n")
+    for lot, p, ente, f in mancanti:
+        print(f"    {lot}#{p:<3} {(ente or '?')[:44]:46s} manca docs/{lot}/{f}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lotto", default="pec")
@@ -338,6 +368,8 @@ def main():
                     help="con --consegnata: la data della ricevuta "
                          "(default: il giorno dell'invio)")
     ap.add_argument("--non-consegnata", metavar="N[,N]")
+    ap.add_argument("--verifica-file", action="store_true",
+                    help="controlla che il .txt di ogni riga esista ancora su disco")
     ap.add_argument("--chiusa", metavar="N[,N]")
     ap.add_argument("--scadute", action="store_true",
                     help=f"segna 'nessuna risposta' le inviate da oltre "
@@ -404,6 +436,8 @@ def main():
                 print()
             if a.funnel:
                 funnel(cur, None if a.tutti else a.lotto)
+            elif a.verifica_file:
+                verifica_file(cur, None if a.tutti else a.lotto)
             else:
                 stato(cur, a.lotto)
     except Exception as e:

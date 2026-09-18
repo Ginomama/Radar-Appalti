@@ -1128,6 +1128,46 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       }).join("") + '</div></div>';
   }
 
+  /* ------------------------------------------------------ bandi TED */
+  // Diverso dalla tabella scadenze qui sotto: quelli sono contratti gia'
+  // finiti (previsione su quando l'ente ricompra), questi sono gare europee
+  // APERTE adesso, con la scadenza per l'offerta ancora nel futuro. E' anche
+  // l'unico punto del sistema dove i requisiti del bando esistono davvero,
+  // nel link al bando ufficiale — non c'e' equivalente per le scadenze ANAC.
+  function bandiTed(){
+    if(!DATI.ted || !DATI.ted.length) return "";
+    return '<div class="pan"><h2>Bandi TED aperti'+
+      '<span class="conta">'+DATI.ted.length+'</span></h2>'+
+      '<div class="aiuto">Gare europee sopra soglia, ancora aperte. Qui i '+
+      'requisiti di partecipazione ci sono per davvero &mdash; nel link al '+
+      'bando ufficiale, non inventati.'+
+      (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC: '+
+                'clicca il nome per la sua scheda prima di prepararti.' : '')+
+      '</div>'+
+      '<div class="corpo">' + DATI.ted.map(function(t){
+        var gg = t.gg == null ? null : t.gg;
+        var cl = gg == null ? "" : gg <= 15 ? "g-alta" : gg <= 45 ? "g-media" : "g-bassa";
+        return '<div class="riga"><span class="chi">'+
+          '<div class="nome">'+
+            (t.noto && t.cf && LOCALE
+              ? '<button class="link-ente" data-ente="'+esc(t.cf)+'">'+
+                esc(t.ente||"ente non indicato")+'</button> '+
+                '<span class="tag" title="ente già noto dallo storico ANAC">&#9679; noto</span>'
+              : esc(t.ente||"ente non indicato"))+
+          '</div>'+
+          '<div class="meta" title="'+esc(t.titolo||"")+'">'+
+            esc((t.titolo||"").slice(0,100))+'</div>'+
+          '<div class="meta">'+
+            (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(t.scad)+')' : '')+
+            (t.val ? ' &middot; '+num(t.val) : '')+
+          '</div>'+
+          '</span>'+
+          (t.link ? '<a class="btn" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer" '+
+            'aria-label="Apri il bando ufficiale con i requisiti, '+esc(t.ente||"")+'">leggi il bando</a>' : '')+
+        '</div>';
+      }).join("") + '</div></div>';
+  }
+
   /* -------------------------------------------------------- scadenze */
   function opzioni(campo, scelto){
     var v = {};
@@ -1412,6 +1452,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       'farsi conoscere <b>prima</b> che vengano rinnovati.</div></div>'+
       spia()+'</header>'+
       daFare()+
+      bandiTed()+
       tabella()+
       '<div class="griglia"><div>'+funnelTempo()+lotti()+'</div>'+
       '<div>'+categorie()+territorio()+competitor()+'</div></div>'+

@@ -884,12 +884,11 @@ in `radar.invio.pec`. Comune di Milano, verificato in questa sessione: PEC istit
 `siad.amministrazione@postacert.comune.milano.it`. Stessa doppia chiave gia' usata da
 `scheda_ente()` per lo stesso motivo.
 
-⚠️ **Lo stesso problema esiste, piu' in profondo, nell'anti-duplicato di R20**
-(`gia_contattati()` in `genera_pec.py`, usato da `destinatari()` per tutti i lotti, non solo
-`pec-auto`): e' keyed solo per PEC, quindi un ente con un ufficio R28 potrebbe in teoria
-essere ricontattato da un lotto futuro che lo trova con la sua PEC istituzionale. Non
-corretto qui perche' e' una modifica al meccanismo usato da tutta la generazione PEC, non
-solo da R30 — segnalato come task a parte.
+✅ **Chiuso il 2026-09-17** (commit `30d5f4d`): `gia_contattati()` in `genera_pec.py` ha
+ora la stessa doppia chiave ("p:"+pec, "e:"+ENTE) gia' descritta sopra per il bottone
+console, usata da `destinatari()` **e** `destinatari_generici()` — quindi copre tutti i
+lotti, non solo `pec-auto`. Verificato dal vivo il 2026-09-18 rileggendo il codice: non e'
+piu' un task aperto.
 
 **Verificato dal vivo, non solo compilato:** `auto_genera.py` lanciato per davvero ha
 generato 5 bozze rispettando soglia e tetto, scartando correttamente un ente gia' in
@@ -1137,10 +1136,16 @@ instradata internamente).
 6. ✅ **Rigenerare l'API key di n8n** — **fatto il 17/09**: nuova chiave verificata
    (HTTP 200 diretto su n8n), salvata in `.mcp.json`, connessione MCP funzionante
    dopo il riavvio della sessione.
-7. ❌ **"Allerta TED"** — depennato il 17/09: cercato in tutti i 177 workflow
-   dell'istanza (incluso gli archiviati), non esiste e non e' mai esistito.
-   Non e' un "accendilo": se serve, e' un workflow nuovo da progettare e
-   costruire da zero, non piu' un item da 10-30 minuti della sezione B.
+7. ✅ **"Allerta TED"** — **costruito e testato il 18/09**, dopo la correzione del 17/09
+   (non esisteva davvero, vedi sopra). Workflow nuovo su n8n Cloud (id `lseSJ6gh7wC498Ad`,
+   7 nodi: Schedule → [Postgres già-notificati, HTTP TED] in parallelo → Code dedup →
+   [Postgres salva, Code digest] → Telegram), `n8n_validate_workflow` 0 errori. Due bug
+   trovati e corretti nel test dal vivo: i due rami paralleli erano in serie e il ramo
+   Postgres a 0 righe bloccava tutto il resto; il digest con molti bandi superava il
+   limite di 4096 caratteri di Telegram (ora spezza in piu' messaggi). Verificato sia il
+   ramo "bandi nuovi" (13 trovati, digest inviato) sia il ramo "nessun bando nuovo"
+   (0 output, nessun messaggio). **Ancora `active: false`** — l'attivazione per l'invio
+   giornaliero reale la fa Leonardo dal pannello n8n.
 
 ### C. Verifiche tecniche residue
 8. ✅ **Chiudere R20** — **fatto il 17/09**: la sessione che lavorava il fix non era
@@ -1164,6 +1169,39 @@ instradata internamente).
     (diverso dal funnel per singolo lotto di R25). Verificato dal vivo.
 13. R26 GoHighLevel — rinviato finche' non c'e' una seconda persona o 20+ conversazioni
     aperte insieme.
+16. ✅ **Bando collegato alla PEC per CIG** — **fatto il 18/09** (richiesta di un
+    collega: sapere per ogni bando se la PEC e' gia' partita, senza uscire dalla
+    dashboard). `console_live.py` incrocia `cig_inclusi` di `radar.invio` con ogni riga
+    di `radar.v_scadenze` (una PEC puo' coprire piu' CIG in batch): quando il match e'
+    preciso, la tabella "Contratti in scadenza" mostra un bottone "PEC: stato · leggi"
+    che apre il testo reale gia' usato altrove in console.html, invece del generico tag
+    "gia' contattato". Oggetto del contratto non piu' troncato a 120 ma a 500 caratteri,
+    leggibile per intero al passaggio del mouse. **Il punto "vedere i requisiti del
+    bando" della stessa richiesta non e' risolto**: i contratti di questa tabella sono
+    gia' aggiudicati in passato (previsione su quando l'ente ricompra), quindi nessun
+    documento di gara esiste per loro in nessuna fonte — non e' un limite di interfaccia.
+    Risolto invece per i bandi realmente aperti, vedi punto 17.
+17. ✅ **Pannello "Bandi TED aperti" in console** — **fatto il 18/09**. `radar.ted` (R5)
+    era fermo al 07/09 — nessuno lo aggiornava piu' dopo la misura iniziale, e il
+    workflow n8n che in origine doveva farlo (`workflows/radar-allerta-ted.json`, 9
+    nodi) non e' mai stato creato sull'istanza (stessa scoperta del punto 7). Rilanciato
+    `ted.py --ingest` + `push_supabase.py`: 522 righe in `radar.ted`, 94 bandi ancora
+    aperti oggi. `console_live.py` legge `radar.v_ted_aperte`, `console.html` ha un
+    nuovo pannello con scadenza, valore, ente (con link alla scheda R19 se gia' noto) e
+    **link reale al bando ufficiale** — qui, a differenza del punto 16, i requisiti di
+    partecipazione esistono davvero. ⚠️ Resta un buco: senza un job che la rilanci
+    periodicamente, questa tabella torna vecchia come la precedente. Il workflow
+    "Allerta TED" del punto 7 non scrive su `radar.ted` (manda solo Telegram via
+    `radar.notificato`) — se si vuole che il pannello resti fresco da solo, o si
+    aggiunge un nodo di upsert su `radar.ted` a quel workflow, o si rimette in piedi
+    l'ingestion locale su un ritmo schedulato.
+18. ✅ **Controllo file PEC orfani** — **fatto il 18/09**, dal sospetto sollevato
+    testando il punto 16: `invii.py --verifica-file [--tutti]` confronta ogni riga di
+    `radar.invio` con il `.txt` che dovrebbe avere su disco. Verificato dal vivo sui 205
+    invii reali: **nessuna riga orfana** — il caso visto durante il test era un falso
+    allarme, dovuto al fatto che stavo interrogando la console puntata sulla cartella
+    `docs/` del repo pubblico, che non ha (giustamente) i `.txt` generati, gitignored e
+    presenti solo nel repo privato.
 
 ### E. Esecuzione — lavoro commerciale, non codice
 14. Proseguire R27: 633 enti in 52 province, ~18/settimana, ~36 settimane per coprire

@@ -1266,6 +1266,22 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
                  : "probabilita di porta aperta " + (l.pr*100).toFixed(1) + "%";
       var giaContattato = !!((l.pec && contattati["p:" + l.pec.toLowerCase()]) ||
                             (l.ente && contattati["e:" + l.ente.toUpperCase()]));
+      // Il riferimento preciso alla PEC di QUESTO bando (via CIG, incrociato
+      // in console_live.py) e' piu' utile del solo "gia' contattato" a
+      // livello ente: dice esattamente quale spedizione lo ha coperto e a
+      // che punto e' — la domanda del collega ("l'abbiamo gia' mandata o no
+      // per QUESTO bando?"), non solo "abbiamo mai scritto a questo ente?".
+      var etichettaInv = l.inv ? (ETICHETTE[l.inv.stato] || l.inv.stato) : null;
+      var pecRiferimento = l.inv
+        ? '<br><button class="btn" data-pec="'+esc(l.inv.lotto+"#"+l.inv.n)+'" '+
+          'style="margin-top:4px" aria-label="Leggi la PEC di questo bando, stato '+
+          esc(etichettaInv)+'">PEC: '+esc(etichettaInv)+' · leggi</button>'
+        : giaContattato
+          ? '<br><span class="tag" style="margin-top:3px">ente già contattato'+
+            ' (altro bando)</span>'
+          : (l.cf ? '<br><button class="btn" data-genera="'+esc(l.cf)+'" '+
+                    'style="margin-top:4px" aria-label="Genera la PEC per '+esc(l.ente)+'">'+
+                    'Genera PEC</button>' : '');
       return '<tr>'+
         '<td class="pt"><span class="pallino '+clp+'" title="'+esc(spiega)+'">'+
           (pt == null ? "–" : pt)+'</span></td>'+
@@ -1275,17 +1291,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
           (l.cf && LOCALE ? '<button class="link-ente" data-ente="'+esc(l.cf)+'">'+esc(l.ente)+'</button>'
                 : esc(l.ente))+
           '<br><a href="mailto:'+esc(l.pec)+'" class="mono" style="font-size:11px">'+esc(l.pec)+'</a>'+
-          (!LOCALE ? '' : giaContattato
-            ? '<br><span class="tag" style="margin-top:3px">già contattato</span>'
-            : (l.cf ? '<br><button class="btn" data-genera="'+esc(l.cf)+'" '+
-                      'style="margin-top:4px" aria-label="Genera la PEC per '+esc(l.ente)+'">'+
-                      'Genera PEC</button>' : ''))+
+          (!LOCALE ? '' : pecRiferimento)+
         '</td>'+
         '<td>'+esc(titolo(provNome(l.prov))||"—")+'</td>'+
         '<td><span class="tag">'+esc(l.cat||"non classificato")+'</span></td>'+
         '<td class="imp">'+num(l.imp)+'</td>'+
         '<td>'+esc((l.forn||"—").slice(0,34))+'</td>'+
-        '<td class="ogg">'+esc((l.ogg||"").slice(0,90))+'</td>'+
+        '<td class="ogg" title="'+esc(l.ogg||"")+'">'+esc((l.ogg||"").slice(0,90))+'</td>'+
       '</tr>';
     }).join("");
   }

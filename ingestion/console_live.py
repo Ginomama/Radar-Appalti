@@ -101,9 +101,23 @@ def raccogli(cur):
                 v[k] = val
         D["invii"].append(v)
 
+    # Indice CIG -> invio: una riga di invio puo' coprire piu' CIG in una
+    # sola PEC (batch per ente), quindi si spacca cig_inclusi per collegare
+    # ogni singolo bando alla PEC precisa che lo ha coperto (se c'e'). E'
+    # piu' preciso del solo confronto per ente/PEC gia' usato altrove in
+    # console.html: dice "questo bando specifico e' dentro quella spedizione
+    # e sta a quel punto", non solo "questo ente e' gia' stato contattato".
+    indice_cig = {}
+    for i in D["invii"]:
+        for cig in (i.get("cig") or "").split(","):
+            cig = cig.strip()
+            if cig:
+                indice_cig[cig] = dict(lotto=i["lotto"], n=i["n"], stato=i["stato"],
+                                       quando=i.get("inviata") or i.get("consegnata"))
+
     cur.execute("""
         SELECT cig, ente, provincia, categoria, data_termine_contrattuale,
-               importo_aggiudicazione, fornitore_uscente, pec, left(oggetto_lotto,120),
+               importo_aggiudicazione, fornitore_uscente, pec, left(oggetto_lotto,500),
                punteggio, prob_apertura, cf_ente
         FROM radar.v_scadenze
         WHERE fornitore_persona_fisica = 0 AND pec IS NOT NULL
@@ -114,7 +128,8 @@ def raccogli(cur):
         ORDER BY punteggio DESC NULLS LAST,
                  importo_aggiudicazione DESC NULLS LAST LIMIT 400""")
     D["lead"] = [dict(cig=a, ente=b, prov=c, cat=d, scad=str(e), imp=float(f or 0),
-                      forn=g, pec=h, ogg=i, pt=j, pr=float(k or 0), cf=l)
+                      forn=g, pec=h, ogg=i, pt=j, pr=float(k or 0), cf=l,
+                      inv=indice_cig.get(a))
                  for a, b, c, d, e, f, g, h, i, j, k, l in cur.fetchall()]
 
     cur.execute("""

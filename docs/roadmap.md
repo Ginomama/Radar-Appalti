@@ -1189,12 +1189,26 @@ instradata internamente).
     aperti oggi. `console_live.py` legge `radar.v_ted_aperte`, `console.html` ha un
     nuovo pannello con scadenza, valore, ente (con link alla scheda R19 se gia' noto) e
     **link reale al bando ufficiale** — qui, a differenza del punto 16, i requisiti di
-    partecipazione esistono davvero. ⚠️ Resta un buco: senza un job che la rilanci
-    periodicamente, questa tabella torna vecchia come la precedente. Il workflow
-    "Allerta TED" del punto 7 non scrive su `radar.ted` (manda solo Telegram via
-    `radar.notificato`) — se si vuole che il pannello resti fresco da solo, o si
-    aggiunge un nodo di upsert su `radar.ted` a quel workflow, o si rimette in piedi
-    l'ingestion locale su un ritmo schedulato.
+    partecipazione esistono davvero.
+
+    ✅ **Buco chiuso il 19/09**: il job giornaliero (`job.py`, task Windows gia'
+    installato) girava gia' `ted.py --ingest` ogni giorno alle 08:30 — ma il push
+    verso Supabase esisteva solo nel job **mensile**, insieme al resto della
+    pipeline ANAC. `radar.ted` locale si aggiornava, quello su Supabase (e quindi
+    la console) restava fermo fino al giro mensile successivo. Aggiunto `--solo`
+    a `push_supabase.py` (spedisce una sola vista/tabella invece dell'intera
+    `MAPPA`) e un passo `ted-push` nel piano giornaliero, subito dopo `ted`: ora
+    il pannello si aggiorna ogni giorno, non ogni mese.
+
+    ✅ **Bug trovato e corretto lo stesso giorno**: alcuni titoli TED arrivavano
+    con `�` al posto del trattino (`Italia � Network...`). Verificato dal
+    vivo che non e' un bug di decodifica nostro — la stessa identica richiesta
+    all'API TED, ripetuta due volte, e' tornata una volta pulita e una volta con
+    il carattere gia' corrotto nei byte grezzi della risposta: l'API di TED non
+    e' coerente con se stessa. Tamponato alla fonte in `ted.py` (`testo()` e
+    `tutte()`, gli unici due punti da cui passa ogni campo testuale), stessa
+    disciplina gia' in uso per i record ANAC corrotti a monte. Verificato che
+    dopo il fix nessuna riga di `radar.ted` porta piu' il carattere corrotto.
 18. ✅ **Controllo file PEC orfani** — **fatto il 18/09**, dal sospetto sollevato
     testando il punto 16: `invii.py --verifica-file [--tutti]` confronta ogni riga di
     `radar.invio` con il `.txt` che dovrebbe avere su disco. Verificato dal vivo sui 205

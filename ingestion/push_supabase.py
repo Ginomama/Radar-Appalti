@@ -20,7 +20,9 @@ l'ingestion resta a libreria standard.
 
 Uso:
     python push_supabase.py --dry-run     # non si connette, mostra cosa spedirebbe
-    python push_supabase.py               # push vero
+    python push_supabase.py               # push vero, tutte le tabelle
+    python push_supabase.py --solo ted_avviso   # solo una tabella (es. nel
+                                                 # giornaliero, dopo ted.py)
 """
 
 import argparse
@@ -120,11 +122,15 @@ def pulisci(colonna, v):
     return v
 
 
-def dry_run():
+def dry_run(solo=None):
     cx = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     print(f"sorgente: {DB}\n")
     tot_righe = 0
-    for vista, tabella, col_src, col_dst, filtro in MAPPA:
+    mappa = MAPPA if not solo else [m for m in MAPPA if solo in (m[0], m[1])]
+    if solo and not mappa:
+        sys.exit(f"'{solo}' non e' una vista/tabella nota. Viste: "
+                 + ", ".join(m[0] for m in MAPPA))
+    for vista, tabella, col_src, col_dst, filtro in mappa:
         col_dst = col_dst or col_src
         n = cx.execute(f"SELECT count(*) FROM {vista} {filtro}").fetchone()[0]
         tot_righe += n
@@ -143,7 +149,7 @@ def dry_run():
     cx.close()
 
 
-def push(dsn):
+def push(dsn, solo=None):
     try:
         import psycopg
     except ImportError:
@@ -160,7 +166,12 @@ def push(dsn):
         pg.commit()
         print("  schema allineato")
 
-        for vista, tabella, col_src, col_dst, filtro in MAPPA:
+        mappa = MAPPA if not solo else [m for m in MAPPA if solo in (m[0], m[1])]
+        if solo and not mappa:
+            sys.exit(f"'{solo}' non e' una vista/tabella nota. Viste: "
+                     + ", ".join(m[0] for m in MAPPA))
+
+        for vista, tabella, col_src, col_dst, filtro in mappa:
             col_dst = col_dst or col_src
             inizio = datetime.now()
             n = 0
@@ -248,12 +259,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true",
                     help="mostra cosa spedirebbe, senza connettersi")
+    ap.add_argument("--solo", metavar="VISTA|TABELLA",
+                    help="spedisce solo questa coppia vista/tabella "
+                         "(es. ted_avviso), non l'intera MAPPA")
     a = ap.parse_args()
 
     if not os.path.exists(DB):
         sys.exit(f"database non trovato: {DB}")
     if a.dry_run:
-        dry_run()
+        dry_run(a.solo)
         return
 
     dsn = leggi_dsn()
@@ -271,7 +285,7 @@ def main():
         print("[attenzione] non stai usando la Session pooler: la connessione "
               "diretta e' solo IPv6 sul piano Free.", file=sys.stderr)
     try:
-        push(dsn)
+        push(dsn, a.solo)
     except Exception as e:                     # niente password nei log
         sys.exit(maschera(f"{type(e).__name__}: {e}", dsn))
 

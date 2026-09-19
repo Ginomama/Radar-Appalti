@@ -103,6 +103,14 @@ PIANI = {
         # scoprirla quando e' chiusa. Costa una chiamata HTTP.
         dict(id="ted",     argv=["ted.py", "--ingest", "--giorni", "7"],
              descr="gare europee aperte (R5)", minuti=10),
+        # Fino al 2026-09-19 radar.ted su Supabase si aggiornava solo col
+        # push mensile: il ted locale sopra girava ogni giorno ma restava
+        # chiuso qui, e la console vedeva bandi vecchi anche un mese. Un
+        # push mirato (--solo, non l'intera MAPPA) tiene il pannello fresco
+        # senza aspettare il resto della pipeline ANAC.
+        dict(id="ted-push", argv=["push_supabase.py", "--solo", "ted_avviso"],
+             descr="pubblica i bandi TED su Supabase (R5)", minuti=5,
+             dipende="ted", richiede=("DSN",)),
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),

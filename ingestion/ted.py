@@ -87,7 +87,13 @@ def testo(v, lingua="ita"):
         return testo(next(iter(v.values()), None), lingua) if v else None
     if isinstance(v, list):
         return testo(v[0], lingua) if v else None
-    return str(v).strip() or None
+    # L'API di TED non e' coerente con se stessa: richieste quasi identiche
+    # allo stesso avviso a volte tornano testo pulito, a volte con U+FFFD
+    # gia' dentro i byte grezzi della risposta (verificato dal vivo il
+    # 2026-09-19: stesso publication-number, due chiamate, un solo carattere
+    # diverso). Non e' un bug nostro di decodifica, ma va tolto qui: stessa
+    # disciplina gia' applicata ai record ANAC corrotti a monte.
+    return str(v).replace("�", "").strip() or None
 
 
 def tutte(v):
@@ -104,7 +110,8 @@ def tutte(v):
         for x in v:
             out.extend(tutte(x))
         return out
-    return [str(v).strip()] if str(v).strip() else []
+    s = str(v).replace("�", "").strip()      # vedi nota in testo()
+    return [s] if s else []
 
 
 def data_iso(v):

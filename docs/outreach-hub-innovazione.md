@@ -37,9 +37,12 @@ tel. 3468278078 — leonardo.foschi@flowline.it
 
 ## B. C.NEXT Piceno
 
-**A:** info@cnexthub.com (rete nazionale, sede Como — per Piceno non c'e' un
-indirizzo dedicato; valutare copia a Confindustria Ascoli Piceno, socia di
-C.NEXT Piceno)
+**A:** info@piceno.cnexthub.com (indirizzo dedicato Piceno, trovato da
+Leonardo il 2026-09-19 — corregge l'indirizzo nazionale/Como usato in una
+prima bozza). Esiste anche una PEC (`cnextpiceno.pec@legalmail.it`): non
+usarla per il primo contatto, e' per comunicazioni formali, non per una
+proposta di collaborazione. Confindustria Ascoli Piceno (info@confindustria.ap.it)
+resta un secondo canale solo se non arriva risposta, non in copia sulla prima mail.
 **Oggetto:** FlowLine — automazione processi, per l'ecosistema di C.NEXT Piceno
 
 Buongiorno,

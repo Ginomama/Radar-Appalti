@@ -696,6 +696,102 @@ class AntiDuplicatoPerUfficio(unittest.TestCase):
 
 
 # =====================================================================
+class AntiDuplicatoStessoLotto(unittest.TestCase):
+    """'pec-auto' generava doppioni ogni notte (bug trovato il 21/09).
+
+    gia_contattati() escludeva sempre il lotto corrente (WHERE lotto <> %s)
+    per permettere a main() di rigenerare un lotto "a blocco" da capo. Ma
+    genera_singolo() — usato dal bottone console e da auto_genera.py ogni
+    notte — scrive nel lotto fisso 'pec-auto' SENZA mai svuotarlo: se si
+    escludesse anche li', lo stesso ente ad alto punteggio non contattato
+    verrebbe rigenerato ogni notte, perche' l'unica riga che lo segna come
+    'gia' fatto' e' proprio quella nel suo stesso lotto. Caso reale: 42
+    righe per sole 7 PEC distinte, fino a 8 copie dello stesso ente mai
+    inviato, accumulate su 7 notti consecutive prima di essere notate."""
+
+    class FakeCursorConQuery:
+        """Come FakeCursor delle altre classi, ma registra anche l'SQL
+        ricevuto: qui la differenza fra bug e fix e' nella query stessa
+        (con o senza 'WHERE lotto <> %s'), non solo nel risultato."""
+        def __init__(self, righe):
+            self.righe = righe
+            self.query = None
+            self.parametri = None
+
+        def execute(self, q, par=None):
+            self.query = q
+            self.parametri = par
+
+        def fetchall(self):
+            return self.righe
+
+    RIGA_STESSO_LOTTO = ("ente@pec.it", "ENTE MAI CONTATTATO",
+                         "pec-auto", "da_inviare", None)
+
+    def setUp(self):
+        import genera_pec
+        self.g = genera_pec
+
+    def test_escludi_corrente_true_filtra_il_lotto_in_sql(self):
+        """Comportamento di default (main(), lotto a blocco): la query
+        esclude ancora il proprio lotto per poterlo riscrivere da capo."""
+        cur = self.FakeCursorConQuery([])
+        self.g.gia_contattati(cur, "pec-auto")
+        self.assertIn("WHERE lotto <> %s", cur.query)
+        self.assertEqual(cur.parametri, ("pec-auto",))
+
+    def test_escludi_corrente_false_non_filtra_il_lotto_in_sql(self):
+        """Il fix: genera_singolo() deve vedere anche le righe del proprio
+        lotto, quindi niente WHERE sul lotto."""
+        cur = self.FakeCursorConQuery([])
+        self.g.gia_contattati(cur, "pec-auto", escludi_corrente=False)
+        self.assertNotIn("WHERE lotto <> %s", cur.query)
+        self.assertEqual(cur.parametri, ())
+
+    def test_escludi_corrente_false_include_una_riga_dello_stesso_lotto(self):
+        """La prova diretta del bug: con escludi_corrente=False, una riga
+        gia' presente in 'pec-auto' deve comparire fra gli esclusi — se
+        no genera_singolo() la rigenera ogni notte."""
+        cur = self.FakeCursorConQuery([self.RIGA_STESSO_LOTTO])
+        escludi = self.g.gia_contattati(cur, "pec-auto", escludi_corrente=False)
+        self.assertIn("e:ENTE MAI CONTATTATO", escludi)
+        self.assertIn("p:ente@pec.it", escludi)
+        self.assertEqual(escludi["e:ENTE MAI CONTATTATO"][0], "pec-auto")
+
+    class FakeCursorSequenza:
+        """genera_singolo() interroga due tabelle in due execute() diversi
+        (radar.invio dentro gia_contattati, poi radar.v_scadenze dentro
+        destinatari): serve una riga diversa per ciascuna chiamata, non la
+        stessa righe per entrambe."""
+        def __init__(self, risposte):
+            self.risposte = list(risposte)
+            self.indice = -1
+
+        def execute(self, q, par=None):
+            self.indice += 1
+
+        def fetchall(self):
+            return self.risposte[self.indice]
+
+    RIGA_SCADENZA_STESSO_ENTE = ("ENTE MAI CONTATTATO", "AN",
+                                 "diversa@pec.it", "Sviluppo software",
+                                 "CIG999", None, 60, 50000, None,
+                                 "oggetto", "CF-IRRILEVANTE")
+
+    def test_genera_singolo_non_rigenera_ente_gia_in_pec_auto(self):
+        """genera_singolo() end-to-end: un CF gia' scritto in pec-auto non
+        deve produrre una seconda bozza per lo stesso ente, anche se vi
+        compare con una PEC diversa da quella di v_scadenze (R28)."""
+        cur = self.FakeCursorSequenza([
+            [self.RIGA_STESSO_LOTTO],          # gia_contattati() su radar.invio
+            [self.RIGA_SCADENZA_STESSO_ENTE],  # destinatari() su radar.v_scadenze
+        ])
+        esito = self.g.genera_singolo(cur, "CF-IRRILEVANTE", lotto="pec-auto")
+        self.assertFalse(esito["generato"])
+        self.assertIn("pec-auto", esito["motivo"])
+
+
+# =====================================================================
 class PianoTerritorioContaGiaFatti(unittest.TestCase):
     """'gia_fatti' in territorio.py sottostimava chi era gia' stato scritto.
 

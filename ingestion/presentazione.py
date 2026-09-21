@@ -31,6 +31,7 @@ import sys
 QUI = os.path.dirname(os.path.abspath(__file__))
 FUORI = os.path.join(QUI, "..", "docs", "allegati")
 NOME = "flowline-presentazione.pdf"
+LOGO = os.path.join(QUI, "..", "docs", "assets", "logo-flowline.png")
 
 SEGNAPOSTO = re.compile(r"\[DA COMPILARE[^\]]*\]")
 
@@ -87,20 +88,25 @@ def costruisci(dove):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import (KeepTogether, Paragraph, SimpleDocTemplate,
-                                    Spacer, Table, TableStyle)
+    from reportlab.platypus import (Image, KeepTogether, Paragraph,
+                                    SimpleDocTemplate, Spacer, Table,
+                                    TableStyle)
 
     mitt, cosa, generico = dati_mittente()
-    VERDE = colors.HexColor("#1E6E58")
+    # Colori e logo presi dal depliant vero (Depliant_Flowline.pdf), non
+    # inventati: l'arancio e il grigio scuro del marchio, non un verde
+    # generico da bozza.
+    ARANCIO = colors.HexColor("#F7A831")
     GRIGIO = colors.HexColor("#5A6461")
+    TESTO = colors.HexColor("#3D4044")
     ss = getSampleStyleSheet()
     H1 = ParagraphStyle("H1", parent=ss["Title"], fontName="Helvetica-Bold",
-                        fontSize=22, leading=26, textColor=VERDE,
+                        fontSize=22, leading=26, textColor=TESTO,
                         alignment=TA_LEFT, spaceAfter=2)
     SOT = ParagraphStyle("SOT", parent=ss["Normal"], fontSize=11, leading=16,
                          textColor=GRIGIO, spaceAfter=16)
     H2 = ParagraphStyle("H2", parent=ss["Heading2"], fontName="Helvetica-Bold",
-                        fontSize=11.5, textColor=VERDE, spaceBefore=15,
+                        fontSize=11.5, textColor=ARANCIO, spaceBefore=15,
                         spaceAfter=5)
     D = ParagraphStyle("D", parent=ss["Normal"], fontName="Helvetica-Bold",
                        fontSize=10, leading=14, spaceBefore=9, spaceAfter=2)
@@ -132,7 +138,14 @@ def costruisci(dove):
         author=mitt["nome"])
 
     st = []
-    st.append(Paragraph(mitt.get("insegna") or mitt["nome"], H1))
+    if os.path.exists(LOGO):
+        # Proporzioni reali del logo (2223x419), non un valore a caso: uno
+        # storpiato larghezza/altezza sarebbe peggio di nessun logo.
+        larghezza = 55 * mm
+        st.append(Image(LOGO, width=larghezza, height=larghezza * 419 / 2223))
+        st.append(Spacer(1, 10))
+    else:
+        st.append(Paragraph(mitt.get("insegna") or mitt["nome"], H1))
     st.append(Paragraph(
         "Automazione dei processi e integrazione di sistemi informativi "
         "per la pubblica amministrazione", SOT))

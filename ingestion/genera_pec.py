@@ -226,7 +226,7 @@ def a_chi_di(uff, rtd_nome):
     return f"\nAlla cortese attenzione di: {chi}\n"
 
 
-def gia_contattati(cur, lotto_corrente):
+def gia_contattati(cur, lotto_corrente, escludi_corrente=True):
     """Le PEC e gli enti gia' presenti in un ALTRO lotto, con lotto e stato.
 
     Doppia chiave, "p:"+pec e "e:"+ENTE: componi() puo' sostituire la PEC
@@ -236,12 +236,23 @@ def gia_contattati(cur, lotto_corrente):
     "mai contattato" la volta dopo che lo si pesca con la PEC istituzionale
     che v_scadenze mostra — stesso ente, due caselle diverse. Stessa doppia
     chiave gia' usata da scheda_ente() in console_live.py e dalla console
-    (docs/console.html), stesso motivo. Il lotto corrente si esclude perche'
-    rigenerarlo deve poter riscrivere le sue righe.
+    (docs/console.html), stesso motivo.
+
+    escludi_corrente=True (default) esclude il lotto corrente perche'
+    rigenerarlo deve poter riscrivere le sue righe — corretto per un lotto
+    "a blocco" (main(), sotto: enumerate riparte da 1 e riscrive tutto a
+    ogni run). genera_singolo() lo chiama con escludi_corrente=False: quel
+    lotto (tipicamente 'pec-auto') non viene mai svuotato, cresce di una
+    riga alla volta su run separate (bottone console, auto_genera.py ogni
+    notte) — se si escludesse se stesso, lo stesso ente a punteggio alto
+    verrebbe rigenerato ogni notte. Bug reale, trovato il 21/09: 'pec-auto'
+    aveva 42 righe per sole 7 PEC distinte, fino a 8 copie dello stesso
+    ente mai inviato.
     """
     cur.execute("""
         SELECT lower(pec), upper(ente), lotto, stato, inviata_il
-        FROM radar.invio WHERE lotto <> %s""", (lotto_corrente,))
+        FROM radar.invio""" + (" WHERE lotto <> %s" if escludi_corrente else ""),
+        (lotto_corrente,) if escludi_corrente else ())
     mappa = {}
     for pec, ente, lot, st, quando in cur.fetchall():
         voce = (lot, st, quando)
@@ -416,7 +427,10 @@ def genera_singolo(cur, cf, lotto="pec-auto",
     volta devono poter scrivere una riga senza cancellare le altre. La usano
     sia il bottone 'Genera PEC' della console sia auto_genera.py.
     """
-    escludi = gia_contattati(cur, lotto)
+    # escludi_corrente=False: questo lotto (pec-auto, tipicamente) non viene
+    # mai riscritto da zero, quindi va controllato anche contro se stesso —
+    # vedi il commento in gia_contattati().
+    escludi = gia_contattati(cur, lotto, escludi_corrente=False)
     gruppi, saltati = destinatari(cur, 1, None, gg_min, gg_max,
                                   imp_min, imp_max, escludi, solo_cf=[cf])
     if saltati:

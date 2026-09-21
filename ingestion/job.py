@@ -6,7 +6,7 @@ Il problema che risolve: ogni pezzo del sistema funziona lanciato a mano, e
 finche' si lancia a mano il sistema non esiste. Un radar che qualcuno deve
 ricordarsi di accendere e' una cartella di script, non un prodotto.
 
-Due ritmi, perche' le cose non scadono tutte insieme:
+Tre ritmi, perche' le cose non scadono tutte insieme:
 
   --giornaliero   le ricevute PEC arrivano in minuti: leggerle una volta al
                   mese vorrebbe dire scoprire a fine mese che meta' delle PEC
@@ -17,6 +17,10 @@ Due ritmi, perche' le cose non scadono tutte insieme:
   --mensile       ANAC pubblica i delta il primo del mese. Scarica, ingerisce,
                   ricalcola e ripubblica su Supabase, con backup completo
                   prima di toccare qualsiasi cosa.
+
+  --feriale       Lun-Ven, invia le PEC in coda (R31): preavviso Telegram con
+                  finestra STOP, poi spedisce se nessuno la ferma. Solo nei
+                  giorni feriali perche' un protocollo non legge il sabato.
 
 Vincolo architetturale: **non puo' girare su n8n Cloud**. Il WAF di ANAC
 risponde 403 agli IP dei cloud provider, quindi il download deve partire da
@@ -36,8 +40,9 @@ Regole di questo file:
 Uso:
     python job.py --giornaliero
     python job.py --mensile
+    python job.py --feriale
     python job.py --prova --mensile      # elenca gli step, non esegue niente
-    python job.py --installa             # crea le due attivita' pianificate
+    python job.py --installa             # crea le tre attivita' pianificate
     python job.py --disinstalla
     python job.py --stato                # ultimi esiti + stato attivita'
 
@@ -76,6 +81,14 @@ TASKS = {
                         # tentativo costa un mese di ritardo.
                         quando=["/sc", "monthly", "/d", "3", "/st", "07:00"],
                         descr="delta ANAC, bulk, push Supabase, backup completo"),
+    "feriale":     dict(nome=f"{CARTELLA_TASK}\\radar-feriale",
+                        # Solo Lun-Ven: invio_automatico.py ricontrolla da
+                        # solo il giorno (difesa in profondita', non fiducia
+                        # cieca nello scheduler) ma il trigger resta la prima
+                        # barriera.
+                        quando=["/sc", "weekly", "/d", "MON,TUE,WED,THU,FRI",
+                                "/st", "08:00"],
+                        descr="invio automatico PEC in coda, con finestra STOP (R31)"),
 }
 
 # ------------------------------------------------------------------ step
@@ -114,6 +127,15 @@ PIANI = {
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+    ],
+    "feriale": [
+        # Timeout largo apposta: 25 minuti di finestra STOP (default) piu'
+        # il tempo di inviare fino a --tetto PEC. Se la finestra viene
+        # allargata da riga di comando, va allargato anche questo.
+        dict(id="invio-auto", argv=["invio_automatico.py"],
+             descr="invio PEC in coda con finestra STOP (R31)", minuti=40,
+             richiede=("DSN", "PEC_USER", "PEC_PASSWORD",
+                       "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
     ],
     "mensile": [
         # Primo di tutto, e dura secondi: i test di regressione girano PRIMA
@@ -372,7 +394,7 @@ def schtasks(*args):
 
 
 def installa():
-    """Crea le due attivita'. /f sovrascrive: reinstallare e' idempotente.
+    """Crea le tre attivita'. /f sovrascrive: reinstallare e' idempotente.
 
     Non si usa /ru SYSTEM: il job legge .env.local dal profilo dell'utente e
     scrive nella cartella di backup dell'utente. Girerebbe come SYSTEM senza
@@ -522,6 +544,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--giornaliero", action="store_true")
     ap.add_argument("--mensile", action="store_true")
+    ap.add_argument("--feriale", action="store_true")
     ap.add_argument("--prova", action="store_true",
                     help="elenca gli step senza eseguirli")
     ap.add_argument("--installa", action="store_true")
@@ -539,6 +562,8 @@ def main():
         sys.exit(gira("giornaliero", a.prova))
     if a.mensile:
         sys.exit(gira("mensile", a.prova))
+    if a.feriale:
+        sys.exit(gira("feriale", a.prova))
     ap.print_help()
 
 

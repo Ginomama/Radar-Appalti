@@ -897,6 +897,45 @@ motivo corretto (nessun contratto nella finestra 30-365gg/20k-500k€), uno anda
 fine (Comune di Milano, 17 contratti raggruppati in una PEC sola, progressivo calcolato
 senza collisioni dopo le 5 righe del job).
 
+### R31 — Invio automatico Lun-Ven, con finestra STOP · ✅ FATTO 2026-09-21
+
+`ingestion/invio_automatico.py`, terzo ritmo di `job.py` (`--feriale`), Utilita' di
+pianificazione Lun-Ven 08:00. Nato dal backlog: 169 righe `da_inviare` su 19 lotti,
+generate nel giro nazionale di R27 ma mai spedite — l'invio era rimasto un click umano
+per riga, comodo a basso volume, un collo di bottiglia a quel numero.
+
+**Non toglie il controllo umano, lo sposta prima dell'invio invece che riga per riga.**
+Alle 8:00 manda su Telegram l'elenco di cosa sta per partire, aspetta 25 minuti (di
+default), e invia solo se non arriva "STOP" in risposta. Una PEC protocollata non si
+ritira (R7b): la finestra ferma TUTTO il giro di oggi con un messaggio, non richiede piu'
+una conferma per riga.
+
+- **Selezione FIFO su `radar.invio`**, non per punteggio: le righe `da_inviare` piu'
+  vecchie, qualunque lotto. Include da sola le bozze di `auto_genera.py` (stesso stato
+  `da_inviare`), senza bisogno di trattarle a parte.
+- **Ogni riga passa comunque da `pec_smtp.spedisci()`**: stessi controlli di sempre —
+  segnaposto, destinatario coerente, doppio invio (R20), tetto giornaliero (R7b). Questo
+  script sceglie *chi* mandare e *quando*, non *come*: la logica di invio resta un solo
+  posto, non duplicata.
+- **Tetto 15/giorno di default**, dentro il limite di 20 gia' esistente — lascia margine a
+  invii manuali nello stesso giorno senza sforare la soglia dei provider PEC.
+- Guardia sul giorno feriale **anche dentro lo script**, non solo nel trigger di Windows:
+  stessa disciplina di "non fidarsi solo dello scheduler" gia' usata per il tetto
+  giornaliero.
+
+⚠️ **Perche' la finestra e non l'invio diretto**: 3 giorni prima (21/09) un bug in
+`auto_genera.py` — che gira senza supervisione ogni notte — ha prodotto doppioni per 7
+notti prima che qualcuno se ne accorgesse (vedi il fix di `gia_contattati()` sopra).
+Automatizzare anche l'invio senza una rete di sicurezza avrebbe voluto dire che lo stesso
+tipo di bug spedisce PEC vere e irreversibili a enti pubblici, non solo bozze in una
+cartella. La finestra STOP e' il compromesso: il ritmo resta automatico, il controllo
+resta umano, il costo e' 25 minuti di attesa una volta al giorno invece che un click per
+riga.
+
+Test dal vivo: `--prova` mostra la coda reale (15 enti, incluse Banca d'Italia e due
+Regioni) senza toccare Telegram ne' il database. Il primo giro con invio vero parte da
+solo il primo giorno feriale utile.
+
 ### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
 
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si

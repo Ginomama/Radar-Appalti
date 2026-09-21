@@ -107,6 +107,9 @@ def costruisci(dove):
     P = ParagraphStyle("P", parent=ss["Normal"], fontSize=10, leading=15)
     PIC = ParagraphStyle("PIC", parent=ss["Normal"], fontSize=7.6, leading=10,
                          textColor=GRIGIO)
+    TDH = ParagraphStyle("TDH", parent=ss["Normal"], fontName="Helvetica-Bold",
+                         fontSize=8.5, leading=11)
+    TD = ParagraphStyle("TD", parent=ss["Normal"], fontSize=8.5, leading=11)
 
     def cornice(canv, doc):
         canv.saveState()
@@ -151,11 +154,16 @@ def costruisci(dove):
 
     st.append(Paragraph("Referenze", H2))
     if REFERENZE:
-        dati = [["Ente", "Intervento", "Risultato"]] + [list(r) for r in REFERENZE]
+        # Celle come Paragraph, non stringhe nude: una Table di reportlab non
+        # va a capo dentro una stringa semplice, la fa traboccare nella
+        # colonna accanto. Con "Intervento" sulle 150 battute in 65mm il
+        # risultato era testo illeggibile, sovrapposto fra le tre colonne.
+        intestazione = [Paragraph(t, TDH) for t in ("Ente", "Intervento", "Risultato")]
+        righe = [[Paragraph(cella, TD) for cella in riga] for riga in REFERENZE]
+        dati = [intestazione] + righe
         tab = Table(dati, colWidths=[45 * mm, 65 * mm, 40 * mm])
         tab.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EFF2EE")),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#DCE2DD")),
             ("TOPPADDING", (0, 0), (-1, -1), 5),

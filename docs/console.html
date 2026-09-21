@@ -183,6 +183,14 @@ button{font:inherit; cursor:pointer}
 .compito.t-alta .q{color:var(--accento)}
 .compito.t-err .q{color:var(--alta)}
 .compito.t-quiet .q{color:var(--ink-3)}
+/* Chip per lotto (elenco "PEC pronte da inviare"): un elenco di 19 lotti
+   unito da puntini diventava una riga sola illeggibile. A capo libero,
+   uno per lotto, si scorre con l'occhio invece di doverlo decifrare. */
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.chip{display:inline-flex; align-items:center; gap:5px; font-size:11.5px;
+  padding:3px 10px; border-radius:20px; background:var(--surface-2);
+  border:1px solid var(--rule); color:var(--ink-2)}
+.chip b{color:var(--accento); font-weight:700; font-family:"IBM Plex Mono",monospace}
 .oggi .niente{font-size:13.5px; color:var(--ink-2); margin:12px 0 10px}
 code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--surface-2);
   padding:1px 4px; border-radius:3px}
@@ -745,15 +753,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       (LOCALE ? ' Apri il lotto: la riga ha il bottone <b>Sollecita</b>.' : ''),
       nomiEnti(soll, 4)]);
 
+    // Con un lotto o due un elenco unito da puntini si legge bene; con 19
+    // (il giro nazionale di R27) diventava una riga sola di 400 caratteri,
+    // illeggibile \u2014 trovato controllando la console con la coda reale
+    // piena. Ogni lotto e' un chip a se', non testo che scorre.
     var gruppi = perLotto(), pronte = [], nPronte = 0;
     Object.keys(gruppi).forEach(function(l){
       var q = gruppi[l].filter(function(i){ return statoDi(i) === "da_inviare"; }).length;
-      if(q){ nPronte += q; pronte.push(q + " " + nomeLotto(l)); }
+      if(q){ nPronte += q; pronte.push(
+        '<span class="chip"><b>' + q + '</b> ' + esc(nomeLotto(l)) + '</span>'); }
     });
     if(nPronte) voci.push(["", nPronte,
       '<b>' + (nPronte === 1 ? 'PEC pronta da inviare' : 'PEC pronte da inviare') + '</b>' +
-      (LOCALE ? ' \u2014 apri il lotto e premi Invia PEC su ogni riga.' : ''),
-      pronte.join(" \u00b7 ")]);
+      (LOCALE ? ' \u2014 apri il lotto e premi Invia PEC su ogni riga.' : '') +
+      '<div class="chips">' + pronte.join("") + '</div>',
+      ""]);
 
     // R30 — l'unico modo per sapere se il job di stanotte e' partito davvero:
     // le bozze restano nel lotto finche' non vengono inviate, quindi il loro

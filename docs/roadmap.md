@@ -932,6 +932,25 @@ cartella. La finestra STOP e' il compromesso: il ritmo resta automatico, il cont
 resta umano, il costo e' 25 minuti di attesa una volta al giorno invece che un click per
 riga.
 
+### R32 — Promemoria enti senza canale diretto · ✅ FATTO 2026-09-22
+
+`ingestion/promemoria_enti.py`, step indipendente aggiunto al giro `--mensile` di
+`job.py`. Nato dalla risposta di Provincia di Brescia alla PEC di richiesta iscrizione:
+non hanno un elenco fornitori, le opportunita' si trovano solo controllando a mano la
+pagina "Manifestazioni di interesse" pubblicata sul loro sito.
+
+**Perche' un promemoria e non uno scraper**: la pagina e' dietro un WAF che risponde 403
+anche a un `curl` con user-agent realistico (verificato prima di scrivere una riga di
+codice) — uno script automatico si romperebbe silenziosamente o richiederebbe
+manutenzione continua per un solo ente. Stessa logica di R29 (scraper multi-comune
+scartato per frammentazione delle piattaforme), applicata qui a un caso singolo: il
+costo di build+manutenzione non vale un ente. Un messaggio Telegram mensile con il link
+diretto costa zero manutenzione e non si rompe mai.
+
+Elenco `ENTI` pensato per crescere: quando un altro ente risponde allo stesso modo
+(niente elenco, solo un canale pubblico da controllare a mano), si aggiunge una riga
+invece di scrivere un altro script.
+
 Test dal vivo: `--prova` mostra la coda reale (15 enti, incluse Banca d'Italia e due
 Regioni) senza toccare Telegram ne' il database. Il primo giro con invio vero parte da
 solo il primo giorno feriale utile.

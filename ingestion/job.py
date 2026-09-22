@@ -181,6 +181,12 @@ PIANI = {
         dict(id="push",    argv=["push_supabase.py"],
              descr="pubblicazione su Supabase", minuti=30,
              dipende="lead", richiede=("DSN",)),
+        # Indipendente dal resto del piano apposta: enti come Provincia di
+        # Brescia non hanno un canale di richiesta diretta e vanno
+        # ricontrollati a mano (R32). Non blocca ne' e' bloccato da nulla.
+        dict(id="promemoria", argv=["promemoria_enti.py"],
+             descr="promemoria enti da controllare a mano (R32)", minuti=2,
+             richiede=("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
     ],
 }
 

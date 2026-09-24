@@ -172,12 +172,13 @@ def raccogli(cur):
     # R40 — stessa idea di sopra, altra fonte (SUAM Marche, sotto soglia).
     cur.execute("""
         SELECT codice, titolo, ente, scadenza, giorni_alla_scadenza,
-               importo, link, ente_noto, cf_ente
+               importo, link, ente_noto, cf_ente, verdetto, verdetto_motivo
         FROM radar.v_suam_aperti
         ORDER BY scadenza LIMIT 200""")
     D["suam"] = [dict(codice=a, titolo=b, ente=c, scad=str(d), gg=e,
-                      val=float(f or 0), link=g, noto=h, cf=i)
-                for a, b, c, d, e, f, g, h, i in cur.fetchall()]
+                      val=float(f or 0), link=g, noto=h, cf=i,
+                      verdetto=j, motivo=k)
+                for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
 
     # R38 — poche righe (decine, non migliaia), sta nel payload principale
     # senza bisogno di un endpoint a parte come /api/dominanti.

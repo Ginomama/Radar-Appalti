@@ -1262,6 +1262,33 @@ l'ultima richiesta e' tornata con intestazioni 200 ma connessione interrotta a m
 nessuna pagina SUAM di mezzo). Non e' quindi un sospetto sul codice nuovo, che resta
 verificato solo a livello di dati e non di resa a schermo.
 
+#### Parere AI + avviso — subito dopo, stesso giorno
+
+Chiesto guardando i 3 bandi aperti veri: "fattibili per noi nelle Marche? avvisami
+quando usciranno quelli fattibili". Nessuno dei tre lo era — uno era riscossione
+tributi (serve l'albo concessionari), uno brokeraggio assicurativo (serve iscrizione
+RUI), il terzo un sistema informativo regionale da 2,1 M€ a gara europea, fuori
+portata per una struttura da 4 persone — ma la domanda vera era un meccanismo che
+lo dica da solo, non un'analisi una tantum.
+
+`ingestion/suam_verdetto.py`, stesso schema di `ted_verdetto.py` (R34): un giro
+Haiku per bando aperto senza parere, stesso `CHI_SIAMO` copiato identico (un solo
+criterio di cosa sappiamo servire, non due che possono divergere). Adattato ai campi
+che il SUAM offre — niente CPV ne' oggetto esteso come TED, solo titolo/tipologia/
+importo — e il titolo si e' rivelato gia' abbastanza descrittivo sui tre casi reali
+per un parere corretto: tutti e tre giudicati 'no', con la stessa identica lettura
+data qui a mano ("riscossione tributi fuori perimetro", "brokeraggio assicurativo
+fuori perimetro", "gara europea, requisiti fatturato/SLA impossibili per 4 persone").
+
+**A differenza di TED, qui c'e' anche l'avviso**: `--telegram` manda un messaggio
+solo sui bandi con verdetto 'si' non ancora notificati (nuova colonna
+`notificato_il`, stessa disciplina anti-rumore di `radar.notificato` per le
+scadenze — un bando fattibile si segnala una volta, non ogni giorno finche' scade).
+Nuovo step `suam-verdetto` nel giornaliero, fra `suam` e `suam-push`: cosi' il
+parere arriva anche su Supabase e si vede il badge SI&#47;FORSE&#47;NO nel pannello
+console lo stesso giorno, non al giro dopo. Verificato dal vivo sui 3 bandi reali:
+3 valutati, 0 falliti, nessun avviso mandato — corretto, perche' nessuno era 'si'.
+
 ### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
 `ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per

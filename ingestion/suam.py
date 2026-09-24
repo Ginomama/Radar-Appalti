@@ -232,7 +232,8 @@ CREATE TABLE IF NOT EXISTS suam_avviso (
     link          TEXT,
     ingerito_il   TEXT DEFAULT CURRENT_TIMESTAMP,
     verdetto        TEXT,
-    verdetto_motivo TEXT
+    verdetto_motivo TEXT,
+    notificato_il   TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_suam_scadenza ON suam_avviso (scadenza);
 CREATE INDEX IF NOT EXISTS ix_suam_cf ON suam_avviso (cf_ente);

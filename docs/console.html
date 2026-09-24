@@ -1383,7 +1383,9 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '<span class="conta">'+DATI.suam.length+'</span></h2>'+
       '<div class="aiuto">Gare sotto soglia comunitaria sul marketplace '+
       'regionale delle Marche — dove un\'agenzia piccola compete meglio che '+
-      'su TED. Apri la scheda per i documenti di gara prima di scrivere.'+
+      'su TED. Apri la scheda per i documenti di gara prima di scrivere. '+
+      'Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione automatica, '+
+      'non una lettura del bando: conferma sempre aprendo la scheda.'+
       (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC.' : '')+
       '</div>'+
       '<div class="corpo">' + DATI.suam.map(function(s){
@@ -1402,7 +1404,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
           '<div class="meta">'+
             (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(s.scad)+')' : '')+
             (s.val ? ' &middot; '+num(s.val) : '')+
-          '</div></span>'+
+          '</div>'+
+          (s.verdetto ? '<div class="ted-verdetto v-'+esc(s.verdetto)+'">'+
+            '<b>'+esc(s.verdetto)+'</b>'+esc(s.motivo||"")+'</div>' : '')+
+          '</span>'+
           (s.link ? '<a class="btn" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" '+
             'aria-label="Apri la scheda del bando, '+esc(s.ente||"")+'">apri la scheda</a>' : '')+
         '</div>';

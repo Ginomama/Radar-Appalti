@@ -143,6 +143,15 @@ PIANI = {
         # sola. Nessuna chiave richiesta, e' scraping non un'API a pagamento.
         dict(id="suam",     argv=["suam.py", "--ingest"],
              descr="bandi SUAM Marche aperti (R40)", minuti=5),
+        # Dopo 'suam', prima di 'suam-push': stesso motivo di ted-verdetto,
+        # ma qui c'e' anche --telegram, perche' l'utente ha chiesto di
+        # essere avvisato sui bandi fattibili, non solo di vederli in
+        # console (TED non lo fa ancora). Un bando senza parere oggi resta
+        # comunque visibile, si rivaluta al giro dopo.
+        dict(id="suam-verdetto", argv=["suam_verdetto.py", "--telegram"],
+             descr="parere AI + avviso Telegram sui bandi SUAM fattibili", minuti=10,
+             dipende="suam", richiede=("ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN",
+                                        "TELEGRAM_CHAT_ID")),
         dict(id="suam-push", argv=["push_supabase.py", "--solo", "suam_avviso"],
              descr="pubblica i bandi SUAM su Supabase (R40)", minuti=5,
              dipende="suam", richiede=("DSN",)),

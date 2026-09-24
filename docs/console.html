@@ -1371,6 +1371,44 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       }).join("") + '</div></div>';
   }
 
+  /* ------------------------------------------------------ bandi SUAM (R40) */
+  // Stessa idea di bandiTed(): gare APERTE adesso, non contratti gia' finiti.
+  // Diversa fonte (SUAM Marche, sotto soglia, una regione sola) — volume
+  // piccolo per costruzione, vedi la nota in suam.py. Nessun link al bando
+  // ufficiale con requisiti come TED: qui il link porta alla scheda del
+  // portale, che ha i documenti di gara in allegato.
+  function bandiSuam(){
+    if(!DATI.suam || !DATI.suam.length) return "";
+    return '<div class="pan"><h2>Bandi SUAM Marche aperti'+
+      '<span class="conta">'+DATI.suam.length+'</span></h2>'+
+      '<div class="aiuto">Gare sotto soglia comunitaria sul marketplace '+
+      'regionale delle Marche — dove un\'agenzia piccola compete meglio che '+
+      'su TED. Apri la scheda per i documenti di gara prima di scrivere.'+
+      (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC.' : '')+
+      '</div>'+
+      '<div class="corpo">' + DATI.suam.map(function(s){
+        var gg = s.gg == null ? null : s.gg;
+        var cl = gg == null ? "" : gg <= 15 ? "g-alta" : gg <= 45 ? "g-media" : "g-bassa";
+        return '<div class="riga"><span class="chi">'+
+          '<div class="nome">'+
+            (s.noto && s.cf && LOCALE
+              ? '<button class="link-ente" data-ente="'+esc(s.cf)+'">'+
+                esc(s.ente||"ente non indicato")+'</button> '+
+                '<span class="tag" title="ente già noto dallo storico ANAC">&#9679; noto</span>'
+              : esc(s.ente||"ente non indicato"))+
+          '</div>'+
+          '<div class="meta" title="'+esc(s.titolo||"")+'">'+
+            esc((s.titolo||"").slice(0,100))+'</div>'+
+          '<div class="meta">'+
+            (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(s.scad)+')' : '')+
+            (s.val ? ' &middot; '+num(s.val) : '')+
+          '</div></span>'+
+          (s.link ? '<a class="btn" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" '+
+            'aria-label="Apri la scheda del bando, '+esc(s.ente||"")+'">apri la scheda</a>' : '')+
+        '</div>';
+      }).join("") + '</div></div>';
+  }
+
   /* -------------------------------------------------------- scadenze */
   function opzioni(campo, scelto){
     var v = {};
@@ -1655,7 +1693,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var PAGINE = [
     {id:"",             nome:"Da fare",      corpo: function(){ return daFare(); }},
     {id:"invii",        nome:"Invii",        corpo: function(){ return lotti()+funnelTempo(); }},
-    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+tabella(); }},
+    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+bandiSuam()+tabella(); }},
     {id:"mercato",      nome:"Mercato",      corpo: function(){
       return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
         '<div class="griglia"><div>'+categorie()+'</div>'+

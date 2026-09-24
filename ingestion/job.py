@@ -139,6 +139,13 @@ PIANI = {
         dict(id="ted-push", argv=["push_supabase.py", "--solo", "ted_avviso"],
              descr="pubblica i bandi TED su Supabase (R5)", minuti=5,
              dipende="ted", richiede=("DSN",)),
+        # Stessa logica di TED, altra fonte (R40): sotto soglia, una regione
+        # sola. Nessuna chiave richiesta, e' scraping non un'API a pagamento.
+        dict(id="suam",     argv=["suam.py", "--ingest"],
+             descr="bandi SUAM Marche aperti (R40)", minuti=5),
+        dict(id="suam-push", argv=["push_supabase.py", "--solo", "suam_avviso"],
+             descr="pubblica i bandi SUAM su Supabase (R40)", minuti=5,
+             dipende="suam", richiede=("DSN",)),
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),

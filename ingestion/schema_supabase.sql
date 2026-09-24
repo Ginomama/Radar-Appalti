@@ -358,3 +358,37 @@ CREATE TABLE IF NOT EXISTS radar.anomalia_importo (
 );
 CREATE INDEX IF NOT EXISTS ix_anom_importo ON radar.anomalia_importo (importo DESC);
 ALTER TABLE radar.anomalia_importo ENABLE ROW LEVEL SECURITY;
+
+-- R40: bandi sotto soglia sul SUAM Marche, stessa logica di radar.ted (R5) ma
+-- via scraping HTML invece di API — il portale non ne ha una. Volume piccolo
+-- per costruzione (una regione sola, sotto soglia): segnale aggiuntivo, non
+-- motore principale.
+CREATE TABLE IF NOT EXISTS radar.suam (
+    codice      text PRIMARY KEY,     -- riferimento procedura interno, es. G11677
+    ente        text,
+    cf_ente     text,                 -- aggancio sul nome, come TED: non sempre trovato
+    titolo      text,
+    tipo        text,
+    importo     numeric,
+    pubblicato  date,
+    scadenza    date,
+    cig         text,                 -- solo quando l'ente lo scrive nel titolo
+    stato       text,
+    link        text,
+    ingerito_il timestamptz DEFAULT now(),
+    verdetto        text,             -- stesso parere AI di R34, non ancora collegato
+    verdetto_motivo text
+);
+CREATE INDEX IF NOT EXISTS ix_suam_scadenza ON radar.suam (scadenza);
+CREATE INDEX IF NOT EXISTS ix_suam_cf ON radar.suam (cf_ente);
+ALTER TABLE radar.suam ENABLE ROW LEVEL SECURITY;
+
+DROP VIEW IF EXISTS radar.v_suam_aperti;
+CREATE OR REPLACE VIEW radar.v_suam_aperti AS
+SELECT s.*,
+       (s.scadenza - current_date) AS giorni_alla_scadenza,
+       e.cf_ente IS NOT NULL       AS ente_noto
+FROM radar.suam s
+LEFT JOIN radar.ente e ON e.cf_ente = s.cf_ente
+WHERE s.scadenza >= current_date;
+ALTER VIEW radar.v_suam_aperti SET (security_invoker = on);

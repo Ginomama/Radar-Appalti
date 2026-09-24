@@ -99,6 +99,12 @@ MAPPA = [
         "cig", "cf_ente", "ente", "prov", "fornitore",
         "importo", "secondo_importo", "rapporto",
     ], None, ""),
+    # R40. Bandi sotto soglia sul SUAM Marche.
+    ("suam_avviso", "radar.suam", [
+        "codice", "ente", "cf_ente", "titolo", "tipo", "importo",
+        "pubblicato", "scadenza", "cig", "stato", "link",
+        "verdetto", "verdetto_motivo",
+    ], None, ""),
 ]
 
 # Colonne che in Postgres sono date: SQLite le tiene come testo ISO, e le

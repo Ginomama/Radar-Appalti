@@ -1208,6 +1208,60 @@ di stage, quindi il rinvio non costa una riscrittura.
 - una ventina di conversazioni aperte insieme: a quel punto la console non basta più
 - servono calendario, sequenze automatiche o preventivi — cose che qui non ci saranno mai
 
+### R40 — Bandi SUAM Marche (sotto soglia, gara aperta ora) · ✅ FATTO 2026-09-24
+
+Dalla domanda "ha senso aggiungere anche i bandi presenti sul MEPA e quelli presenti
+nei portali regionali?". Valutati insieme MEPA (scartato: nessuna API pulita, solo
+scraping fragile su una piattaforma pensata per operatori loggati) e due regioni,
+Veneto e Marche, come chiesto. Verificato dal vivo che il portale proprio di Regione
+Veneto e' a un ente solo (2 bandi) — il vero canale Veneto e' SINTEL, piattaforma
+enorme e separata, fuori scope. Scelta dell'utente: solo Marche per ora.
+
+**SUAM (Sistema Unico Appalti Marche)**, `appaltisuam.regione.marche.it`, gira lo
+stesso software "PortaleAppalti" del portale veneto (stesso schema URL, stesso
+`robots.txt`) ma e' genuinamente multi-ente: centinaia di stazioni appaltanti nel
+filtro (Agenzia del Demanio, ASUR Marche, decine di Comuni, amministrazioni
+provinciali). Nessuna API pubblica — form di ricerca protetto da CSRF e sessione:
+GET sulla pagina lista per cookie + token `_csrf` nascosto nell'HTML, poi POST
+form-urlencoded con quel token allo stesso URL con `actionPath` diverso. Il
+`robots.txt` di entrambi i portali autorizza esplicitamente Googlebot/Bingbot proprio
+su queste pagine (`ppgare_bandi_lista.wp` e affini) — stesso segnale di liceita' gia'
+usato per interpretare le regole di ANAC e TED, non solo un'assunzione.
+
+`ingestion/suam.py`: un GET + un POST per ogni giro di ingest, nessuna libreria
+esterna. Ogni bando e' un blocco HTML `<div class="list-item">` con coppie
+etichetta/valore da regex; il CIG reale, quando c'e', e' incorporato nel titolo
+("...CIG : BCE65825B2") e viene estratto da li' — la pagina di dettaglio (che lo
+avrebbe sempre) non viene interrogata bando per bando in questa prima versione, per
+non moltiplicare le richieste al portale.
+
+**Stessa nota onesta gia' scritta per TED**: 877 bandi storici su tutte le Marche, ma
+solo **3 "In corso" oggi**. Segnale, non motore principale — utile perche' aggancia
+enti gia' noti dallo storico ANAC (stesso meccanismo di `aggancia()` di `ted.py`), non
+perche' sposti il volume del prodotto.
+
+Stesso schema di TED lungo tutta la pipeline: tabella `suam_avviso` in SQLite,
+`radar.suam` + vista `radar.v_suam_aperti` su Supabase, voce in `push_supabase.py`
+(`--solo suam_avviso`), due step nel giornaliero (`suam`, poi `suam-push`), nuovo
+pannello "Bandi SUAM Marche aperti" in `console.html` (dentro "Opportunita'", sopra
+quello TED gia' esistente).
+
+Due bug trovati e corretti costruendo: l'importo arrivava con `€` in coda (da
+`html.unescape("&euro;")`) e rompeva la conversione a `float` — risolto estraendo
+solo la parte numerica prima di convertire. E `console_live.py` interrogava una
+colonna `valore` che qui si chiama `importo` (copiato da `ted.py` senza aggiornare il
+nome) — HTTP 500 su `/api/dati`, trovato leggendo il corpo dell'errore Postgres via
+curl invece di dare per scontato che fosse la solita fragilita' del server, corretto e
+riverificato con lo stesso curl (200, riga `suam` corretta con i 3 bandi attesi).
+
+Verificato via CLI (`suam.py --gate/--ingest/--aperti`, tutti sul portale vero) e via
+`curl` diretto su `/api/dati`. **La verifica visiva nel browser non e' riuscita**:
+stessa fragilita' gia' documentata al punto 17 — riavviato il server piu' volte, e
+l'ultima richiesta e' tornata con intestazioni 200 ma connessione interrotta a meta'
+(`net::ERR_CONNECTION_RESET`, confermato anche isolando una singola `GET /` senza
+nessuna pagina SUAM di mezzo). Non e' quindi un sospetto sul codice nuovo, che resta
+verificato solo a livello di dati e non di resa a schermo.
+
 ### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
 `ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per

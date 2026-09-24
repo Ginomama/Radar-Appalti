@@ -57,6 +57,15 @@ h1{font-size:27px; font-weight:700; letter-spacing:-.02em}
   background:var(--surface)}
 .puntino{width:7px; height:7px; border-radius:50%; background:var(--accento); flex:none}
 
+/* navigazione fra pagine */
+.nav-pag{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px}
+.nav-pag a{font-size:13px; font-weight:600; color:var(--ink-2); text-decoration:none;
+  padding:6px 14px; border-radius:20px; border:1px solid transparent}
+.nav-pag a:hover{color:var(--ink); background:var(--surface-2)}
+.nav-pag a:focus-visible{outline:2px solid var(--accento); outline-offset:2px}
+.nav-pag a[aria-current="page"]{color:var(--accento); background:var(--accento-tenue);
+  border-color:var(--accento)}
+
 /* tessere di riepilogo */
 .tessere{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:10px; margin-bottom:22px}
 .tess{background:var(--surface); border:1px solid var(--rule); border-radius:5px;
@@ -1458,19 +1467,45 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       (STATO.salvato ? ' &middot; stato salvato ' + esc(STATO.salvato) : '')+'</div>';
   }
 
+  // Ogni sezione era su un'unica pagina, tutta insieme: per capire se una
+  // gara TED regge i tempi bisognava scorrere oltre tabella lead, funnel,
+  // categorie e concorrenti. Quattro pagine per tema, la home resta solo
+  // "Da fare" — quella che si guarda ogni mattina — le altre si aprono
+  // quando serve davvero quel tipo di dato.
+  var PAGINE = [
+    {id:"",             nome:"Da fare",      corpo: function(){ return daFare(); }},
+    {id:"invii",        nome:"Invii",        corpo: function(){ return lotti()+funnelTempo(); }},
+    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+tabella(); }},
+    {id:"mercato",      nome:"Mercato",      corpo: function(){
+      return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
+        '<div class="griglia"><div>'+categorie()+'</div>'+
+        '<div>'+territorio()+competitor()+'</div></div>';
+    }}
+  ];
+
+  function paginaCorrente(){
+    var h = (location.hash || "").replace(/^#\/?/, "");
+    return PAGINE.some(function(p){ return p.id === h; }) ? h : "";
+  }
+
+  function navPagine(corrente){
+    return '<nav class="nav-pag" aria-label="Sezioni">'+PAGINE.map(function(p){
+      return '<a href="#/'+p.id+'"'+(p.id === corrente ? ' aria-current="page"' : '')+
+        '>'+esc(p.nome)+'</a>';
+    }).join("")+'</nav>';
+  }
+
   function disegna(){
+    var corrente = paginaCorrente();
+    var pag = PAGINE.filter(function(p){ return p.id === corrente; })[0] || PAGINE[0];
     app.innerHTML =
       '<div class="wrap">'+
       '<header><div><h1>Radar Appalti</h1>'+
       '<div class="sotto">Contratti informatici della PA in scadenza, e le PEC per '+
       'farsi conoscere <b>prima</b> che vengano rinnovati.</div></div>'+
       spia()+'</header>'+
-      daFare()+
-      bandiTed()+
-      tabella()+
-      '<div class="griglia"><div>'+funnelTempo()+lotti()+'</div>'+
-      '<div>'+categorie()+territorio()+competitor()+'</div></div>'+
-      '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
+      navPagine(corrente)+
+      pag.corpo()+
       '<footer>Fonti: ANAC open data (CC BY-SA 4.0) e IndicePA (CC BY 4.0). '+
       'Elaborazione FlowLine, uso interno &mdash; i dati non vanno ridistribuiti a terzi.<br>'+
       'I giorni alla scadenza si ricalcolano a ogni apertura; il resto &egrave; '+
@@ -1478,7 +1513,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
               : 'la fotografia del ' + esc(dataIt(DATI.generato)) + '.')+
       '</footer></div>';
 
-    disegnaRighe();
+    // disegnaRighe() cerca #righe-lead: esiste solo nella pagina "Opportunita'".
+    if(document.getElementById("righe-lead")) disegnaRighe();
 
     // I filtri scrivono in tab prima di ridisegnare: e' quello che li fa
     // sopravvivere ai re-render innescati dagli altri pannelli.
@@ -1844,6 +1880,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     disegna();
     salva(k, voce, extra);
   }
+
+  // Cambio pagina dal nav (o back/forward del browser): stesso disegna(),
+  // legge di nuovo l'hash. Nessuno stato di pagina fuori dall'URL.
+  window.addEventListener("hashchange", disegna);
 
   app.addEventListener("change", function(e){
     var s = e.target.closest("select.altro");

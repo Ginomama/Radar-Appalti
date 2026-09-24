@@ -218,8 +218,11 @@ def normalizza(n):
         valore=valore(n),
         valuta=testo(n.get("estimated-value-cur-lot")),
         oggetto=(testo(n.get("description-lot")) or "")[:2000] or None,
-        link=(((n.get("links") or {}).get("xml") or {}).get("MUL")
-              or ((n.get("links") or {}).get("pdf") or {}).get("ITA")),
+        # Pagina di dettaglio leggibile, non il file XML/PDF grezzo: chi clicca
+        # "leggi il bando" deve vedere una pagina, non ritrovarsi un download.
+        link=("https://ted.europa.eu/it/notice/-/detail/"
+              + testo(n.get("publication-number"))
+              if testo(n.get("publication-number")) else None),
     )
 
 

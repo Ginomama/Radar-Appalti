@@ -955,7 +955,30 @@ Test dal vivo: `--prova` mostra la coda reale (15 enti, incluse Banca d'Italia e
 Regioni) senza toccare Telegram ne' il database. Il primo giro con invio vero parte da
 solo il primo giorno feriale utile.
 
-### R26 — Spinta dei lead su GoHighLevel · RINVIATO · ~3h
+### R33 — Link TED corretto + console divisa in pagine per tema · ✅ FATTO 2026-09-24
+
+Due correzioni nate da un uso reale della console:
+
+**Link "leggi il bando" sui bandi TED**: puntava al file XML/PDF grezzo dei link
+dell'API TED (`links.xml.MUL` o `links.pdf.ITA`), quindi cliccarlo scaricava un file
+invece di aprire una pagina leggibile. `ingestion/ted.py` ora costruisce la vera pagina
+di dettaglio (`https://ted.europa.eu/it/notice/-/detail/{numero}`) dal
+`publication-number`, sempre disponibile. Corretti anche i link gia' in database (23
+bandi ancora aperti fuori dalla finestra dei 30 giorni dell'ultimo ingest) con
+un'`UPDATE` diretta, poi ripubblicati su Supabase.
+
+**Console divisa in 4 pagine per tema** (era tutto su una pagina sola, troppa
+informazione da scorrere per trovare una cosa sola): "Da fare" (home, l'unica vista
+ogni mattina), "Invii" (PEC + funnel nel tempo), "Opportunita'" (bandi TED + contratti
+in scadenza), "Mercato" (di cosa si tratta + concorrenti + grandi fornitori). Routing
+via hash (`#/invii`, `#/opportunita`, `#/mercato`) invece di pagine HTML separate:
+`disegna()` legge l'hash e ricompone solo le sezioni di quella pagina, riusando le
+stesse funzioni di rendering di prima — zero duplicazione, zero cambi a
+`console_live.py`, e le pagine restano bookmarkabili/condivisibili con l'URL.
+
+Valutata anche la divisione "una pagina per sezione" (7 pagine) ma scartata: le sezioni
+raggruppate (es. bandi TED + scadenze, entrambe "cose a cui rispondere ora") si leggono
+insieme meglio che separate, e 4 click di navigazione battono 7.
 
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale

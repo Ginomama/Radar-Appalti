@@ -980,6 +980,38 @@ Valutata anche la divisione "una pagina per sezione" (7 pagine) ma scartata: le 
 raggruppate (es. bandi TED + scadenze, entrambe "cose a cui rispondere ora") si leggono
 insieme meglio che separate, e 4 click di navigazione battono 7.
 
+### R34 — Parere AI sui bandi TED · ✅ FATTO 2026-09-24
+
+Nato da una richiesta diretta: "leggi il bando" apre 79 pagine TED aperte, ognuna con
+un oggetto di due pagine da capire se vale la pena rispondere. `ingestion/ted_verdetto.py`
+chiede a un modello economico (Haiku) un parere netto (SI/FORSE/NO + una riga di motivo)
+sui campi gia' ingeriti da `ted.py` — titolo, ente, CPV, natura, valore, oggetto — non sul
+bando intero, che richiederebbe scaricare e parsare il PDF ufficiale.
+
+**Non e' un filtro**: il bando resta visibile comunque, badge colorato sotto la riga
+("leggi il bando" resta il posto dove si controlla davvero prima di scrivere). Il prompt
+codifica cosa FlowLine sa fare davvero (stessa fonte di verita' di `COSA_FACCIAMO` in
+`genera_pec.py`: sviluppo/integrazioni/dati/documentale/consulenza IT, non licenze/telco/
+datacenter) e il vincolo di essere in 4 persone — un bando da 5,6M€ con requisiti di
+fatturato pregresso e' "no" anche se il tema e' giusto.
+
+Costo tenuto sotto controllo per costruzione: `WHERE verdetto IS NULL` valuta ogni bando
+una volta sola, mai ri-giudicato ai giri successivi. Nuovo step indipendente nel giornaliero
+(`ted-verdetto`, dopo `ted`, richiede `ANTHROPIC_API_KEY`): se fallisce o manca la chiave,
+`ted-push` pubblica comunque i bandi grezzi, senza parere — non e' bloccante.
+
+Test dal vivo sui 79 bandi aperti il giorno del rilascio: 77 "no", 1 "forse", 1 "si" —
+distribuzione coerente con l'aspettativa (soglia comunitaria, agenzia piccola), non un
+bias del prompt verso il "no" facile: i motivi citano ragioni specifiche caso per caso
+(rivendita licenze, valore/team size, fuori competenza) non un rifiuto generico.
+
+**Nota tecnica**: `radar.ted` ha ottenuto le due colonne nuove (`verdetto`,
+`verdetto_motivo`) via `ALTER TABLE ADD COLUMN IF NOT EXISTS`, ma la vista
+`v_ted_aperte` (`SELECT t.*, ...`) non si aggiorna da sola: Postgres rifiuta un
+`CREATE OR REPLACE VIEW` che cambia la posizione delle colonne esistenti. Serve un
+`DROP VIEW IF EXISTS` prima — la stessa regola gia' scritta in cima a
+`schema_supabase.sql`, dimenticata una volta e ritrovata da un errore in push.
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

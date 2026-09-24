@@ -306,8 +306,16 @@ CREATE INDEX IF NOT EXISTS ix_ted_scadenza ON radar.ted (scadenza);
 CREATE INDEX IF NOT EXISTS ix_ted_cf ON radar.ted (cf_ente);
 ALTER TABLE radar.ted ENABLE ROW LEVEL SECURITY;
 
+-- R34: un parere breve (si'/forse/no + motivo) su ogni bando, generato da un
+-- modello a basso costo su titolo/CPV/oggetto — non serve rileggersi 150
+-- bandi al mese per capire quali scartare subito.
+ALTER TABLE radar.ted
+    ADD COLUMN IF NOT EXISTS verdetto        text,
+    ADD COLUMN IF NOT EXISTS verdetto_motivo text;
+
 -- Solo le gare ancora aperte, con i giorni che restano. E' la vista che legge
 -- n8n: una gara scaduta ieri non e' un'allerta, e' rumore.
+DROP VIEW IF EXISTS radar.v_ted_aperte;
 CREATE OR REPLACE VIEW radar.v_ted_aperte AS
 SELECT t.*,
        (t.scadenza - current_date) AS giorni_alla_scadenza,

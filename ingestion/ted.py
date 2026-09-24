@@ -245,11 +245,31 @@ CREATE TABLE IF NOT EXISTS ted_avviso (
     valuta        TEXT,
     oggetto       TEXT,
     link          TEXT,
-    ingerito_il   TEXT DEFAULT CURRENT_TIMESTAMP
+    ingerito_il   TEXT DEFAULT CURRENT_TIMESTAMP,
+    verdetto        TEXT,   -- R34: parere breve del modello (si'/forse/no)
+    verdetto_motivo TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_ted_scadenza ON ted_avviso (scadenza);
 CREATE INDEX IF NOT EXISTS ix_ted_cf ON ted_avviso (cf_ente);
 """
+
+# SQLite non ha 'ADD COLUMN IF NOT EXISTS': su un database gia' esistente (il
+# CREATE TABLE sopra e' un no-op se la tabella c'e' gia') le due colonne
+# vanno aggiunte a parte, ignorando l'errore se ci sono gia'.
+ALTER = (
+    "ALTER TABLE ted_avviso ADD COLUMN verdetto TEXT",
+    "ALTER TABLE ted_avviso ADD COLUMN verdetto_motivo TEXT",
+)
+
+
+def allinea_schema(cx):
+    for stmt in ALTER:
+        try:
+            cx.execute(stmt)
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e):
+                raise
+    cx.commit()
 
 
 def indice_enti(cx):
@@ -338,6 +358,7 @@ def ingest(giorni):
     righe = [normalizza(a) for a in avvisi]
     cx = sqlite3.connect(DB)
     cx.executescript(DDL)
+    allinea_schema(cx)
     n_agg = aggancia(righe, indice_enti(cx))
     col = ["numero", "identificativo", "titolo", "ente", "citta", "cf_ente",
            "pubblicato", "scadenza", "n_lotti", "cpv", "tipo", "procedura",

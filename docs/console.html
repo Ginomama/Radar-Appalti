@@ -330,6 +330,15 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .g-alta{color:var(--alta)} .g-media{color:var(--media)} .g-bassa{color:var(--ink-2)}
 .tag{display:inline-block; font-size:10.5px; padding:1.5px 6px; border-radius:3px;
   background:var(--surface-2); color:var(--ink-2); white-space:nowrap}
+
+/* parere AI sui bandi TED (R34) */
+.verdetto{display:flex; align-items:baseline; gap:6px; font-size:11.5px;
+  color:var(--ink-2); margin-top:2px}
+.verdetto b{font-size:10.5px; font-weight:700; text-transform:uppercase;
+  padding:1.5px 6px; border-radius:3px; flex:none}
+.verdetto.v-si b{color:var(--bassa); background:var(--bassa-bg)}
+.verdetto.v-forse b{color:var(--media); background:var(--media-bg)}
+.verdetto.v-no b{color:var(--alta); background:var(--alta-bg)}
 a{color:var(--accento); text-decoration:none}
 a:hover{text-decoration:underline}
 .vuoto{padding:26px 16px; color:var(--ink-3); font-size:13px; text-align:center}
@@ -1163,7 +1172,9 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '<span class="conta">'+DATI.ted.length+'</span></h2>'+
       '<div class="aiuto">Gare europee sopra soglia, ancora aperte. Qui i '+
       'requisiti di partecipazione ci sono per davvero &mdash; nel link al '+
-      'bando ufficiale, non inventati.'+
+      'bando ufficiale, non inventati. Il parere sotto (SI&#47;FORSE&#47;NO) '+
+      'è un’indicazione automatica, non una lettura del bando: conferma '+
+      'sempre aprendo il link prima di scrivere.'+
       (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC: '+
                 'clicca il nome per la sua scheda prima di prepararti.' : '')+
       '</div>'+
@@ -1184,6 +1195,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
             (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(t.scad)+')' : '')+
             (t.val ? ' &middot; '+num(t.val) : '')+
           '</div>'+
+          (t.verdetto ? '<div class="verdetto v-'+esc(t.verdetto)+'">'+
+            '<b>'+esc(t.verdetto)+'</b>'+esc(t.motivo||"")+'</div>' : '')+
           '</span>'+
           (t.link ? '<a class="btn" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer" '+
             'aria-label="Apri il bando ufficiale con i requisiti, '+esc(t.ente||"")+'">leggi il bando</a>' : '')+

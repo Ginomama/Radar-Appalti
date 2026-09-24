@@ -87,6 +87,7 @@ MAPPA = [
         "numero", "identificativo", "titolo", "ente", "citta", "cf_ente",
         "pubblicato", "scadenza", "n_lotti", "cpv", "tipo", "procedura",
         "natura", "valore", "valuta", "oggetto", "link",
+        "verdetto", "verdetto_motivo",
     ], None, ""),
 ]
 

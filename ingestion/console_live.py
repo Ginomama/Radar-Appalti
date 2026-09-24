@@ -161,12 +161,13 @@ def raccogli(cur):
     # link porta al bando ufficiale, dove i requisiti esistono davvero.
     cur.execute("""
         SELECT numero, titolo, ente, scadenza, giorni_alla_scadenza,
-               valore, link, ente_noto, cf_ente
+               valore, link, ente_noto, cf_ente, verdetto, verdetto_motivo
         FROM radar.v_ted_aperte
         ORDER BY scadenza LIMIT 200""")
     D["ted"] = [dict(numero=a, titolo=b, ente=c, scad=str(d), gg=e,
-                     val=float(f or 0), link=g, noto=h, cf=i)
-               for a, b, c, d, e, f, g, h, i in cur.fetchall()]
+                     val=float(f or 0), link=g, noto=h, cf=i,
+                     verdetto=j, motivo=k)
+               for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
 
     D["generato"] = datetime.now().isoformat(timespec="seconds")
     D["auto_genera"] = leggi_stato_auto_genera()

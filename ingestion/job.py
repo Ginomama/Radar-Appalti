@@ -116,6 +116,13 @@ PIANI = {
         # scoprirla quando e' chiusa. Costa una chiamata HTTP.
         dict(id="ted",     argv=["ted.py", "--ingest", "--giorni", "7"],
              descr="gare europee aperte (R5)", minuti=10),
+        # Dopo 'ted' perche' valuta solo bandi gia' ingeriti (verdetto IS
+        # NULL): un bando nuovo di oggi va prima scritto in ted_avviso, poi
+        # giudicato. Non blocca 'ted-push': un bando senza parere oggi resta
+        # visibile lo stesso, si rivaluta al giro dopo.
+        dict(id="ted-verdetto", argv=["ted_verdetto.py"],
+             descr="parere AI su bandi TED nuovi (R34)", minuti=10,
+             dipende="ted", richiede=("ANTHROPIC_API_KEY",)),
         # Fino al 2026-09-19 radar.ted su Supabase si aggiornava solo col
         # push mensile: il ted locale sopra girava ogni giorno ma restava
         # chiuso qui, e la console vedeva bandi vecchi anche un mese. Un

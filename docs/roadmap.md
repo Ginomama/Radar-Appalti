@@ -1041,6 +1041,40 @@ Verificato sui tre task reali: `DisallowStartIfOnBatteries=False`,
 esecuzione invariati. La prova vera arriva al prossimo giro mancato — ma ora, per la
 prima volta, la causa e' nota e non solo mitigata a mano.
 
+### R36 — Motore intelligence: chi presidia gli enti (vista globale) · ✅ FATTO 2026-09-24
+
+Terzo di quattro punti chiesti di seguito ("Job mensile automatico" = R32/R35, "Motore
+scadenze contratti" = il prodotto stesso, "Motore intelligence: chi presidia quale
+ente", "Viste — dashboard o agente"). Prima domanda chiarita con l'utente: "chi
+presidia" significa il fornitore attuale di ogni ente, non altro. **Gia' esisteva** per
+un ente alla volta — la scheda R19 (`scheda_ente()`/`mostraScheda()`) lo mostra gia'
+in console cliccando su un ente. Verificato leggendo il codice prima di costruire
+qualcosa di duplicato: quello che mancava era una **vista su tutti gli enti insieme**,
+cercabile, non un ente per volta.
+
+`ingestion/intelligence.py --calcola` precalcola, per ognuno dei 21.442 enti in
+`radar.aggiudicazione`, il fornitore che vale di piu' nello storico (CTE con
+`ROW_NUMBER() OVER (PARTITION BY cf_ente ORDER BY valore DESC, contratti DESC)`),
+scrivendo `radar.ente_fornitore_dominante` (17.447 righe — gli altri enti non hanno
+aggiudicazioni con importo valorizzato). Nuovo step nel giornaliero, dopo `bulk`.
+
+**Perche' non nel payload esistente**: `console_live.py` oggi manda tutti i dati di
+tutte e 4 le pagine in un'unica risposta al primo caricamento. Aggiungere 17mila righe
+li' avrebbe rallentato l'apertura di ogni pagina, non solo di "Mercato". Costruito
+invece un endpoint a parte on-demand, `/api/dominanti?q=`, sullo stesso schema gia' in
+uso per la scheda ente (`/api/ente?cf=`): senza ricerca torna i 50 piu' grandi per
+valore, con ricerca filtra per ente o fornitore (`ILIKE`, max 100 righe). Nuovo
+pannello in `console.html` dentro "Mercato", solo per l'istanza locale (`LOCALE`) —
+nella copia pubblicata su GitHub Pages l'endpoint non esiste, il pannello semplicemente
+non si disegna.
+
+Testato dal vivo: ricerca "brescia" trova correttamente l'Azienda Socio-Sanitaria
+Territoriale degli Spedali Civili. **Nota sui dati**: il Comune di Bagaladi compare con
+un contratto da 3 miliardi di euro con una piccola SRLS — quasi certamente un errore di
+inserimento nei dati grezzi ANAC (stesso tipo di anomalia gia' visto per i CIG mancanti
+e i fornitori segnati "IMPRESA INESISTENTE"), non filtrato via silenziosamente ma
+segnalato qui per trasparenza.
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

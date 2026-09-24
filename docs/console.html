@@ -331,14 +331,15 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .tag{display:inline-block; font-size:10.5px; padding:1.5px 6px; border-radius:3px;
   background:var(--surface-2); color:var(--ink-2); white-space:nowrap}
 
-/* parere AI sui bandi TED (R34) */
-.verdetto{display:flex; align-items:baseline; gap:6px; font-size:11.5px;
+/* parere AI sui bandi TED (R34) — nome diverso da .verdetto (gia' usata da
+   territorio() come nota generica): stessa parola, scopo diverso */
+.ted-verdetto{display:flex; align-items:baseline; gap:6px; font-size:11.5px;
   color:var(--ink-2); margin-top:2px}
-.verdetto b{font-size:10.5px; font-weight:700; text-transform:uppercase;
+.ted-verdetto b{font-size:10.5px; font-weight:700; text-transform:uppercase;
   padding:1.5px 6px; border-radius:3px; flex:none}
-.verdetto.v-si b{color:var(--bassa); background:var(--bassa-bg)}
-.verdetto.v-forse b{color:var(--media); background:var(--media-bg)}
-.verdetto.v-no b{color:var(--alta); background:var(--alta-bg)}
+.ted-verdetto.v-si b{color:var(--bassa); background:var(--bassa-bg)}
+.ted-verdetto.v-forse b{color:var(--media); background:var(--media-bg)}
+.ted-verdetto.v-no b{color:var(--alta); background:var(--alta-bg)}
 a{color:var(--accento); text-decoration:none}
 a:hover{text-decoration:underline}
 .vuoto{padding:26px 16px; color:var(--ink-3); font-size:13px; text-align:center}
@@ -429,6 +430,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var scaricatore = null;
   var aperti = {};          // lotti aperti: stato di sola vista, non finisce nel documento
   var filtroProv = "";
+  var domTimer = null;      // debounce della ricerca in "Chi presidia gli enti" (R36)
   // I filtri della tabella vivono qui, non solo nel DOM. disegna() ricostruisce
   // l'intera pagina, e prima bastava cambiare provincia nel pannello del
   // territorio — o lotto nel tracker — per azzerare ricerca, categoria e
@@ -1144,6 +1146,54 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '</div></div>';
   }
 
+  /* ------------------------------------------------------ dominanti (R36) */
+  // "Chi presidia quale ente": scheda_ente() gia' lo dice per un ente alla
+  // volta ("Chi glieli tiene", cliccando dentro dalla console); qui la
+  // stessa domanda si fa su tutti i 17mila insieme, cercabile. Solo LOCALE:
+  // richiede il server per la ricerca (17mila righe non stanno nel payload
+  // iniziale, rallenterebbero ogni apertura della console).
+  function dominanti(){
+    if(!LOCALE) return "";
+    return '<div class="pan"><h2>Chi presidia gli enti'+
+      '<span class="conta" id="conta-dom"></span></h2>'+
+      '<div class="aiuto">Il fornitore che vale di più nello storico di ogni ente '+
+      '— chi bisogna spostare per entrare. Cerca un ente o un fornitore; senza '+
+      'ricerca vedi i più grandi.</div>'+
+      '<div class="filtri"><input type="search" id="f-dom" '+
+        'placeholder="Cerca ente o fornitore…" aria-label="Cerca fra gli enti"></div>'+
+      '<div class="tab-scroll"><table><thead><tr>'+
+        '<th>Ente</th><th>Prov</th><th>Fornitore dominante</th>'+
+        '<th>Contratti</th><th style="text-align:right">Valore</th><th>Ultimo</th>'+
+      '</tr></thead><tbody id="righe-dom"><tr><td colspan="6" class="vuoto">'+
+      'Carico…</td></tr></tbody></table></div></div>';
+  }
+
+  function disegnaDominanti(righe){
+    var tb = document.getElementById("righe-dom");
+    if(!tb) return;
+    var conta = document.getElementById("conta-dom");
+    if(conta) conta.textContent = righe.length + (righe.length === 100 ? "+" : "");
+    tb.innerHTML = righe.length ? righe.map(function(r){
+      return '<tr><td class="ente">'+esc(r.ente||"?")+'</td>'+
+        '<td>'+esc(titolo(provNome(r.prov))||"")+'</td>'+
+        '<td>'+esc(r.fornitore||"?")+'</td>'+
+        '<td>'+r.contratti+'</td>'+
+        '<td class="imp">'+num(r.valore||0)+'</td>'+
+        '<td class="mono">'+esc((r.ultimo||"").slice(0,7))+'</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="vuoto">Nessun risultato.</td></tr>';
+  }
+
+  function caricaDominanti(q){
+    fetch("/api/dominanti?q=" + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(disegnaDominanti)
+      .catch(function(){
+        var tb = document.getElementById("righe-dom");
+        if(tb) tb.innerHTML = '<tr><td colspan="6" class="vuoto">'+
+          'Server locale non raggiungibile.</td></tr>';
+      });
+  }
+
   /* ------------------------------------------------------ competitor */
   function competitor(){
     return '<div class="pan"><h2>I grandi fornitori della PA<span class="conta">per valore vinto</span></h2>'+
@@ -1195,7 +1245,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
             (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(t.scad)+')' : '')+
             (t.val ? ' &middot; '+num(t.val) : '')+
           '</div>'+
-          (t.verdetto ? '<div class="verdetto v-'+esc(t.verdetto)+'">'+
+          (t.verdetto ? '<div class="ted-verdetto v-'+esc(t.verdetto)+'">'+
             '<b>'+esc(t.verdetto)+'</b>'+esc(t.motivo||"")+'</div>' : '')+
           '</span>'+
           (t.link ? '<a class="btn" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer" '+
@@ -1492,7 +1542,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     {id:"mercato",      nome:"Mercato",      corpo: function(){
       return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
         '<div class="griglia"><div>'+categorie()+'</div>'+
-        '<div>'+territorio()+competitor()+'</div></div>';
+        '<div>'+territorio()+competitor()+'</div></div>'+
+        dominanti();
     }}
   ];
 
@@ -1572,6 +1623,16 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     if(bc && (LOCALE || scaricatore)){
       bc.hidden = false;
       bc.addEventListener("click", esporta);
+    }
+
+    var fd = document.getElementById("f-dom");
+    if(fd){
+      caricaDominanti("");
+      fd.addEventListener("input", function(){
+        clearTimeout(domTimer);
+        var v = fd.value;
+        domTimer = setTimeout(function(){ caricaDominanti(v); }, 300);
+      });
     }
   }
 

@@ -185,6 +185,12 @@ PIANI = {
         dict(id="lead",    argv=["punteggio.py", "--applica"],
              descr="punteggio ai lead correnti", minuti=30,
              dipende="punteggio"),
+        # Dopo 'bulk' (aggiudicatari/aggiudicazioni freschi), indipendente da
+        # punteggio/lead: non serve il punteggio dei lead per sapere chi ha
+        # gia' in mano un ente.
+        dict(id="intelligence", argv=["intelligence.py", "--calcola"],
+             descr="chi presidia quale ente (R36)", minuti=15,
+             dipende="bulk"),
         dict(id="push",    argv=["push_supabase.py"],
              descr="pubblicazione su Supabase", minuti=30,
              dipende="lead", richiede=("DSN",)),

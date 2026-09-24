@@ -175,6 +175,31 @@ def raccogli(cur):
     return D
 
 
+def cerca_dominanti(dsn, testo):
+    """R36 — chi presidia quale ente, cercabile su tutti i 17mila.
+
+    Fuori da dati(): 17mila righe nel payload iniziale rallenterebbero ogni
+    apertura della console, anche per chi non apre mai questa sezione. Si
+    cerca su richiesta, come /api/ente."""
+    testo = (testo or "").strip()
+    with psycopg.connect(dsn, connect_timeout=20) as pg, pg.cursor() as cur:
+        if testo:
+            cur.execute("""
+                SELECT ente, prov, fornitore, contratti, valore, ultimo
+                FROM radar.ente_fornitore_dominante
+                WHERE ente ILIKE %s OR fornitore ILIKE %s
+                ORDER BY valore DESC NULLS LAST LIMIT 100""",
+                (f"%{testo}%", f"%{testo}%"))
+        else:
+            cur.execute("""
+                SELECT ente, prov, fornitore, contratti, valore, ultimo
+                FROM radar.ente_fornitore_dominante
+                ORDER BY valore DESC NULLS LAST LIMIT 50""")
+        return [dict(ente=a, prov=b, fornitore=c, contratti=d, valore=float(e or 0),
+                     ultimo=str(f) if f else None)
+               for a, b, c, d, e, f in cur.fetchall()]
+
+
 def leggi_stato_task():
     """Interroga schtasks per i due job pianificati (R9).
 
@@ -409,6 +434,10 @@ def crea_handler(dsn):
                 elif self.path.startswith("/api/ente"):
                     cf = (urllib.parse.parse_qs(qs).get("cf") or [""])[0]
                     self._invia(200, json.dumps(scheda_ente(dsn, cf),
+                                                ensure_ascii=False, default=str))
+                elif self.path.startswith("/api/dominanti"):
+                    q = (urllib.parse.parse_qs(qs).get("q") or [""])[0]
+                    self._invia(200, json.dumps(cerca_dominanti(dsn, q),
                                                 ensure_ascii=False, default=str))
                 else:
                     self._invia(404, '{"errore":"non trovato"}')

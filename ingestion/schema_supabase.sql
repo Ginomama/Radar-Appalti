@@ -324,3 +324,21 @@ FROM radar.ted t
 LEFT JOIN radar.ente e ON e.cf_ente = t.cf_ente
 WHERE t.scadenza >= current_date;
 ALTER VIEW radar.v_ted_aperte SET (security_invoker = on);
+
+-- R36: chi presidia quale ente. Un fornitore per ente — quello che vale di
+-- piu' nel suo storico — precalcolato una volta al mese da intelligence.py,
+-- non ricalcolato a ogni apertura della console (la query aggrega ~21mila
+-- enti, ~5 secondi in locale).
+CREATE TABLE IF NOT EXISTS radar.ente_fornitore_dominante (
+    cf_ente      text PRIMARY KEY,
+    ente         text,
+    prov         text,
+    cf_fornitore text,
+    fornitore    text,
+    contratti    integer,
+    valore       numeric,
+    ultimo       text,
+    calcolato_il timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_efd_valore ON radar.ente_fornitore_dominante (valore DESC);
+ALTER TABLE radar.ente_fornitore_dominante ENABLE ROW LEVEL SECURITY;

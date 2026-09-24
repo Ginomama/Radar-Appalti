@@ -89,6 +89,11 @@ MAPPA = [
         "natura", "valore", "valuta", "oggetto", "link",
         "verdetto", "verdetto_motivo",
     ], None, ""),
+    # R36. Chi presidia quale ente, precalcolato da intelligence.py.
+    ("ente_fornitore_dominante", "radar.ente_fornitore_dominante", [
+        "cf_ente", "ente", "prov", "cf_fornitore", "fornitore",
+        "contratti", "valore", "ultimo",
+    ], None, ""),
 ]
 
 # Colonne che in Postgres sono date: SQLite le tiene come testo ISO, e le

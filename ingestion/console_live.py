@@ -80,10 +80,10 @@ def raccogli(cur):
            "consegnata_il", "errore_consegna", "sollecitata_il",
            "discovery_fissata_il", "discovery_fatta_il", "offerta_il",
            "vendita_il", "persa_il", "motivo_perdita",
-           "valore_offerta", "valore_vendita"]
+           "valore_offerta", "valore_vendita", "esito_risposta"]
     RINOMINA = {"progressivo": "n", "provincia": "prov", "n_contratti": "contratti",
                 "cig_inclusi": "cig", "errore_consegna": "errore",
-                "motivo_perdita": "motivo"}
+                "motivo_perdita": "motivo", "esito_risposta": "esito"}
     cur.execute(f"SELECT {', '.join(COL)} FROM radar.invio "
                 f"ORDER BY lotto, progressivo")
     D["invii"] = []
@@ -292,7 +292,7 @@ DATE_STATO = {
 }
 
 
-def segna(dsn, lotto, n, stato, quando, motivo=None, valore=None):
+def segna(dsn, lotto, n, stato, quando, motivo=None, valore=None, esito=None):
     campo = DATE_STATO.get(stato)
     sql = "UPDATE radar.invio SET stato = %s"
     par = [stato]
@@ -302,6 +302,12 @@ def segna(dsn, lotto, n, stato, quando, motivo=None, valore=None):
     if motivo:
         sql += ", motivo_perdita = %s"
         par.append(motivo)
+    if esito:
+        # R14b, trovato con Regione Toscana: classifica la risposta una
+        # volta, alla fonte, invece di far indovinare alla barra "cosa fare
+        # adesso" se vale un richiamo leggendo (o ignorando) la nota libera.
+        sql += ", esito_risposta = %s"
+        par.append(esito)
     if valore is not None:
         # L'importo offerto e quello vinto sono numeri diversi: confonderli
         # falserebbe il tasso di conversione a valore.
@@ -553,7 +559,8 @@ def crea_handler(dsn):
                 tocc = segna(dsn, c.get("lotto"), int(c.get("n")),
                              c.get("stato"), c.get("data"),
                              c.get("motivo"),
-                             float(val) if val not in (None, "") else None)
+                             float(val) if val not in (None, "") else None,
+                             c.get("esito"))
                 # Prima la risposta, poi il log: se stdout e' chiuso o
                 # rediretto verso una pipe interrotta, print() solleva e
                 # trasformerebbe una scrittura riuscita in un errore 500.

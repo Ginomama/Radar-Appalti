@@ -497,6 +497,17 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     ["silenzio","sparito dopo il primo contatto"],
     ["altro","altro"]
   ];
+  // Trovato il 2026-09-24 con Regione Toscana: la barra "cosa fare adesso"
+  // trattava ogni risposta come "ricontatta per una call", ma 7 risposte su
+  // 10 erano un no strutturale o un rimando a un altro canale (MEPA, SUAM,
+  // Manifestazioni di Interesse). Si classifica qui, una volta, invece di
+  // far indovinare alla barra leggendo (o ignorando) il testo libero.
+  var ESITI_RISPOSTA = [
+    ["da-richiamare","interessati, vale la pena richiamare per una call"],
+    ["interlocutoria","tiepidi \u2014 \u201cvi terremo in considerazione\u201d, nessun impegno"],
+    ["redirect","ci mandano su un altro canale (MEPA, SUAM, Manifestazione di Interesse)"],
+    ["chiusa-no","no esplicito o richiesta respinta, nessun seguito"]
+  ];
   // Il passo successivo di ogni stato e' l'unico bottone della riga; il resto
   // sta nel menu Altro. Con quattro controlli uguali per riga non si capiva
   // quale fosse quello da premere.
@@ -773,11 +784,27 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '<b>' + (off.length === 1 ? 'offerta in attesa di risposta' : 'offerte in attesa di risposta') + '</b>',
       nomiEnti(off, 4)]);
 
+    // Trovato il 2026-09-24 con Regione Toscana: prima ogni 'risposta'
+    // finiva qui con lo stesso "ricontatta per una call", ma leggendo le
+    // note vere 7 su 10 erano un no strutturale o un rimando ad un altro
+    // canale (MEPA, SUAM, Manifestazione di Interesse) \u2014 richiamarli sarebbe
+    // stato tempo perso. Ora si separa per esito_risposta (ESITI_RISPOSTA),
+    // classificato una volta quando si registra la risposta.
     var ris = con("risposta");
-    if(ris.length) voci.push(["t-alta", ris.length,
-      '<b>' + (ris.length === 1 ? 'ha risposto' : 'hanno risposto') + '</b> \u2014 ' +
+    var risChiama = ris.filter(function(i){
+      return i.esito === "da-richiamare" || i.esito === "interlocutoria"; });
+    var risDaClassificare = ris.filter(function(i){ return !i.esito; });
+
+    if(risChiama.length) voci.push(["t-alta", risChiama.length,
+      '<b>' + (risChiama.length === 1 ? 'ha risposto' : 'hanno risposto') + '</b> \u2014 ' +
       'ricontatta per fissare una call: \u00e8 la cosa che vale di pi\u00f9.',
-      nomiEnti(ris, 4)]);
+      nomiEnti(risChiama, 4)]);
+
+    if(risDaClassificare.length) voci.push(["", risDaClassificare.length,
+      '<b>' + (risDaClassificare.length === 1 ? 'risposta da classificare'
+                                               : 'risposte da classificare') + '</b> \u2014 ' +
+      'apri la riga e segna cosa hanno detto davvero, prima di richiamare a caso.',
+      nomiEnti(risDaClassificare, 4)]);
 
     var ko = tutte.filter(function(i){
       var st = statoDi(i); return st === "non_consegnata" || (st === "inviata" && i.errore);
@@ -1665,7 +1692,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         body: JSON.stringify({lotto: pezzi[0], n: parseInt(pezzi[1], 10),
                               stato: voce.stato, data: voce[voce.stato],
                               motivo: (extra||{}).motivo,
-                              valore: (extra||{}).valore})
+                              valore: (extra||{}).valore,
+                              esito: (extra||{}).esito})
       }).catch(function(){});
       return;
     }
@@ -2123,10 +2151,19 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       if(!(idx >= 0 && idx < MOTIVI.length)) return;
       extra.motivo = MOTIVI[idx][0];
     }
+    if(az === "risposta"){
+      var testoE = ESITI_RISPOSTA.map(function(m, k2){ return (k2+1)+") "+m[1]; }).join("\n");
+      var sceltaE = prompt("Cosa hanno risposto, in sostanza?\n\n"+testoE+"\n\nNumero:", "");
+      if(sceltaE === null) return;
+      var idxE = parseInt(sceltaE, 10) - 1;
+      if(!(idxE >= 0 && idxE < ESITI_RISPOSTA.length)) return;
+      extra.esito = ESITI_RISPOSTA[idxE][0];
+    }
     var voce = STATO.invii[k] || {};
     voce.stato = az;
     voce[az] = new Date().toISOString().slice(0,10);
     if(extra.motivo) voce.motivo = extra.motivo;
+    if(extra.esito) voce.esito = extra.esito;
     if(extra.valore != null){
       voce[az === "vendita" ? "valore_vendita" : "valore_offerta"] = extra.valore;
     }

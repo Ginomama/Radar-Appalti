@@ -221,6 +221,16 @@ ALTER TABLE radar.invio
 
 CREATE INDEX IF NOT EXISTS ix_invio_stato ON radar.invio (stato);
 
+-- Trovato il 2026-09-24: la barra "cosa fare adesso" della console trattava
+-- ogni riga con stato 'risposta' allo stesso modo ("ricontatta per una
+-- call"), ma leggendo le note vere 7 risposte su 10 erano in realta' un no
+-- strutturale o un rimando a un altro canale (MEPA/SUAM/Manifestazioni di
+-- Interesse), non un invito a richiamare. Lista chiusa come MOTIVI per
+-- 'persa': si classifica una volta, quando si registra la risposta, invece
+-- di indovinarlo ogni volta rileggendo il testo libero della nota.
+ALTER TABLE radar.invio
+    ADD COLUMN IF NOT EXISTS esito_risposta text;
+
 -- Il funnel in una riga per lotto: quanti ne sono passati per ogni stadio.
 -- Cumulativo, non per stato corrente: un contatto arrivato a 'Vendita' e'
 -- passato anche da 'Offerta', e contarlo solo nell'ultimo stadio farebbe

@@ -394,18 +394,23 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .motivo-verdetto{font-size:11px; color:var(--ink-3); line-height:1.4}
 .candidabile{font-size:11px; font-weight:600; color:var(--bassa)}
 
-/* fonte (details.lotto riusato: stessa meccanica di apertura/chiusura
-   gia' in uso per i lotti PEC) dentro il pannello bandi regionali */
-.regione-bandi > summary{list-style:none; cursor:pointer; display:flex; align-items:baseline;
-  gap:10px; flex-wrap:wrap; padding:11px 16px; border-top:1px solid var(--rule)}
-.regione-bandi > summary::-webkit-details-marker{display:none}
-.regione-bandi > summary::before{content:"\203A"; color:var(--ink-3); width:10px;
-  display:inline-block; transition:transform .15s}
-.regione-bandi[open] > summary::before{transform:rotate(90deg)}
-.regione-bandi > summary:hover{background:var(--surface-2)}
-.regione-bandi .r-nome{font-size:13px; font-weight:600}
-.regione-bandi .r-info{font-size:11.5px; color:var(--ink-3); margin-left:auto}
-.regione-bandi .dentro{border-top:1px solid var(--rule)}
+/* Una fonte di bandi (TED, o una regione) = una card .pan per intero
+   apribile/chiudibile, non una sotto-sezione dentro un'altra. Trovato il
+   2026-09-24: prima erano tutte annidate in un solo pannello condiviso e
+   sembrava che le regioni stessero "dentro" il tab TED. Qui .pan e'
+   <details> invece di <div>: stessa cornice, il <summary> prende il posto
+   dell'h2 (stessi font-size/padding di .pan > h2, cosi' le card fisse
+   come Riepilogo restano identiche). */
+.pan > summary{list-style:none; cursor:pointer; font-size:14px; font-weight:600;
+  letter-spacing:-.01em; padding:11px 16px; border-bottom:1px solid var(--rule);
+  display:flex; align-items:center; gap:10px}
+.pan > summary::-webkit-details-marker{display:none}
+.pan > summary::before{content:"\203A"; color:var(--ink-3); width:10px;
+  display:inline-block; transition:transform .15s; flex:none}
+.pan[open] > summary::before{transform:rotate(90deg)}
+.pan > summary:hover{background:var(--surface-2)}
+.pan > summary .conta{margin-left:auto; font-size:11.5px; color:var(--ink-3);
+  font-family:"IBM Plex Mono",monospace; font-weight:400}
 a{color:var(--accento); text-decoration:none}
 a:hover{text-decoration:underline}
 .vuoto{padding:26px 16px; color:var(--ink-3); font-size:13px; text-align:center}
@@ -1455,51 +1460,58 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   function bandiAperti(){
     var fonti = [];
     if(DATI.ted && DATI.ted.length) fonti.push({
-      chiave:"ted", nome:"TED (gare europee)", righe:DATI.ted,
-      extra:"sopra soglia UE", bottone:"leggi il bando",
-      ariaLabel:"Apri il bando ufficiale con i requisiti",
-      candidabile:null});
+      chiave:"ted", nome:"Bandi TED aperti", righe:DATI.ted,
+      bottone:"leggi il bando", ariaLabel:"Apri il bando ufficiale con i requisiti",
+      candidabile:null,
+      aiuto:"Gare europee sopra soglia, ancora aperte. Qui i requisiti di "+
+        "partecipazione ci sono per davvero &mdash; nel link al bando ufficiale, "+
+        "non inventati. Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione "+
+        "automatica, non una lettura del bando: conferma sempre aprendo il link "+
+        "prima di scrivere."+
+        (LOCALE ? " Il pallino segna un ente già noto dallo storico ANAC: clicca "+
+                  "il nome per la sua scheda prima di prepararti." : "")});
     var reg = DATI.regionali || {};
+    // Su richiesta esplicita (2026-09-24): ogni fonte, TED o una regione, e'
+    // la sua card a se' stante — non una sotto-sezione annidata dentro un
+    // pannello condiviso, che dava l'impressione sbagliata che i bandi
+    // regionali stessero "dentro" il tab TED. Una regione nuova domani e'
+    // solo una voce in piu' in questo array.
     Object.keys(reg).sort(function(a, b){ return reg[b].length - reg[a].length; })
       .forEach(function(k){
         if(!reg[k] || !reg[k].length) return;
-        fonti.push({chiave:"reg-"+k, nome:k, righe:reg[k], extra:"sotto soglia",
+        fonti.push({chiave:"reg-"+k, nome:"Bandi "+k+" aperti", righe:reg[k],
           bottone:"apri la scheda", ariaLabel:"Apri la scheda del bando",
-          candidabile:"partecipa direttamente sul portale regionale"});
+          candidabile:"partecipa direttamente sul portale regionale",
+          aiuto:"Gare sotto soglia comunitaria sul marketplace regionale &mdash; "+
+            "dove un'agenzia piccola compete meglio che su TED. Apri la scheda "+
+            "per i documenti di gara prima di scrivere. Il parere sotto "+
+            "(SI&#47;FORSE&#47;NO) è un’indicazione automatica, non una lettura "+
+            "del bando: conferma sempre aprendo la scheda. Da operatore "+
+            "registrato, i bandi con parere SI si possono candidare direttamente "+
+            "sul portale — non serve aspettare che l'ente apra un affidamento diretto."+
+            (LOCALE ? " Il pallino segna un ente già noto dallo storico ANAC." : "")});
       });
     if(!fonti.length) return "";
-    var tot = fonti.reduce(function(s, f){ return s + f.righe.length; }, 0);
 
-    return '<div class="pan"><h2>Bandi aperti<span class="conta">'+tot+'</span></h2>'+
-      '<div class="aiuto">Gare aperte adesso, non contratti gi&agrave; finiti come nelle '+
-      'scadenze qui sotto. TED &egrave; sopra soglia comunitaria (i requisiti sono nel link '+
-      'ufficiale); i marketplace regionali sono sotto soglia, dove un\'agenzia piccola '+
-      'compete meglio. Il parere sotto (SI&#47;FORSE&#47;NO) &egrave; un’indicazione '+
-      'automatica, non una lettura del bando: conferma sempre aprendo il link. Da operatore '+
-      'registrato su un portale regionale, i bandi con parere SI si possono candidare '+
-      'direttamente &mdash; non serve aspettare che l\'ente apra un affidamento diretto.'+
-      (LOCALE ? ' Il pallino segna un ente gi&agrave; noto dallo storico ANAC.' : '')+
-      '</div>'+
-      fonti.map(function(f){
-        // "candidabile" ha senso solo dove ci si registra come operatore e si
-        // partecipa dal portale (i regionali): su TED "si" vuol dire solo
-        // "vale la pena rispondere", non "candidati con un clic" — vedi
-        // f.candidabile, che gia' distingue le due cose riga per riga.
-        var fattibili = f.candidabile
-          ? f.righe.filter(function(x){ return x.verdetto === "si"; }).length : 0;
-        return '<details class="lotto regione-bandi" data-lotto="'+esc(f.chiave)+'"'+
-          (aperti[f.chiave] === false ? "" : " open") + '>'+
-          '<summary><span class="r-nome">'+esc(f.nome)+'</span>'+
-          '<span class="r-info">'+f.righe.length+(f.righe.length === 1 ? ' bando' : ' bandi')+
-            (fattibili ? ' &middot; <b style="color:var(--bassa)">'+fattibili+
-              (fattibili === 1 ? ' candidabile' : ' candidabili')+'</b>' : '')+
-            ' &middot; '+f.extra+
+    return fonti.map(function(f){
+      // "candidabile" ha senso solo dove ci si registra come operatore e si
+      // partecipa dal portale (i regionali): su TED "si" vuol dire solo
+      // "vale la pena rispondere", non "candidati con un clic".
+      var fattibili = f.candidabile
+        ? f.righe.filter(function(x){ return x.verdetto === "si"; }).length : 0;
+      return '<details class="pan lotto" data-lotto="'+esc(f.chiave)+'"'+
+        (aperti[f.chiave] === false ? "" : " open") + '>'+
+        '<summary>'+esc(f.nome)+
+          '<span class="conta">'+f.righe.length+(f.righe.length === 1 ? ' bando' : ' bandi')+
+            (fattibili ? ' &middot; '+fattibili+
+              (fattibili === 1 ? ' candidabile' : ' candidabili') : '')+
           '</span></summary>'+
-          '<div class="dentro">' + f.righe.map(function(x){
-            return rigaBando(x, {bottone:f.bottone, ariaLabel:f.ariaLabel,
-              candidabile:f.candidabile});
-          }).join("") + '</div></details>';
-      }).join("") + '</div>';
+        '<div class="aiuto">'+f.aiuto+'</div>'+
+        '<div class="corpo">' + f.righe.map(function(x){
+          return rigaBando(x, {bottone:f.bottone, ariaLabel:f.ariaLabel,
+            candidabile:f.candidabile});
+        }).join("") + '</div></details>';
+    }).join("");
   }
 
   /* -------------------------------------------------------- scadenze */

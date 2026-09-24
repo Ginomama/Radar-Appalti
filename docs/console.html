@@ -1385,7 +1385,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       'regionale delle Marche — dove un\'agenzia piccola compete meglio che '+
       'su TED. Apri la scheda per i documenti di gara prima di scrivere. '+
       'Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione automatica, '+
-      'non una lettura del bando: conferma sempre aprendo la scheda.'+
+      'non una lettura del bando: conferma sempre aprendo la scheda. '+
+      'Da operatore registrato su SUAM, i bandi con parere SI si possono '+
+      'candidare direttamente sul portale — non serve aspettare che l\'ente '+
+      'apra un affidamento diretto.'+
       (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC.' : '')+
       '</div>'+
       '<div class="corpo">' + DATI.suam.map(function(s){
@@ -1407,6 +1410,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
           '</div>'+
           (s.verdetto ? '<div class="ted-verdetto v-'+esc(s.verdetto)+'">'+
             '<b>'+esc(s.verdetto)+'</b>'+esc(s.motivo||"")+'</div>' : '')+
+          (s.verdetto === "si" ? '<div class="meta"><span class="g-bassa">'+
+            '&#9679; candidabile: partecipa direttamente su SUAM</span></div>' : '')+
           '</span>'+
           (s.link ? '<a class="btn" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" '+
             'aria-label="Apri la scheda del bando, '+esc(s.ente||"")+'">apri la scheda</a>' : '')+

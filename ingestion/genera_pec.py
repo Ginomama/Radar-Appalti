@@ -364,7 +364,15 @@ def componi(contratti):
         rilievo = (
             f"La richiesta nasce da una verifica sui dati aperti ANAC, da cui\n"
             f"risultano in scadenza nei prossimi mesi {n} contratti nell'area dei\n"
-            f"servizi informativi:\n\n" + "\n".join(voci))
+            f"servizi informativi:\n\n" + "\n".join(voci) +
+            # Trovato con Regione Toscana (2026-09-24): senza questa riga,
+            # un protocollo con piu' CIG in una PEC generica chiama per
+            # chiedere a quale gara si riferisce la richiesta, scambiando i
+            # riferimenti per N domande distinte invece che per il supporto
+            # di un'unica richiesta di iscrizione generale.
+            f"\n\nQuesti riferimenti sono citati a supporto di un'unica richiesta\n"
+            f"di iscrizione alle categorie indicate in generale, non di {n} richieste\n"
+            f"distinte per altrettante gare.")
 
     # elenco leggibile: "a", "b" e "c" — non "a" e "b" e "c"
     voci = [f'"{c.lower()}"' for c in categorie] or ['"servizi informatici"']

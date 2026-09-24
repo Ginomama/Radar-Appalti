@@ -28,11 +28,22 @@ ricevuto: e' il motivo per cui la casella non va svuotata.
 SOLA LETTURA. Non cancella, non sposta, non marca come letto (usa BODY.PEEK).
 Una casella PEC e' un archivio con valore probatorio, non una coda da smaltire.
 
+R37 — LA POSTA VERA. leggi_ricevute() legge solo le ricevute tecniche (il
+gestore che conferma consegna/errore): la vera risposta di un funzionario, in
+arrivo come email normale, veniva letta solo se qualcuno la inoltrava a mano.
+risposte_da_leggere() incrocia la posta senza X-Ricevuta con gli invii ancora
+'inviata'/'accettata'/'consegnata' (via In-Reply-To o, in mancanza, mittente =
+PEC a cui avevamo scritto) e la elenca — non scrive nulla, la lettura e la
+decisione SI/NO/nota restano umane, solo il "controllare se e' arrivato
+qualcosa" si automatizza.
+
 Uso:
     python pec_imap.py --verifica          # prova la connessione
     python pec_imap.py --leggi             # ricevute degli ultimi 30 giorni
     python pec_imap.py --leggi --giorni 90
     python pec_imap.py --leggi --prova     # mostra cosa farebbe, non scrive
+    python pec_imap.py --risposte          # posta vera da leggere (R37)
+    python pec_imap.py --risposte --telegram   # idem, ma avvisa via Telegram
     python pec_imap.py --stato             # esito tecnico degli invii
 
 Dipendenza: psycopg. IMAP ed email sono libreria standard.
@@ -48,7 +59,7 @@ from datetime import datetime, timedelta, timezone
 from email.header import decode_header, make_header
 
 import psycopg
-from notifica import conf, maschera
+from notifica import conf, maschera, invia_telegram
 from pec_smtp import credenziali
 from push_supabase import leggi_dsn
 
@@ -215,6 +226,114 @@ def applica(cur, ricevute, prova):
     return conteggi, orfane, tocchi
 
 
+def testo_semplice(msg):
+    """Le prime righe del corpo testuale, se c'e' — le PEC spesso hanno il
+    contenuto vero in un PDF allegato e il corpo vuoto: in quel caso si
+    ritorna stringa vuota, non e' un errore."""
+    corpo = ""
+    if msg.is_multipart():
+        for parte in msg.walk():
+            if parte.get_content_type() == "text/plain" and not parte.get_filename():
+                try:
+                    corpo = parte.get_payload(decode=True).decode(
+                        parte.get_content_charset() or "utf-8", errors="replace")
+                except Exception:
+                    corpo = ""
+                break
+    elif msg.get_content_type() == "text/plain":
+        try:
+            corpo = msg.get_payload(decode=True).decode(
+                msg.get_content_charset() or "utf-8", errors="replace")
+        except Exception:
+            corpo = ""
+    return corpo.strip()
+
+
+def allegati(msg):
+    nomi = []
+    if msg.is_multipart():
+        for parte in msg.walk():
+            n = parte.get_filename()
+            if n:
+                nomi.append(testo(n))
+    return nomi
+
+
+def leggi_posta_vera(conn, giorni):
+    """Le email nella finestra che NON sono ricevute PEC automatiche — posta
+    scritta da una persona. E' l'opposto di leggi_ricevute(): qui e'
+    X-Ricevuta ad essere ASSENTE."""
+    conn.select("INBOX", readonly=True)
+    da = (datetime.now() - timedelta(days=giorni)).strftime("%d-%b-%Y")
+    tipo, dati = conn.search(None, f"(SINCE {da})")
+    if tipo != "OK":
+        raise RuntimeError(f"ricerca IMAP fallita: {tipo}")
+
+    trovate = []
+    for i in dati[0].split():
+        tipo, pezzi = conn.fetch(i, "(BODY.PEEK[])")
+        if tipo != "OK" or not pezzi or not isinstance(pezzi[0], tuple):
+            continue
+        msg = email.message_from_bytes(pezzi[0][1])
+        if testo(msg.get("X-Ricevuta")):
+            continue                      # ricevuta tecnica, non posta vera
+        try:
+            quando = email.utils.parsedate_to_datetime(msg.get("Date"))
+        except Exception:
+            quando = None
+        mittente = email.utils.parseaddr(msg.get("From", ""))[1].lower()
+        rif = normalizza_id(msg.get("In-Reply-To")) or normalizza_id(msg.get("References"))
+        trovate.append(dict(mittente=mittente, oggetto=testo(msg.get("Subject")),
+                            quando=quando, rif=rif, corpo=testo_semplice(msg),
+                            allegati=allegati(msg)))
+    return trovate
+
+
+def risposte_da_leggere(cur, giorni, conn):
+    """Incrocia la posta vera con gli invii ancora senza esito: e' il
+    sostituto di aspettare che qualcuno inoltri la PEC a mano."""
+    cur.execute("""SELECT lotto, progressivo, ente, pec, message_id FROM radar.invio
+                   WHERE stato IN ('inviata','accettata','consegnata')""")
+    per_msgid, per_pec = {}, {}
+    for lot, n, ente, pec, mid in cur.fetchall():
+        riga = (lot, n, ente, pec)
+        if mid:
+            per_msgid[normalizza_id(mid)] = riga
+        if pec:
+            per_pec.setdefault(pec.lower(), []).append(riga)
+
+    posta = leggi_posta_vera(conn, giorni)
+    trovate = []
+    for m in posta:
+        riga = per_msgid.get(m["rif"]) if m["rif"] else None
+        via = "risposta (In-Reply-To)"
+        if not riga:
+            candidati = per_pec.get(m["mittente"], [])
+            if len(candidati) == 1:
+                riga = candidati[0]
+                via = "mittente = PEC a cui avevamo scritto"
+        if riga:
+            trovate.append((riga, via, m))
+    return trovate
+
+
+def pulisci_md(v):
+    """Toglie i caratteri speciali del Markdown legacy di Telegram da un
+    testo dinamico (oggetto, ente...): senza, un ente con un '_' o un '*'
+    nel nome manda in errore l'intero messaggio (stesso bug gia' visto
+    su promemoria_enti.py, qui evitato a monte)."""
+    return re.sub(r"[_*`\[\]]", " ", v or "")
+
+
+def notifica_risposte(trovate):
+    righe = [f"{len(trovate)} risposta/e PEC da leggere:\n"]
+    for (lot, n, ente, pec), via, m in trovate:
+        righe.append(f"{lot}#{n} — {pulisci_md((ente or '?')[:50])}")
+        righe.append(f"da {pulisci_md(m['mittente'])}")
+    righe.append("\nDettagli: python pec_imap.py --risposte")
+    invia_telegram("\n".join(righe))
+
+
 def stato(cur):
     cur.execute("""
         SELECT lotto, progressivo, ente, stato, inviata_il,
@@ -249,6 +368,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--verifica", action="store_true")
     ap.add_argument("--leggi", action="store_true")
+    ap.add_argument("--risposte", action="store_true",
+                    help="posta vera in arrivo collegabile a un invio senza esito (R37)")
+    ap.add_argument("--telegram", action="store_true",
+                    help="con --risposte, avvisa su Telegram invece di stampare")
     ap.add_argument("--stato", action="store_true")
     ap.add_argument("--giorni", type=int, default=GIORNI_DEFAULT)
     ap.add_argument("--prova", action="store_true",
@@ -259,7 +382,7 @@ def main():
     if not dsn:
         sys.exit("connessione non configurata: vedi ingestion/.env.local")
 
-    if a.stato or not (a.verifica or a.leggi):
+    if a.stato or not (a.verifica or a.leggi or a.risposte):
         with psycopg.connect(dsn, connect_timeout=30) as pg, pg.cursor() as cur:
             stato(cur)
         return
@@ -274,6 +397,33 @@ def main():
             tipo, dati = conn.select("INBOX", readonly=True)
             print(f"accesso riuscito a {host}")
             print(f"INBOX: {dati[0].decode()} messaggi. Nessuna modifica.")
+            return
+
+        if a.risposte:
+            with psycopg.connect(dsn, connect_timeout=30) as pg, pg.cursor() as cur:
+                trovate = risposte_da_leggere(cur, a.giorni, conn)
+            if not trovate:
+                print(f"  nessuna posta in arrivo negli ultimi {a.giorni} giorni "
+                      f"collegabile a un invio ancora senza esito.")
+                return
+            if a.telegram:
+                notifica_risposte(trovate)
+                print(f"  {len(trovate)} risposta/e — avviso mandato su Telegram.")
+                return
+            print(f"  {len(trovate)} messaggi da leggere:\n")
+            for (lot, n, ente, pec), via, m in trovate:
+                quando = m["quando"].strftime("%d/%m %H:%M") if m["quando"] else "?"
+                print(f"  {lot}#{n} — {(ente or '?')[:50]}")
+                print(f"    da {m['mittente']} il {quando} — {via}")
+                print(f"    oggetto: {m['oggetto']}")
+                if m["allegati"]:
+                    print(f"    allegati: {', '.join(m['allegati'])}")
+                if m["corpo"]:
+                    anteprima = m["corpo"][:300].replace("\n", " ")
+                    print(f"    corpo: {anteprima}{'…' if len(m['corpo']) > 300 else ''}")
+                print()
+            print("  Nessuna scrittura fatta: leggi il contenuto e registra l'esito "
+                  "con `python invii.py --lotto <lotto> --risposta <n> --note \"...\"`.")
             return
 
         print(f"Ricevute degli ultimi {a.giorni} giorni su {host}\n")

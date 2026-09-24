@@ -1075,6 +1075,37 @@ inserimento nei dati grezzi ANAC (stesso tipo di anomalia gia' visto per i CIG m
 e i fornitori segnati "IMPRESA INESISTENTE"), non filtrato via silenziosamente ma
 segnalato qui per trasparenza.
 
+### R37 — Le risposte PEC arrivano senza dover controllare a mano · ✅ FATTO 2026-09-24
+
+Chiarito col secondo punto della lista ("Motore scadenze contratti — il prodotto"): il
+tracciamento scadenze/PEC esiste gia', quello che mancava era esattamente il lavoro
+ripetuto piu' volte in questa sessione, ente per ente — l'utente che scarica il PDF
+della risposta e me lo incolla perche' nessuno controllava la casella PEC per conto suo.
+
+`pec_imap.py` gia' leggeva le ricevute tecniche (`X-Ricevuta`, R15) ma **scartava
+esplicitamente** la posta vera (`if not ric: continue`) — era li' che si fermava
+l'automazione. Nuova funzione `risposte_da_leggere()`: cerca nella stessa finestra IMAP
+i messaggi SENZA `X-Ricevuta` (posta scritta da una persona, non dal gestore PEC) e li
+incrocia con `radar.invio` ancora in stato `inviata`/`accettata`/`consegnata` (quindi
+senza esito registrato), per `In-Reply-To`/`References` -> `message_id` quando la
+threading regge, altrimenti per mittente = PEC a cui avevamo scritto.
+
+**Non registra nulla da sola**: elenca lotto, ente, mittente, oggetto, allegati e un
+estratto del corpo (spesso vuoto — il contenuto vero e' nel PDF allegato, come visto
+tutta la sessione), poi rimanda a `invii.py --risposta` per la decisione, che resta
+umana — stessa disciplina gia' scritta per la differenza fra "risposta" e "conferma di
+protocollo". Nuovo passo `risposte` nel piano giornaliero, subito dopo `ricevute`
+(stessa casella IMAP): `--telegram` avvisa solo se c'e' qualcosa da leggere, testo
+sanificato (`pulisci_md`) per non ripetere il bug Markdown gia' visto su
+`promemoria_enti.py` (R32) — un ente col carattere `_` o `*` nel nome avrebbe rotto
+l'intero messaggio.
+
+Testato dal vivo sulla casella reale, 30 e 90 giorni: nessun falso positivo, nessun
+crash. Zero risultati era il comportamento atteso — le risposte arrivate finora in
+questa sessione (Ancona, ASP Ambito 9, Sapienza, Fermo) erano gia' state registrate a
+mano, quindi il loro `stato` non e' piu' fra quelli cercati: prova indiretta che
+l'incrocio funziona (smetterebbe di segnalarle proprio a quel punto).
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

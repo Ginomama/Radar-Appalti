@@ -104,6 +104,14 @@ PIANI = {
         dict(id="ricevute", argv=["pec_imap.py", "--leggi"],
              descr="lettura ricevute PEC", minuti=15,
              richiede=("DSN", "PEC_USER", "PEC_PASSWORD")),
+        # Stessa casella IMAP di 'ricevute', ma guarda la posta vera invece
+        # delle ricevute tecniche (R37): avvisa su Telegram se e' arrivata
+        # una risposta a un invio ancora senza esito, cosi' non serve piu'
+        # controllare la casella a mano ogni giorno.
+        dict(id="risposte", argv=["pec_imap.py", "--risposte", "--telegram"],
+             descr="avviso risposte PEC in arrivo (R37)", minuti=15,
+             richiede=("DSN", "PEC_USER", "PEC_PASSWORD",
+                       "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
         # Dopo 'ricevute' e non prima: l'anti-duplicato guarda chi e' gia'
         # in radar.invio, e vale la pena farlo con lo stato di oggi, non con
         # quello di ieri sera. Soglia e tetto sono in auto_genera.py, non

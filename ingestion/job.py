@@ -406,6 +406,38 @@ def schtasks(*args):
     return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
+def sblocca_batteria(nome_task):
+    """Toglie 'non partire a batteria' e accende il recupero dei giri persi.
+
+    schtasks /create non ha un flag per queste due opzioni: la task nasce
+    con DisallowStartIfOnBatteries=true e senza StartWhenAvailable. Non e'
+    cosmesi: e' la causa vera, trovata il 2026-09-24, di due giorni di
+    catch-up falliti in silenzio (errore Windows 0x800710E0, 'operatore o
+    amministratore ha rifiutato la richiesta') su un portatile che al
+    mattino spesso non e' attaccato alla corrente.
+
+    Il modulo PowerShell ScheduledTasks (Set-ScheduledTask) da' 'Parametro
+    non corretto' sul trigger mensile — un limite noto del provider CIM con
+    CalendarTrigger di tipo ScheduleByMonth, che schtasks.exe scrive senza
+    problemi ma la cmdlet piu' recente non sa rileggere in scrittura. Si usa
+    invece la stessa API COM (Schedule.Service) su cui schtasks.exe si
+    appoggia: legge e riscrive qualunque tipo di trigger allo stesso modo."""
+    ps = (
+        '$svc = New-Object -ComObject "Schedule.Service"; $svc.Connect(); '
+        f'$folder = $svc.GetFolder("\\{CARTELLA_TASK}"); '
+        f'$def = $folder.GetTask("{nome_task}").Definition; '
+        "$def.Settings.DisallowStartIfOnBatteries = $false; "
+        "$def.Settings.StopIfGoingOnBatteries = $false; "
+        "$def.Settings.StartWhenAvailable = $true; "
+        # 6 = TASK_CREATE_OR_UPDATE, 3 = TASK_LOGON_INTERACTIVE_TOKEN — stessi
+        # valori con cui la task e' gia' stata creata da schtasks /create.
+        f'$folder.RegisterTaskDefinition("{nome_task}", $def, 6, $null, $null, 3) | Out-Null'
+    )
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return r.returncode == 0, (r.stdout or "") + (r.stderr or "")
+
+
 def installa():
     """Crea le tre attivita'. /f sovrascrive: reinstallare e' idempotente.
 
@@ -421,18 +453,21 @@ def installa():
         cmd = f'"{sys.executable}" "{os.path.join(QUI, "job.py")}" --{ritmo}'
         rc, out = schtasks("/create", "/tn", t["nome"], "/tr", cmd,
                            *t["quando"], "/f")
-        if rc == 0:
-            print(f"  creata  {t['nome']:28s} — {t['descr']}")
-        else:
+        if rc != 0:
             ko += 1
             print(f"  FALLITA {t['nome']}: {out.strip()[:160]}")
+            continue
+        nome_semplice = t["nome"].split("\\")[-1]
+        ok_batt, out_batt = sblocca_batteria(nome_semplice)
+        extra = "" if ok_batt else f"  (batteria non sbloccata: {out_batt.strip()[:120]})"
+        print(f"  creata  {t['nome']:28s} — {t['descr']}{extra}")
     if ko:
         print("\nSe dice 'accesso negato': serve un terminale come "
               "amministratore.")
         return 1
     print("\nLe attivita' girano solo a PC acceso. Se il PC e' spento "
-          "all'orario\nprevisto, Windows le recupera al successivo avvio "
-          "(opzione gia' attiva\nper default sulle attivita' create cosi').")
+          "all'orario\nprevisto, Windows le recupera al successivo avvio, "
+          "anche a batteria\n(non solo con l'alimentatore attaccato).")
     print("\nControlla con:  python job.py --stato")
     return 0
 

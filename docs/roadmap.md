@@ -1012,6 +1012,35 @@ bias del prompt verso il "no" facile: i motivi citano ragioni specifiche caso pe
 `DROP VIEW IF EXISTS` prima — la stessa regola gia' scritta in cima a
 `schema_supabase.sql`, dimenticata una volta e ritrovata da un errore in push.
 
+### R35 — Trovata la causa vera dei catch-up falliti (batteria) · ✅ FATTO 2026-09-24
+
+Due volte questa settimana (21/09 e 22/09) `radar-giornaliero` e `radar-feriale` sono
+falliti in silenzio nello stesso identico modo: catch-up di Windows dopo login, stesso
+timestamp per entrambi, uscita `-2147020576` (`0x800710E0`), nessun file di log —
+falliscono prima ancora che Python parta. In precedenza registrato come "limite noto,
+si rilancia a mano" (vedi `job.py --feriale` lanciato manualmente il 22 e il 23/09).
+
+**La causa vera**: le tre attivita' nascono con `DisallowStartIfOnBatteries=true`
+(default di `schtasks /create`, nessun flag CLI per toglierlo) su un **portatile**, non
+un desktop — `0x800710E0` e' "l'operatore o amministratore ha rifiutato la richiesta",
+l'errore esatto e documentato per un task che tenta di partire a batteria con quella
+opzione attiva. Se al mattino il PC non e' ancora attaccato alla corrente, Windows
+rifiuta di far partire il catch-up — coerente con entrambi i fallimenti osservati.
+
+**Il fix**: `installa()` ora chiama `sblocca_batteria()` dopo aver creato ogni task,
+per disattivare `DisallowStartIfOnBatteries`/`StopIfGoingOnBatteries` e accendere
+`StartWhenAvailable`. Non si puo' fare con `schtasks /change` (non copre queste
+opzioni) ne' con la cmdlet PowerShell `Set-ScheduledTask` (da' "Parametro non
+corretto" sul trigger mensile — limite noto del modulo `ScheduledTasks` con
+`CalendarTrigger` di tipo `ScheduleByMonth`, che legge ma non riscrive). Si usa invece
+la stessa API COM (`Schedule.Service`) su cui si appoggia `schtasks.exe`: funziona
+identica su tutti e tre i tipi di trigger (giornaliero, settimanale, mensile).
+
+Verificato sui tre task reali: `DisallowStartIfOnBatteries=False`,
+`StopIfGoingOnBatteries=False`, `StartWhenAvailable=True` su tutti, orari di prossima
+esecuzione invariati. La prova vera arriva al prossimo giro mancato — ma ora, per la
+prima volta, la causa e' nota e non solo mitigata a mano.
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

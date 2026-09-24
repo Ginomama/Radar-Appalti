@@ -1138,6 +1138,57 @@ stessa fragilita' gia' nota di `console_live.py` sotto richieste ravvicinate (ve
 17), non un bug nel codice nuovo: verificato rileggendo `/app.innerHTML` dopo aver
 smesso di bombardarlo di navigazioni.
 
+### R39 — L'agente con cui parlare, prima versione · ✅ FATTO 2026-09-24
+
+Ultimo dei quattro punti della lista iniziale ("Viste — dashboard o agente"), chiarito
+con l'utente su due assi: canale (dentro la webapp, non Telegram/WhatsApp) e permessi
+(solo domande, mai scritture, almeno per ora).
+
+**Come funziona** (`ingestion/agente.py`): due chiamate a Haiku, stesso schema urllib di
+`ted_verdetto.py` (nessun pacchetto 'anthropic'). Primo giro: la domanda in italiano +
+una descrizione testuale dello schema (9 tabelle/viste gia' tutte pubbliche in console)
+-> il modello scrive UNA query SELECT, o dichiara esplicitamente "IMPOSSIBILE" se non
+puo' rispondere con questi dati. Secondo giro: la query gira e il risultato torna al
+modello, che scrive la risposta finale in italiano colloquiale.
+
+**Perche' text-to-SQL e non domande preconfezionate**: le domande possibili sono troppo
+varie per un elenco chiuso, e lo schema e' piccolo e ben documentabile — il modello lo
+legge una volta per domanda, non esplora il database da solo.
+
+**Sicurezza su tre livelli, non uno solo** (l'utente ha scelto "solo domande" esplicitamente,
+quindi qui l'asticella e' piu' alta che altrove nel progetto):
+1. `sicura()` rifiuta tutto cio' che non comincia per SELECT/WITH, contiene una parola
+   chiave di scrittura (INSERT/UPDATE/DELETE/DROP/...) o piu' di uno statement.
+2. La query gira dentro `SET TRANSACTION READ ONLY`: anche con un buco nel livello 1,
+   Postgres stesso rifiuterebbe la scrittura.
+3. La connessione non fa mai commit, si chiude sempre in rollback.
+Verificato con un test diretto ("cancella tutti gli invii PEC dal database"): il modello
+si e' auto-rifiutato spiegando che una DELETE non e' una SELECT, senza nemmeno arrivare
+al livello 2.
+
+**Bug trovato e corretto durante il test**: il primo tentativo su "chi tiene il Comune
+di Brescia?" ha fallito — il modello aveva scritto `WHERE ente = 'Comune di Brescia'`
+(match esatto case-sensitive), ma i nomi nei dati ANAC sono tutti maiuscoli
+("COMUNE DI BRESCIA"). Aggiunta un'istruzione esplicita nel prompt: confrontare sempre
+con `ILIKE` e `'%parola%'`, mai con `=`. Dopo il fix, la stessa domanda ha trovato
+correttamente il fornitore dominante.
+
+Nuova pagina "Chiedi" in `console.html` (quinta pagina, stesso schema a temi di R33),
+gated `LOCALE` come `dominanti()` di R36 — richiede il server per interrogare Anthropic
+e il database. Conversazione tenuta in una variabile JS fuori da `disegna()` apposta:
+un ridisegno di un altro pannello non deve svuotare la chat in corso.
+
+Testato dal vivo nella webapp: "quanti bandi TED sono aperti oggi?" -> risposta corretta
+(79, verificato contro lo stesso numero mostrato nel pannello Bandi TED). Un ostacolo
+incontrato durante il test — pagina bloccata su "Database non raggiungibile" per diversi
+tentativi — si e' rivelato NON essere un bug del codice nuovo ma una combinazione di due
+cose: `console_live.py` sotto la stessa fragilita' nota (vedi punto 17) quando i test
+precedenti lo avevano congestionato, e il browser che tratta una navigazione allo stesso
+URL con solo l'hash diverso come cambio-pagina interno (nessuna nuova richiesta di rete)
+invece che come un ricaricamento — quindi ripetere la stessa navigazione non serviva a
+niente finche' il server non era di nuovo sano. Risolto riavviando pulito e forzando un
+vero ricaricamento (query string diversa) invece di ripetere lo stesso hash.
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

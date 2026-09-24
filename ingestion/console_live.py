@@ -185,6 +185,22 @@ def raccogli(cur):
     return D
 
 
+def chiedi_agente(dsn, domanda):
+    """R39 — l'agente con cui parlare. Import qui e non in cima, stessa
+    ragione di pec_smtp in manda_pec(): se manca ANTHROPIC_API_KEY o
+    agente.py ha un problema, il resto della console continua a funzionare,
+    si spegne solo la chat."""
+    import agente
+    chiave = agente.conf("ANTHROPIC_API_KEY")
+    if not chiave:
+        return dict(risposta="ANTHROPIC_API_KEY non configurata in .env.local: "
+                    "la chat non puo' funzionare senza.", sql=None)
+    try:
+        return agente.chiedi(dsn, domanda, chiave)
+    except Exception as e:
+        return dict(risposta=f"Errore: {maschera(str(e), dsn)[:300]}", sql=None)
+
+
 def cerca_dominanti(dsn, testo):
     """R36 — chi presidia quale ente, cercabile su tutti i 17mila.
 
@@ -459,10 +475,21 @@ def crea_handler(dsn):
             try:
                 if not (self.path.startswith("/api/invio")
                         or self.path.startswith("/api/pec")
-                        or self.path.startswith("/api/genera")):
+                        or self.path.startswith("/api/genera")
+                        or self.path.startswith("/api/chiedi")):
                     return self._invia(404, '{"errore":"non trovato"}')
                 n = int(self.headers.get("Content-Length") or 0)
                 c = json.loads(self.rfile.read(n) or b"{}")
+
+                if self.path.startswith("/api/chiedi"):
+                    domanda = (c.get("domanda") or "").strip()
+                    if not domanda:
+                        return self._invia(200, json.dumps(
+                            {"risposta": "Scrivi una domanda.", "sql": None},
+                            ensure_ascii=False))
+                    self._invia(200, json.dumps(chiedi_agente(dsn, domanda),
+                                                ensure_ascii=False, default=str))
+                    return
 
                 if self.path.startswith("/api/genera"):
                     cf = (c.get("cf") or "").strip()

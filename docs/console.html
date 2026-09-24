@@ -306,13 +306,27 @@ td.gg .quando{display:block; font-size:10.5px; color:var(--ink-3);
 .barra{height:5px; background:var(--surface-2); border-radius:3px; overflow:hidden}
 .barra i{display:block; height:100%; background:var(--accento); border-radius:3px}
 
-/* agente (R39) */
-.log-agente{max-height:420px; overflow-y:auto; padding:14px 16px; display:flex;
+/* agente (R39) — widget flottante in basso a destra, come i chatbot dei siti */
+.chat-flott{position:fixed; right:20px; bottom:20px; z-index:50; width:52px; height:52px;
+  border-radius:50%; border:none; background:var(--accento); color:#fff; font-size:22px;
+  cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.25); line-height:1}
+.chat-flott:hover{filter:brightness(1.08)}
+.chat-flott:focus-visible{outline:2px solid var(--accento); outline-offset:3px}
+.chat-pan{position:fixed; right:20px; bottom:84px; z-index:50; width:min(360px, calc(100vw - 32px));
+  max-height:min(560px, calc(100vh - 120px)); background:var(--surface); border:1px solid var(--rule);
+  border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.28); display:flex; flex-direction:column;
+  overflow:hidden}
+.chat-testa{padding:12px 14px; font-weight:600; font-family:"Archivo",sans-serif;
+  border-bottom:1px solid var(--rule); display:flex; align-items:center; justify-content:space-between}
+.chat-x{border:none; background:none; color:var(--ink-2); font-size:14px; cursor:pointer; padding:2px 6px}
+.chat-x:hover{color:var(--ink)}
+.log-agente{flex:1; max-height:340px; overflow-y:auto; padding:10px 14px; display:flex;
   flex-direction:column; gap:10px}
-.msg{max-width:80%; padding:8px 12px; border-radius:8px; font-size:13px; line-height:1.5}
+.msg{max-width:85%; padding:8px 12px; border-radius:8px; font-size:13px; line-height:1.5}
 .msg-utente{align-self:flex-end; background:var(--accento); color:#fff}
 .msg-agente{align-self:flex-start; background:var(--surface-2); color:var(--ink);
   white-space:pre-wrap}
+.chat-pan .filtri{border-bottom:none; border-top:1px solid var(--rule)}
 
 /* tabella scadenze */
 .filtri{display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px; border-bottom:1px solid var(--rule)}
@@ -1231,23 +1245,33 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
 
   /* ------------------------------------------------------ agente (R39) */
   // L'agente con cui parlare, prima versione: solo domande, mai scritture
-  // (vedi agente.py per le tre righe di difesa). CONVERSAZIONE vive fuori
-  // da disegna() apposta: un ridisegno della pagina (es. un altro pannello
-  // che si aggiorna) non deve svuotare la chat in corso.
+  // (vedi agente.py per le tre righe di difesa). Widget flottante in basso
+  // a destra, come i chatbot classici dei siti — visibile su ogni pagina,
+  // non una pagina a se stante. CONVERSAZIONE e chatAperta vivono fuori da
+  // disegna() apposta: un ridisegno per un altro motivo (cambio pagina,
+  // dati aggiornati) non deve chiudere o svuotare la chat in corso.
   var CONVERSAZIONE = [];
   var domandaInCorso = false;
+  var chatAperta = false;
 
-  function agente(){
+  function chatWidget(){
     if(!LOCALE) return "";
-    return '<div class="pan"><h2>Chiedi al radar</h2>'+
-      '<div class="aiuto">Domande sui dati gia\' in console, in italiano — '+
-      '"quanti bandi TED aperti", "chi tiene il Comune di Brescia". Legge '+
-      'soltanto, non registra e non invia nulla.</div>'+
+    var bottone = '<button class="chat-flott" id="b-chat-flott" type="button" '+
+      'aria-expanded="'+(chatAperta?"true":"false")+'" aria-label="'+
+      (chatAperta ? "Chiudi la chat" : "Chiedi al radar")+'">'+
+      (chatAperta ? "✕" : "💬") +'</button>';
+    if(!chatAperta) return bottone;
+    return '<div class="chat-pan" role="dialog" aria-label="Chiedi al radar">'+
+      '<div class="chat-testa">Chiedi al radar'+
+        '<button class="chat-x" id="b-chat-chiudi" type="button" aria-label="Chiudi">✕</button>'+
+      '</div>'+
+      '<div class="aiuto" style="padding:10px 14px 0">Domande sui dati gia\' in '+
+      'console, in italiano. Legge soltanto, non registra e non invia nulla.</div>'+
       '<div id="log-agente" class="log-agente"></div>'+
       '<div class="filtri"><input type="search" id="f-agente" '+
         'placeholder="Scrivi una domanda…" aria-label="Domanda per l\'agente">'+
         '<button class="btn" id="b-agente" type="button">Chiedi</button></div>'+
-      '</div>';
+      '</div>'+bottone;
   }
 
   function disegnaConversazione(){
@@ -1637,8 +1661,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<div class="griglia"><div>'+categorie()+'</div>'+
         '<div>'+territorio()+competitor()+'</div></div>'+
         dominanti()+anomalie();
-    }},
-    {id:"chiedi",       nome:"Chiedi",       corpo: function(){ return agente(); }}
+    }}
   ];
 
   function paginaCorrente(){
@@ -1669,7 +1692,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       'I giorni alla scadenza si ricalcolano a ogni apertura; il resto &egrave; '+
       (LOCALE ? 'letto dal database a ogni caricamento.'
               : 'la fotografia del ' + esc(dataIt(DATI.generato)) + '.')+
-      '</footer></div>';
+      '</footer></div>'+chatWidget();
 
     // disegnaRighe() cerca #righe-lead: esiste solo nella pagina "Opportunita'".
     if(document.getElementById("righe-lead")) disegnaRighe();
@@ -1729,9 +1752,15 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       });
     }
 
+    var bf = document.getElementById("b-chat-flott");
+    if(bf) bf.addEventListener("click", function(){ chatAperta = !chatAperta; disegna(); });
+    var bx = document.getElementById("b-chat-chiudi");
+    if(bx) bx.addEventListener("click", function(){ chatAperta = false; disegna(); });
+
     var fa = document.getElementById("f-agente");
     if(fa){
       disegnaConversazione();
+      fa.focus();
       document.getElementById("b-agente").addEventListener("click", inviaDomanda);
       fa.addEventListener("keydown", function(e){
         if(e.key === "Enter"){ e.preventDefault(); inviaDomanda(); }

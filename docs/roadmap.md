@@ -1173,10 +1173,13 @@ di Brescia?" ha fallito — il modello aveva scritto `WHERE ente = 'Comune di Br
 con `ILIKE` e `'%parola%'`, mai con `=`. Dopo il fix, la stessa domanda ha trovato
 correttamente il fornitore dominante.
 
-Nuova pagina "Chiedi" in `console.html` (quinta pagina, stesso schema a temi di R33),
-gated `LOCALE` come `dominanti()` di R36 — richiede il server per interrogare Anthropic
-e il database. Conversazione tenuta in una variabile JS fuori da `disegna()` apposta:
-un ridisegno di un altro pannello non deve svuotare la chat in corso.
+**UI**: non una sesta pagina nel menu, ma un widget flottante in basso a destra — il
+pattern classico dei chatbot sui siti, su richiesta esplicita dell'utente dopo la prima
+versione (che era una pagina "Chiedi" dedicata). Bottone circolare sempre visibile
+(`chatWidget()` in `console.html`, gated `LOCALE` come `dominanti()` di R36), il
+pannello si apre sopra senza cambiare pagina. `chatAperta` e `CONVERSAZIONE` vivono fuori
+da `disegna()` apposta: un ridisegno per un altro motivo (cambio pagina, dati aggiornati)
+non deve chiudere o svuotare la chat in corso.
 
 Testato dal vivo nella webapp: "quanti bandi TED sono aperti oggi?" -> risposta corretta
 (79, verificato contro lo stesso numero mostrato nel pannello Bandi TED). Un ostacolo

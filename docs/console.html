@@ -394,14 +394,7 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .motivo-verdetto{font-size:11px; color:var(--ink-3); line-height:1.4}
 .candidabile{font-size:11px; font-weight:600; color:var(--bassa)}
 
-/* eyebrow che distingue a colpo d'occhio TED (sopra soglia UE) dai bandi
-   regionali sotto soglia: stesso posto, colore diverso, non decorazione */
-.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase;
-  letter-spacing:.06em; padding:2px 7px; border-radius:3px; font-weight:600}
-.eyebrow.ue{color:var(--ink-2); background:var(--surface-2)}
-.eyebrow.regionale{color:var(--accento); background:var(--accento-tenue)}
-
-/* regione (details.lotto riusato: stessa meccanica di apertura/chiusura
+/* fonte (details.lotto riusato: stessa meccanica di apertura/chiusura
    gia' in uso per i lotti PEC) dentro il pannello bandi regionali */
 .regione-bandi > summary{list-style:none; cursor:pointer; display:flex; align-items:baseline;
   gap:10px; flex-wrap:wrap; padding:11px 16px; border-top:1px solid var(--rule)}
@@ -1452,60 +1445,59 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '</div></div>';
   }
 
-  function bandiTed(){
-    if(!DATI.ted || !DATI.ted.length) return "";
-    return '<div class="pan"><h2><span class="eyebrow ue">UE &middot; sopra soglia</span> Bandi TED aperti'+
-      '<span class="conta">'+DATI.ted.length+'</span></h2>'+
-      '<div class="aiuto">Gare europee sopra soglia, ancora aperte. Qui i '+
-      'requisiti di partecipazione ci sono per davvero &mdash; nel link al '+
-      'bando ufficiale, non inventati. Il parere sotto (SI&#47;FORSE&#47;NO) '+
-      'è un’indicazione automatica, non una lettura del bando: conferma '+
-      'sempre aprendo il link prima di scrivere.'+
-      (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC: '+
-                'clicca il nome per la sua scheda prima di prepararti.' : '')+
-      '</div>'+
-      '<div class="corpo">' + DATI.ted.map(function(t){
-        return rigaBando(t, {bottone:"leggi il bando",
-          ariaLabel:"Apri il bando ufficiale con i requisiti"});
-      }).join("") + '</div></div>';
-  }
-
-  /* ------------------------------------------- bandi regionali (R40+) */
-  // Sotto soglia, un marketplace per regione (SUAM per le Marche, altri in
-  // arrivo — vedi la richiesta dell'utente 2026-09-24). Raggruppati per
-  // regione dentro details.lotto (stessa meccanica gia' in uso per i lotti
-  // PEC): riusarla qui vuol dire che aggiungere una regione nuova e' solo
-  // una chiave in piu' in DATI.regionali, non una pagina da ridisegnare.
-  function bandiRegionali(){
+  /* ------------------------------------------- bandi aperti (R40+) */
+  // Su richiesta dell'utente 2026-09-24: TED e ogni regione sono tendine
+  // sorelle nello stesso pannello, non due pannelli separati — si apre e
+  // si chiude "il tab Marche" o "il tab TED" allo stesso modo. Una lista
+  // di fonti invece di due funzioni distinte: TED e' una voce fissa,
+  // ogni chiave di DATI.regionali ne aggiunge un'altra da sola, quindi una
+  // regione nuova domani non tocca questa funzione.
+  function bandiAperti(){
+    var fonti = [];
+    if(DATI.ted && DATI.ted.length) fonti.push({
+      chiave:"ted", nome:"TED (gare europee)", righe:DATI.ted,
+      extra:"sopra soglia UE", bottone:"leggi il bando",
+      ariaLabel:"Apri il bando ufficiale con i requisiti",
+      candidabile:null});
     var reg = DATI.regionali || {};
-    var chiavi = Object.keys(reg).filter(function(k){ return reg[k] && reg[k].length; });
-    if(!chiavi.length) return "";
-    var tot = chiavi.reduce(function(s, k){ return s + reg[k].length; }, 0);
-    chiavi.sort(function(a, b){ return reg[b].length - reg[a].length; });
-    return '<div class="pan"><h2><span class="eyebrow regionale">sotto soglia &middot; regionale</span> '+
-      'Bandi regionali aperti<span class="conta">'+tot+'</span></h2>'+
-      '<div class="aiuto">Gare sotto soglia comunitaria sui marketplace regionali &mdash; dove '+
-      'un\'agenzia piccola compete meglio che su TED. Apri la scheda per i documenti di gara '+
-      'prima di scrivere. Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione automatica, '+
-      'non una lettura del bando: conferma sempre aprendo la scheda. Da operatore registrato, '+
-      'i bandi con parere SI si possono candidare direttamente sul portale — non serve '+
-      'aspettare che l\'ente apra un affidamento diretto.'+
-      (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC.' : '')+
-      (chiavi.length === 1 ? ' Oggi solo '+esc(chiavi[0])+'; altre regioni in arrivo.' : '')+
+    Object.keys(reg).sort(function(a, b){ return reg[b].length - reg[a].length; })
+      .forEach(function(k){
+        if(!reg[k] || !reg[k].length) return;
+        fonti.push({chiave:"reg-"+k, nome:k, righe:reg[k], extra:"sotto soglia",
+          bottone:"apri la scheda", ariaLabel:"Apri la scheda del bando",
+          candidabile:"partecipa direttamente sul portale regionale"});
+      });
+    if(!fonti.length) return "";
+    var tot = fonti.reduce(function(s, f){ return s + f.righe.length; }, 0);
+
+    return '<div class="pan"><h2>Bandi aperti<span class="conta">'+tot+'</span></h2>'+
+      '<div class="aiuto">Gare aperte adesso, non contratti gi&agrave; finiti come nelle '+
+      'scadenze qui sotto. TED &egrave; sopra soglia comunitaria (i requisiti sono nel link '+
+      'ufficiale); i marketplace regionali sono sotto soglia, dove un\'agenzia piccola '+
+      'compete meglio. Il parere sotto (SI&#47;FORSE&#47;NO) &egrave; un’indicazione '+
+      'automatica, non una lettura del bando: conferma sempre aprendo il link. Da operatore '+
+      'registrato su un portale regionale, i bandi con parere SI si possono candidare '+
+      'direttamente &mdash; non serve aspettare che l\'ente apra un affidamento diretto.'+
+      (LOCALE ? ' Il pallino segna un ente gi&agrave; noto dallo storico ANAC.' : '')+
       '</div>'+
-      chiavi.map(function(k){
-        var righe = reg[k];
-        var fattibili = righe.filter(function(x){ return x.verdetto === "si"; }).length;
-        return '<details class="lotto regione-bandi" data-lotto="reg-'+esc(k)+'"'+
-          (aperti["reg-"+k] === false ? "" : " open") + '>'+
-          '<summary><span class="r-nome">'+esc(k)+'</span>'+
-          '<span class="r-info">'+righe.length+(righe.length === 1 ? ' bando' : ' bandi')+
+      fonti.map(function(f){
+        // "candidabile" ha senso solo dove ci si registra come operatore e si
+        // partecipa dal portale (i regionali): su TED "si" vuol dire solo
+        // "vale la pena rispondere", non "candidati con un clic" — vedi
+        // f.candidabile, che gia' distingue le due cose riga per riga.
+        var fattibili = f.candidabile
+          ? f.righe.filter(function(x){ return x.verdetto === "si"; }).length : 0;
+        return '<details class="lotto regione-bandi" data-lotto="'+esc(f.chiave)+'"'+
+          (aperti[f.chiave] === false ? "" : " open") + '>'+
+          '<summary><span class="r-nome">'+esc(f.nome)+'</span>'+
+          '<span class="r-info">'+f.righe.length+(f.righe.length === 1 ? ' bando' : ' bandi')+
             (fattibili ? ' &middot; <b style="color:var(--bassa)">'+fattibili+
               (fattibili === 1 ? ' candidabile' : ' candidabili')+'</b>' : '')+
+            ' &middot; '+f.extra+
           '</span></summary>'+
-          '<div class="dentro">' + righe.map(function(s){
-            return rigaBando(s, {bottone:"apri la scheda", ariaLabel:"Apri la scheda del bando",
-              candidabile:"partecipa direttamente sul portale regionale"});
+          '<div class="dentro">' + f.righe.map(function(x){
+            return rigaBando(x, {bottone:f.bottone, ariaLabel:f.ariaLabel,
+              candidabile:f.candidabile});
           }).join("") + '</div></details>';
       }).join("") + '</div>';
   }
@@ -1795,7 +1787,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var PAGINE = [
     {id:"",             nome:"Da fare",      corpo: function(){ return daFare(); }},
     {id:"invii",        nome:"Invii",        corpo: function(){ return lotti()+funnelTempo(); }},
-    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+bandiRegionali()+tabella(); }},
+    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiAperti()+tabella(); }},
     {id:"mercato",      nome:"Mercato",      corpo: function(){
       return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
         '<div class="griglia"><div>'+categorie()+'</div>'+

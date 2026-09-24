@@ -169,16 +169,21 @@ def raccogli(cur):
                      verdetto=j, motivo=k)
                for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
 
-    # R40 — stessa idea di sopra, altra fonte (SUAM Marche, sotto soglia).
+    # R40 — stessa idea di sopra, altra fonte (sotto soglia, un marketplace
+    # per regione). Raggruppato per regione fin da qui (non solo in
+    # console.html): aggiungere una regione nuova domani e' una query
+    # in piu' con la sua chiave, non una ristrutturazione del payload.
+    # Oggi solo SUAM/Marche; il nome della regione resta fisso qui e non
+    # nella tabella, perche' suam.py e' gia' specifico per le Marche.
     cur.execute("""
         SELECT codice, titolo, ente, scadenza, giorni_alla_scadenza,
                importo, link, ente_noto, cf_ente, verdetto, verdetto_motivo
         FROM radar.v_suam_aperti
         ORDER BY scadenza LIMIT 200""")
-    D["suam"] = [dict(codice=a, titolo=b, ente=c, scad=str(d), gg=e,
-                      val=float(f or 0), link=g, noto=h, cf=i,
-                      verdetto=j, motivo=k)
-                for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
+    D["regionali"] = {"Marche": [
+        dict(codice=a, titolo=b, ente=c, scad=str(d), gg=e,
+             val=float(f or 0), link=g, noto=h, cf=i, verdetto=j, motivo=k)
+        for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]}
 
     # R38 — poche righe (decine, non migliaia), sta nel payload principale
     # senza bisogno di un endpoint a parte come /api/dominanti.

@@ -362,6 +362,57 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .ted-verdetto.v-si b{color:var(--bassa); background:var(--bassa-bg)}
 .ted-verdetto.v-forse b{color:var(--media); background:var(--media-bg)}
 .ted-verdetto.v-no b{color:var(--alta); background:var(--alta-bg)}
+
+/* Bandi (TED + regionali sotto soglia), R14b/2026-09-24 — piu' respiro di
+   .riga: sono card informative da leggere, non righe di una tabella da
+   scandire in fretta. */
+.riga-bando{padding:14px 16px; border-bottom:1px solid var(--rule);
+  display:flex; flex-direction:column; gap:7px}
+.riga-bando:last-child{border-bottom:none}
+.riga-bando:hover{background:var(--surface-2)}
+.riga-bando .testa{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.riga-bando .chi{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px}
+.riga-bando .nome-ente{font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.riga-bando .titolo-bando{font-size:12px; color:var(--ink-2); line-height:1.45}
+.riga-bando .riga-dati{display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:11.5px;
+  color:var(--ink-2); font-family:"IBM Plex Mono",monospace}
+.riga-bando .piede{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+
+/* urgenza a pillola invece di solo testo colorato: si vede prima di leggerla */
+.scad-pill{display:inline-flex; align-items:center; font-size:11px; font-weight:600;
+  padding:2.5px 9px; border-radius:20px; font-family:"IBM Plex Mono",monospace; white-space:nowrap}
+.scad-pill.g-alta{color:var(--alta); background:var(--alta-bg)}
+.scad-pill.g-media{color:var(--media); background:var(--media-bg)}
+.scad-pill.g-bassa{color:var(--bassa); background:var(--bassa-bg)}
+
+/* parere AI ingrandito: prima era in coda alla riga, facile da non notare */
+.verdetto-grande{font-size:10.5px; font-weight:700; text-transform:uppercase;
+  padding:3px 9px; border-radius:20px; flex:none; letter-spacing:.02em}
+.verdetto-grande.v-si{color:var(--bassa); background:var(--bassa-bg)}
+.verdetto-grande.v-forse{color:var(--media); background:var(--media-bg)}
+.verdetto-grande.v-no{color:var(--alta); background:var(--alta-bg)}
+.motivo-verdetto{font-size:11px; color:var(--ink-3); line-height:1.4}
+.candidabile{font-size:11px; font-weight:600; color:var(--bassa)}
+
+/* eyebrow che distingue a colpo d'occhio TED (sopra soglia UE) dai bandi
+   regionali sotto soglia: stesso posto, colore diverso, non decorazione */
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.06em; padding:2px 7px; border-radius:3px; font-weight:600}
+.eyebrow.ue{color:var(--ink-2); background:var(--surface-2)}
+.eyebrow.regionale{color:var(--accento); background:var(--accento-tenue)}
+
+/* regione (details.lotto riusato: stessa meccanica di apertura/chiusura
+   gia' in uso per i lotti PEC) dentro il pannello bandi regionali */
+.regione-bandi > summary{list-style:none; cursor:pointer; display:flex; align-items:baseline;
+  gap:10px; flex-wrap:wrap; padding:11px 16px; border-top:1px solid var(--rule)}
+.regione-bandi > summary::-webkit-details-marker{display:none}
+.regione-bandi > summary::before{content:"\203A"; color:var(--ink-3); width:10px;
+  display:inline-block; transition:transform .15s}
+.regione-bandi[open] > summary::before{transform:rotate(90deg)}
+.regione-bandi > summary:hover{background:var(--surface-2)}
+.regione-bandi .r-nome{font-size:13px; font-weight:600}
+.regione-bandi .r-info{font-size:11.5px; color:var(--ink-3); margin-left:auto}
+.regione-bandi .dentro{border-top:1px solid var(--rule)}
 a{color:var(--accento); text-decoration:none}
 a:hover{text-decoration:underline}
 .vuoto{padding:26px 16px; color:var(--ink-3); font-size:13px; text-align:center}
@@ -1369,9 +1420,41 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // APERTE adesso, con la scadenza per l'offerta ancora nel futuro. E' anche
   // l'unico punto del sistema dove i requisiti del bando esistono davvero,
   // nel link al bando ufficiale — non c'e' equivalente per le scadenze ANAC.
+  // Card condivisa fra bandiTed() e bandiRegionali(): stesso layout, cambia
+  // solo il bottone finale (link al bando ufficiale su TED, alla scheda del
+  // portale sui regionali) e se mostrare il promemoria "candidabile"
+  // (ha senso solo dove ci si registra come operatore, cioe' i regionali).
+  function rigaBando(x, opts){
+    var gg = x.gg == null ? null : x.gg;
+    var cl = gg == null ? "" : gg <= 15 ? "g-alta" : gg <= 45 ? "g-media" : "g-bassa";
+    return '<div class="riga-bando"><div class="testa"><div class="chi">'+
+        '<div class="nome-ente">'+
+          (x.noto && x.cf && LOCALE
+            ? '<button class="link-ente" data-ente="'+esc(x.cf)+'">'+
+              esc(x.ente||"ente non indicato")+'</button>'+
+              '<span class="tag" title="ente già noto dallo storico ANAC">&#9679; noto</span>'
+            : esc(x.ente||"ente non indicato"))+
+        '</div>'+
+        (x.titolo ? '<div class="titolo-bando" title="'+esc(x.titolo)+'">'+
+          esc(x.titolo.slice(0,140))+'</div>' : '')+
+      '</div>'+
+      (x.verdetto ? '<span class="verdetto-grande v-'+esc(x.verdetto)+'">'+esc(x.verdetto)+'</span>' : '')+
+      '</div>'+
+      (x.verdetto && x.motivo ? '<div class="motivo-verdetto">'+esc(x.motivo)+'</div>' : '')+
+      '<div class="piede"><div class="riga-dati">'+
+        (gg != null ? '<span class="scad-pill '+cl+'">scade fra '+gg+' gg</span><span>'+dataIt(x.scad)+'</span>' : '')+
+        (x.val ? '<span>&middot; '+num(x.val)+'</span>' : '')+
+        (opts.candidabile && x.verdetto === "si"
+          ? '<span class="candidabile">&#9679; candidabile: '+opts.candidabile+'</span>' : '')+
+      '</div>'+
+      (x.link ? '<a class="btn" href="'+esc(x.link)+'" target="_blank" rel="noopener noreferrer" '+
+        'aria-label="'+esc(opts.ariaLabel)+', '+esc(x.ente||"")+'">'+esc(opts.bottone)+'</a>' : '')+
+      '</div></div>';
+  }
+
   function bandiTed(){
     if(!DATI.ted || !DATI.ted.length) return "";
-    return '<div class="pan"><h2>Bandi TED aperti'+
+    return '<div class="pan"><h2><span class="eyebrow ue">UE &middot; sopra soglia</span> Bandi TED aperti'+
       '<span class="conta">'+DATI.ted.length+'</span></h2>'+
       '<div class="aiuto">Gare europee sopra soglia, ancora aperte. Qui i '+
       'requisiti di partecipazione ci sono per davvero &mdash; nel link al '+
@@ -1382,77 +1465,49 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
                 'clicca il nome per la sua scheda prima di prepararti.' : '')+
       '</div>'+
       '<div class="corpo">' + DATI.ted.map(function(t){
-        var gg = t.gg == null ? null : t.gg;
-        var cl = gg == null ? "" : gg <= 15 ? "g-alta" : gg <= 45 ? "g-media" : "g-bassa";
-        return '<div class="riga"><span class="chi">'+
-          '<div class="nome">'+
-            (t.noto && t.cf && LOCALE
-              ? '<button class="link-ente" data-ente="'+esc(t.cf)+'">'+
-                esc(t.ente||"ente non indicato")+'</button> '+
-                '<span class="tag" title="ente già noto dallo storico ANAC">&#9679; noto</span>'
-              : esc(t.ente||"ente non indicato"))+
-          '</div>'+
-          '<div class="meta" title="'+esc(t.titolo||"")+'">'+
-            esc((t.titolo||"").slice(0,100))+'</div>'+
-          '<div class="meta">'+
-            (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(t.scad)+')' : '')+
-            (t.val ? ' &middot; '+num(t.val) : '')+
-          '</div>'+
-          (t.verdetto ? '<div class="ted-verdetto v-'+esc(t.verdetto)+'">'+
-            '<b>'+esc(t.verdetto)+'</b>'+esc(t.motivo||"")+'</div>' : '')+
-          '</span>'+
-          (t.link ? '<a class="btn" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer" '+
-            'aria-label="Apri il bando ufficiale con i requisiti, '+esc(t.ente||"")+'">leggi il bando</a>' : '')+
-        '</div>';
+        return rigaBando(t, {bottone:"leggi il bando",
+          ariaLabel:"Apri il bando ufficiale con i requisiti"});
       }).join("") + '</div></div>';
   }
 
-  /* ------------------------------------------------------ bandi SUAM (R40) */
-  // Stessa idea di bandiTed(): gare APERTE adesso, non contratti gia' finiti.
-  // Diversa fonte (SUAM Marche, sotto soglia, una regione sola) — volume
-  // piccolo per costruzione, vedi la nota in suam.py. Nessun link al bando
-  // ufficiale con requisiti come TED: qui il link porta alla scheda del
-  // portale, che ha i documenti di gara in allegato.
-  function bandiSuam(){
-    if(!DATI.suam || !DATI.suam.length) return "";
-    return '<div class="pan"><h2>Bandi SUAM Marche aperti'+
-      '<span class="conta">'+DATI.suam.length+'</span></h2>'+
-      '<div class="aiuto">Gare sotto soglia comunitaria sul marketplace '+
-      'regionale delle Marche — dove un\'agenzia piccola compete meglio che '+
-      'su TED. Apri la scheda per i documenti di gara prima di scrivere. '+
-      'Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione automatica, '+
-      'non una lettura del bando: conferma sempre aprendo la scheda. '+
-      'Da operatore registrato su SUAM, i bandi con parere SI si possono '+
-      'candidare direttamente sul portale — non serve aspettare che l\'ente '+
-      'apra un affidamento diretto.'+
+  /* ------------------------------------------- bandi regionali (R40+) */
+  // Sotto soglia, un marketplace per regione (SUAM per le Marche, altri in
+  // arrivo — vedi la richiesta dell'utente 2026-09-24). Raggruppati per
+  // regione dentro details.lotto (stessa meccanica gia' in uso per i lotti
+  // PEC): riusarla qui vuol dire che aggiungere una regione nuova e' solo
+  // una chiave in piu' in DATI.regionali, non una pagina da ridisegnare.
+  function bandiRegionali(){
+    var reg = DATI.regionali || {};
+    var chiavi = Object.keys(reg).filter(function(k){ return reg[k] && reg[k].length; });
+    if(!chiavi.length) return "";
+    var tot = chiavi.reduce(function(s, k){ return s + reg[k].length; }, 0);
+    chiavi.sort(function(a, b){ return reg[b].length - reg[a].length; });
+    return '<div class="pan"><h2><span class="eyebrow regionale">sotto soglia &middot; regionale</span> '+
+      'Bandi regionali aperti<span class="conta">'+tot+'</span></h2>'+
+      '<div class="aiuto">Gare sotto soglia comunitaria sui marketplace regionali &mdash; dove '+
+      'un\'agenzia piccola compete meglio che su TED. Apri la scheda per i documenti di gara '+
+      'prima di scrivere. Il parere sotto (SI&#47;FORSE&#47;NO) è un’indicazione automatica, '+
+      'non una lettura del bando: conferma sempre aprendo la scheda. Da operatore registrato, '+
+      'i bandi con parere SI si possono candidare direttamente sul portale — non serve '+
+      'aspettare che l\'ente apra un affidamento diretto.'+
       (LOCALE ? ' Il pallino segna un ente già noto dallo storico ANAC.' : '')+
+      (chiavi.length === 1 ? ' Oggi solo '+esc(chiavi[0])+'; altre regioni in arrivo.' : '')+
       '</div>'+
-      '<div class="corpo">' + DATI.suam.map(function(s){
-        var gg = s.gg == null ? null : s.gg;
-        var cl = gg == null ? "" : gg <= 15 ? "g-alta" : gg <= 45 ? "g-media" : "g-bassa";
-        return '<div class="riga"><span class="chi">'+
-          '<div class="nome">'+
-            (s.noto && s.cf && LOCALE
-              ? '<button class="link-ente" data-ente="'+esc(s.cf)+'">'+
-                esc(s.ente||"ente non indicato")+'</button> '+
-                '<span class="tag" title="ente già noto dallo storico ANAC">&#9679; noto</span>'
-              : esc(s.ente||"ente non indicato"))+
-          '</div>'+
-          '<div class="meta" title="'+esc(s.titolo||"")+'">'+
-            esc((s.titolo||"").slice(0,100))+'</div>'+
-          '<div class="meta">'+
-            (gg != null ? '<span class="'+cl+'">scade fra '+gg+' gg</span> ('+dataIt(s.scad)+')' : '')+
-            (s.val ? ' &middot; '+num(s.val) : '')+
-          '</div>'+
-          (s.verdetto ? '<div class="ted-verdetto v-'+esc(s.verdetto)+'">'+
-            '<b>'+esc(s.verdetto)+'</b>'+esc(s.motivo||"")+'</div>' : '')+
-          (s.verdetto === "si" ? '<div class="meta"><span class="g-bassa">'+
-            '&#9679; candidabile: partecipa direttamente su SUAM</span></div>' : '')+
-          '</span>'+
-          (s.link ? '<a class="btn" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" '+
-            'aria-label="Apri la scheda del bando, '+esc(s.ente||"")+'">apri la scheda</a>' : '')+
-        '</div>';
-      }).join("") + '</div></div>';
+      chiavi.map(function(k){
+        var righe = reg[k];
+        var fattibili = righe.filter(function(x){ return x.verdetto === "si"; }).length;
+        return '<details class="lotto regione-bandi" data-lotto="reg-'+esc(k)+'"'+
+          (aperti["reg-"+k] === false ? "" : " open") + '>'+
+          '<summary><span class="r-nome">'+esc(k)+'</span>'+
+          '<span class="r-info">'+righe.length+(righe.length === 1 ? ' bando' : ' bandi')+
+            (fattibili ? ' &middot; <b style="color:var(--bassa)">'+fattibili+
+              (fattibili === 1 ? ' candidabile' : ' candidabili')+'</b>' : '')+
+          '</span></summary>'+
+          '<div class="dentro">' + righe.map(function(s){
+            return rigaBando(s, {bottone:"apri la scheda", ariaLabel:"Apri la scheda del bando",
+              candidabile:"partecipa direttamente sul portale regionale"});
+          }).join("") + '</div></details>';
+      }).join("") + '</div>';
   }
 
   /* -------------------------------------------------------- scadenze */
@@ -1740,7 +1795,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var PAGINE = [
     {id:"",             nome:"Da fare",      corpo: function(){ return daFare(); }},
     {id:"invii",        nome:"Invii",        corpo: function(){ return lotti()+funnelTempo(); }},
-    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+bandiSuam()+tabella(); }},
+    {id:"opportunita",  nome:"Opportunità", corpo: function(){ return bandiTed()+bandiRegionali()+tabella(); }},
     {id:"mercato",      nome:"Mercato",      corpo: function(){
       return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
         '<div class="griglia"><div>'+categorie()+'</div>'+

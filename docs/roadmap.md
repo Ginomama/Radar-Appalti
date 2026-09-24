@@ -1106,6 +1106,38 @@ questa sessione (Ancona, ASP Ambito 9, Sapienza, Fermo) erano gia' state registr
 mano, quindi il loro `stato` non e' piu' fra quelli cercati: prova indiretta che
 l'incrocio funziona (smetterebbe di segnalarle proprio a quel punto).
 
+### R38 — Segnalazione automatica degli importi sproporzionati · ✅ FATTO 2026-09-24
+
+Dalla parte "copertura/qualità dati" del punto 2. Il caso di COMUNE DI BAGALADI (un
+contratto da 3 miliardi contro contratti da poche migliaia di euro, gia' notato e
+segnalato come nota di trasparenza in R36) non era un caso isolato — serviva trovarli
+tutti, non uno alla volta a occhio.
+
+Nuova query in `intelligence.py` (stessa passata di R36, `--calcola`): per ogni ente, il
+CIG col valore piu' alto viene confrontato col SECONDO piu' alto dello stesso ente. Se
+il primo e' **almeno 50 milioni di euro E almeno 20 volte** il secondo (o l'unico mai
+visto sopra soglia), finisce in `anomalia_importo` — 22 righe sui dati attuali. La
+doppia soglia e' voluta: un'agenzia che compra sempre in grande (Consip, Agenzia delle
+Entrate) non scatta, perche' ha altri contratti nello stesso ordine di grandezza; scatta
+solo chi ha UN valore fuori scala contro tutto il resto del suo storico — la firma di
+un dato inserito male, non di una spesa vera. **Non tutte le 22 sono necessariamente
+errori**: alcune (Agenzia delle Entrate, Ministero dell'Economia, Dogane) potrebbero
+essere contratti-quadro nazionali genuinamente enormi — il pannello lo dice esplicitamente,
+la decisione se fidarsene resta di chi legge.
+
+**Non si filtra nulla**: stessa disciplina di trasparenza gia' scelta per R36. Nuovo
+pannello "Importi da verificare" in Mercato, nel payload principale di `console_live.py`
+(solo 22 righe, non serve un endpoint a parte come `/api/dominanti`) — quindi visibile
+anche nella copia statica pubblicata, non solo in locale.
+
+Testato dal vivo: pannello carico con le 22 righe attese, capofila COMUNE DI BAGALADI
+(rapporto 53.365×) e PRESIDENZA DEL CONSIGLIO DEI MINISTRI (rapporto 57×, quest'ultimo
+verosimilmente un contratto-quadro reale visto chi e', non un errore). Un falso allarme
+durante il test — pagina bianca dopo un riavvio del server — si e' rivelato essere la
+stessa fragilita' gia' nota di `console_live.py` sotto richieste ravvicinate (vedi punto
+17), non un bug nel codice nuovo: verificato rileggendo `/app.innerHTML` dopo aver
+smesso di bombardarlo di navigazioni.
+
 Il CRM è già in uso in FlowLine. Un lead che ha risposto va tracciato dove si
 tracciano gli altri, non in una tabella a parte: senza, il seguito commerciale
 vive in due posti e uno dei due muore.

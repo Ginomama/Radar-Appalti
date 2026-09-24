@@ -94,6 +94,11 @@ MAPPA = [
         "cf_ente", "ente", "prov", "cf_fornitore", "fornitore",
         "contratti", "valore", "ultimo",
     ], None, ""),
+    # R38. Contratti con importo sproporzionato, stessa fonte.
+    ("anomalia_importo", "radar.anomalia_importo", [
+        "cig", "cf_ente", "ente", "prov", "fornitore",
+        "importo", "secondo_importo", "rapporto",
+    ], None, ""),
 ]
 
 # Colonne che in Postgres sono date: SQLite le tiene come testo ISO, e le

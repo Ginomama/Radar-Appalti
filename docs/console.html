@@ -1194,6 +1194,33 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       });
   }
 
+  /* ------------------------------------------------------ anomalie (R38) */
+  // Importi sproporzionati rispetto al resto dello storico dello stesso
+  // ente (es. COMUNE DI BAGALADI con un contratto da 3 miliardi contro
+  // contratti da poche migliaia): non si filtrano, si segnalano — la
+  // decisione se fidarsene resta di chi legge (vedi intelligence.py).
+  function anomalie(){
+    if(!DATI.anomalie || !DATI.anomalie.length) return "";
+    return '<div class="pan"><h2>Importi da verificare'+
+      '<span class="conta">'+DATI.anomalie.length+'</span></h2>'+
+      '<div class="aiuto">Contratti il cui importo e\' molto piu\' grande di '+
+      'ogni altro contratto dello stesso ente nei dati ANAC — spesso un errore '+
+      'di inserimento a monte, a volte un contratto-quadro genuinamente grande. '+
+      'Non filtrati altrove: restano nei totali, qui solo segnalati.</div>'+
+      '<div class="tab-scroll"><table><thead><tr>'+
+        '<th>Ente</th><th>Prov</th><th>Fornitore</th>'+
+        '<th style="text-align:right">Importo</th><th style="text-align:right">'+
+        'Secondo piu\' grande</th></tr></thead><tbody>'+
+      DATI.anomalie.map(function(a){
+        return '<tr><td class="ente">'+esc(a.ente||"?")+'</td>'+
+          '<td>'+esc(titolo(provNome(a.prov))||"")+'</td>'+
+          '<td>'+esc(a.fornitore||"?")+'</td>'+
+          '<td class="imp">'+num(a.importo)+'</td>'+
+          '<td class="imp">'+(a.secondo ? num(a.secondo) : "unico")+'</td></tr>';
+      }).join("")+
+      '</tbody></table></div></div>';
+  }
+
   /* ------------------------------------------------------ competitor */
   function competitor(){
     return '<div class="pan"><h2>I grandi fornitori della PA<span class="conta">per valore vinto</span></h2>'+
@@ -1543,7 +1570,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       return '<h2 class="sez">Il mercato in numeri</h2>'+tessere()+
         '<div class="griglia"><div>'+categorie()+'</div>'+
         '<div>'+territorio()+competitor()+'</div></div>'+
-        dominanti();
+        dominanti()+anomalie();
     }}
   ];
 

@@ -342,3 +342,19 @@ CREATE TABLE IF NOT EXISTS radar.ente_fornitore_dominante (
 );
 CREATE INDEX IF NOT EXISTS ix_efd_valore ON radar.ente_fornitore_dominante (valore DESC);
 ALTER TABLE radar.ente_fornitore_dominante ENABLE ROW LEVEL SECURITY;
+
+-- R38. Contratti con importo sproporzionato rispetto al resto dello storico
+-- dello stesso ente — segnalati, non filtrati (vedi intelligence.py).
+CREATE TABLE IF NOT EXISTS radar.anomalia_importo (
+    cig             text PRIMARY KEY,
+    cf_ente         text,
+    ente            text,
+    prov            text,
+    fornitore       text,
+    importo         numeric,
+    secondo_importo numeric,
+    rapporto        numeric,
+    calcolato_il    timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_anom_importo ON radar.anomalia_importo (importo DESC);
+ALTER TABLE radar.anomalia_importo ENABLE ROW LEVEL SECURITY;

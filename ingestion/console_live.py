@@ -169,6 +169,16 @@ def raccogli(cur):
                      verdetto=j, motivo=k)
                for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
 
+    # R38 — poche righe (decine, non migliaia), sta nel payload principale
+    # senza bisogno di un endpoint a parte come /api/dominanti.
+    cur.execute("""
+        SELECT cig, ente, prov, fornitore, importo, secondo_importo, rapporto
+        FROM radar.anomalia_importo ORDER BY importo DESC""")
+    D["anomalie"] = [dict(cig=a, ente=b, prov=c, fornitore=d, importo=float(e or 0),
+                          secondo=float(f or 0) if f is not None else None,
+                          rapporto=float(g) if g is not None else None)
+                    for a, b, c, d, e, f, g in cur.fetchall()]
+
     D["generato"] = datetime.now().isoformat(timespec="seconds")
     D["auto_genera"] = leggi_stato_auto_genera()
     D["task"] = leggi_stato_task()

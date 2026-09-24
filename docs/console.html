@@ -791,14 +791,23 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     // stato tempo perso. Ora si separa per esito_risposta (ESITI_RISPOSTA),
     // classificato una volta quando si registra la risposta.
     var ris = con("risposta");
-    var risChiama = ris.filter(function(i){
-      return i.esito === "da-richiamare" || i.esito === "interlocutoria"; });
+    // 'interlocutoria' NON va con 'da-richiamare': chi dice "vi terremo in
+    // considerazione" ha gia' detto che richiamera' lui \u2014 una call forzata
+    // l\u00ec e' il contrario di quello che ha chiesto. Trovato il 2026-09-24
+    // (primo giro: li avevo messi insieme, sbagliato).
+    var risChiama = ris.filter(function(i){ return i.esito === "da-richiamare"; });
+    var risTiepide = ris.filter(function(i){ return i.esito === "interlocutoria"; });
     var risDaClassificare = ris.filter(function(i){ return !i.esito; });
 
     if(risChiama.length) voci.push(["t-alta", risChiama.length,
       '<b>' + (risChiama.length === 1 ? 'ha risposto' : 'hanno risposto') + '</b> \u2014 ' +
       'ricontatta per fissare una call: \u00e8 la cosa che vale di pi\u00f9.',
       nomiEnti(risChiama, 4)]);
+
+    if(risTiepide.length) voci.push(["", risTiepide.length,
+      '<b>' + (risTiepide.length === 1 ? 'risposta tiepida' : 'risposte tiepide') + '</b> \u2014 ' +
+      '"vi terremo in considerazione": nessuna azione da fare ora, non forzare un contatto.',
+      nomiEnti(risTiepide, 4)]);
 
     if(risDaClassificare.length) voci.push(["", risDaClassificare.length,
       '<b>' + (risDaClassificare.length === 1 ? 'risposta da classificare'

@@ -6,7 +6,7 @@ Il problema che risolve: ogni pezzo del sistema funziona lanciato a mano, e
 finche' si lancia a mano il sistema non esiste. Un radar che qualcuno deve
 ricordarsi di accendere e' una cartella di script, non un prodotto.
 
-Tre ritmi, perche' le cose non scadono tutte insieme:
+Quattro ritmi, perche' le cose non scadono tutte insieme:
 
   --giornaliero   le ricevute PEC arrivano in minuti: leggerle una volta al
                   mese vorrebbe dire scoprire a fine mese che meta' delle PEC
@@ -21,6 +21,11 @@ Tre ritmi, perche' le cose non scadono tutte insieme:
   --feriale       Lun-Ven, invia le PEC in coda (R31): preavviso Telegram con
                   finestra STOP, poi spedisce se nessuno la ferma. Solo nei
                   giorni feriali perche' un protocollo non legge il sabato.
+
+  --notturno      solo START Toscana (R42): il robots.txt del portale chiede
+                  di essere visitato solo tra le 23 e le 4, e 'giornaliero'
+                  gira alle 08:30 — va per forza in un piano a parte, schedulato
+                  dentro quella finestra.
 
 Vincolo architetturale: **non puo' girare su n8n Cloud**. Il WAF di ANAC
 risponde 403 agli IP dei cloud provider, quindi il download deve partire da
@@ -42,7 +47,7 @@ Uso:
     python job.py --mensile
     python job.py --feriale
     python job.py --prova --mensile      # elenca gli step, non esegue niente
-    python job.py --installa             # crea le tre attivita' pianificate
+    python job.py --installa             # crea le quattro attivita' pianificate
     python job.py --disinstalla
     python job.py --stato                # ultimi esiti + stato attivita'
 
@@ -89,6 +94,11 @@ TASKS = {
                         quando=["/sc", "weekly", "/d", "MON,TUE,WED,THU,FRI",
                                 "/st", "08:00"],
                         descr="invio automatico PEC in coda, con finestra STOP (R31)"),
+    "notturno":    dict(nome=f"{CARTELLA_TASK}\\radar-notturno",
+                        # 01:00, dentro la finestra "2300-0400" richiesta dal
+                        # robots.txt di START Toscana (vedi PIANI['notturno']).
+                        quando=["/sc", "daily", "/st", "01:00"],
+                        descr="bandi START Toscana (R42), fuori da giornaliero apposta"),
 }
 
 # ------------------------------------------------------------------ step
@@ -155,9 +165,43 @@ PIANI = {
         dict(id="suam-push", argv=["push_supabase.py", "--solo", "suam_avviso"],
              descr="pubblica i bandi SUAM su Supabase (R40)", minuti=5,
              dipende="suam", richiede=("DSN",)),
+        # R41 — stessa logica di SUAM, Emilia-Romagna: qui e' una REST API
+        # pubblica (Plone), non scraping HTML, e il volume e' molto piu'
+        # alto (~250 bandi contro ~3): 15 minuti di margine invece di 5.
+        dict(id="intercenter", argv=["intercenter.py", "--ingest"],
+             descr="bandi Intercenter Emilia-Romagna aperti (R41)", minuti=15),
+        dict(id="intercenter-verdetto",
+             argv=["verdetto_regionale.py", "--fonte", "intercenter", "--telegram"],
+             descr="parere AI + avviso Telegram sui bandi Intercenter fattibili",
+             minuti=15, dipende="intercenter",
+             richiede=("ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+        dict(id="intercenter-push",
+             argv=["push_supabase.py", "--solo", "intercenter_avviso"],
+             descr="pubblica i bandi Intercenter su Supabase (R41)", minuti=5,
+             dipende="intercenter", richiede=("DSN",)),
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+    ],
+    # R42 — START Toscana, in un piano a parte e non dentro 'giornaliero'.
+    # Motivo: il robots.txt del portale chiede esplicitamente
+    # "Visit-time: 2300-0400" (solo notte), e 'giornaliero' e' schedulato
+    # alle 08:30 (vedi TASKS sopra) — dentro quella finestra ci si andrebbe
+    # contro ogni singolo giorno. E' anche lo step piu' lento del radar (la
+    # scadenza costa due chiamate extra per bando, ~300 richieste per un
+    # giro): tenerlo separato non allunga anche 'giornaliero'.
+    "notturno": [
+        dict(id="start-toscana", argv=["start_toscana.py", "--ingest"],
+             descr="bandi START Toscana aperti (R42)", minuti=20),
+        dict(id="start-toscana-verdetto",
+             argv=["verdetto_regionale.py", "--fonte", "start_toscana", "--telegram"],
+             descr="parere AI + avviso Telegram sui bandi START Toscana fattibili",
+             minuti=15, dipende="start-toscana",
+             richiede=("ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+        dict(id="start-toscana-push",
+             argv=["push_supabase.py", "--solo", "start_avviso"],
+             descr="pubblica i bandi START Toscana su Supabase (R42)", minuti=5,
+             dipende="start-toscana", richiede=("DSN",)),
     ],
     "feriale": [
         # Timeout largo apposta: 25 minuti di finestra STOP (default) piu'
@@ -623,6 +667,7 @@ def main():
     ap.add_argument("--giornaliero", action="store_true")
     ap.add_argument("--mensile", action="store_true")
     ap.add_argument("--feriale", action="store_true")
+    ap.add_argument("--notturno", action="store_true")
     ap.add_argument("--prova", action="store_true",
                     help="elenca gli step senza eseguirli")
     ap.add_argument("--installa", action="store_true")
@@ -642,6 +687,8 @@ def main():
         sys.exit(gira("mensile", a.prova))
     if a.feriale:
         sys.exit(gira("feriale", a.prova))
+    if a.notturno:
+        sys.exit(gira("notturno", a.prova))
     ap.print_help()
 
 

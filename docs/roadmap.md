@@ -1289,6 +1289,74 @@ parere arriva anche su Supabase e si vede il badge SI&#47;FORSE&#47;NO nel panne
 console lo stesso giorno, non al giro dopo. Verificato dal vivo sui 3 bandi reali:
 3 valutati, 0 falliti, nessun avviso mandato — corretto, perche' nessuno era 'si'.
 
+### R41/R42 — Bandi Intercenter Emilia-Romagna e START Toscana · ✅ FATTO 2026-09-25
+
+Dalla domanda "stavo pensando di aggiungere anche altre regioni oltre alle Marche, se
+hanno qualcosa di interessante e fattibile per noi". Prima verificata la fattibilita' di
+entrambe dal vivo (`robots.txt`, struttura delle pagine) prima di scrivere codice, come
+gia' fatto per R40.
+
+**R41 — Intercenter (Emilia-Romagna).** A differenza di SUAM, il portale e' un Plone con
+una vera REST API pubblica, senza login ne' CSRF: `GET .../bandi-altri-enti-aperti/
+@search?fullobjects=1&b_size=50&b_start=N`, `items_total` nella risposta dice quando
+fermarsi. Ogni bando arriva gia' strutturato (`ente_appaltante`, `importo_appalto`,
+`scadenza` ISO con timezone, `cig` per lotto) dentro
+`@components["intercenter-data"]["data"]` — niente scraping HTML. Volume molto piu' alto
+di SUAM: **259 bandi aperti** verificati dal vivo, **173 agganciati** a un ente gia' noto
+dallo storico ANAC — qui vale la pena usarlo come motore, non solo come segnale.
+`ingestion/intercenter.py`, stesso schema di `suam.py` (`--gate/--ingest/--aperti`).
+
+Un bug trovato durante il `--gate`: la cartella "aperti" della fonte non e' sempre
+ripulita in tempo reale, capitato un bando con scadenza gia' passata — filtrato anche
+lato nostro (`scadenza >= oggi`), non ci si fida solo del nome della cartella.
+
+**R42 — START (Toscana).** Piu' complesso: la lista bandi e' HTML server-side (serve un
+cookie di sessione, niente CSRF) ma **non porta la scadenza come colonna** — solo
+Oggetto/Tipo/CIG/Importo/Stato/Data di pubblicazione. La pagina di dettaglio e' un'app
+Angular separata ("tendering-app") che non ha niente nel primo GET; la scadenza si
+recupera dalla sua REST API interna, verificata funzionare senza login:
+`GET /tendering-api/tenders/tenderType/<id>` per il tipo di procedura (cambia per
+tipologia: "market_survey", "open_procedure", ...) poi
+`GET /tendering-api/tenders/<tipo>/<id>/basic-info` per `expirationDate`. Due chiamate
+extra per bando, non evitabili: e' l'unico modo per avere il campo su cui si ordina
+tutto il resto del cruscotto. **150 bandi aperti** verificati dal vivo (filtro
+`status=10,70,80,100,130,150,...` sulla lista, altrimenti il default e' l'intero
+archivio storico — 25.191 righe il giorno della verifica).
+
+Bug trovato al primo giro: **0 enti agganciati su 150**, nonostante 84 enti toscani gia'
+in `ente_contatti`. Causa: il campo ente di START e' spesso l'ufficio che ha pubblicato
+("COMUNE DI FIRENZE - DIREZIONE PATRIMONIO IMMOBILIARE"), non l'ente puro
+("Comune di Firenze" in ANAC) — la normalizzazione non tagliava al primo " - ". Corretto
+in `norm()` (solo qui, non in suam.py/intercenter.py: e' una particolarita' di questa
+fonte), risultato **94 agganciati su 150** dopo il fix, senza dover riscaricare dal
+portale.
+
+**Cortesia robots.txt**: START chiede esplicitamente `Visit-time: 2300-0400`. Il
+giornaliero gira alle 08:30 — mettere START li' significherebbe violare quella richiesta
+ogni giorno. Nuovo piano a parte, `--notturno`, schedulato all'01:00, con un nuovo step
+in `job.py` (`TASKS["notturno"]`) da installare a parte con `job.py --installa`.
+Intercenter invece resta nel giornaliero: il suo robots.txt non chiede nessuna finestra.
+
+**Parere AI + Telegram, generico e non duplicato.** Con tre fonti regionali (SUAM,
+Intercenter, START), copiare ancora una volta le ~230 righe di `suam_verdetto.py` (gia'
+fatto per il salto da 1 a 2 fonti) avrebbe voluto dire tre file quasi identici da
+mantenere in sincrono a ogni modifica del prompt — la soglia dove "poca duplicazione" per
+questo progetto smette di valere. `ingestion/verdetto_regionale.py --fonte
+intercenter|start_toscana --telegram`, stesso `CHI_SIAMO`/prompt/logica di
+`suam_verdetto.py`, parametrizzato sulla tabella. `suam_verdetto.py` resta com'e', non
+c'e' motivo di toccare uno script che funziona.
+
+Schema esteso in coerenza con R40: tabelle `radar.intercenter` / `radar.start_toscana` +
+viste `v_intercenter_aperti` / `v_start_aperti` (stesso pattern, join su `radar.ente`,
+filtro `scadenza >= current_date`), voci in `push_supabase.py` (`--solo
+intercenter_avviso` / `--solo start_avviso`). **Zero modifiche a `console.html`**: il
+redesign del pannello Opportunita' di ieri gia' itera `DATI.regionali` come dizionario
+generico — una regione nuova e' solo una chiave in piu' nel payload di
+`console_live.py`, non una ristrutturazione del frontend. Verificato dal vivo nel
+browser dopo il push su Supabase: quattro tendine indipendenti e non annidate ("Bandi TED
+aperti" 82, "Bandi Emilia-Romagna aperti" 200, "Bandi Toscana aperti" 130, "Bandi Marche
+aperti" 3), ciascuna apribile/chiudibile a parte.
+
 ### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
 `ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per

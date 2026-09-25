@@ -402,3 +402,71 @@ FROM radar.suam s
 LEFT JOIN radar.ente e ON e.cf_ente = s.cf_ente
 WHERE s.scadenza >= current_date;
 ALTER VIEW radar.v_suam_aperti SET (security_invoker = on);
+
+-- R41: bandi sotto soglia su Intercenter (Emilia-Romagna), stessa logica di
+-- R40 ma via REST API pubblica invece di scraping HTML — il portale e' un
+-- Plone e la espone senza login. Volume molto piu' alto di SUAM (~250 contro
+-- ~3): qui e' un motore, non solo un segnale aggiuntivo.
+CREATE TABLE IF NOT EXISTS radar.intercenter (
+    codice      text PRIMARY KEY,     -- id numerico del bando sul portale
+    ente        text,
+    cf_ente     text,
+    titolo      text,
+    tipo        text,
+    importo     numeric,
+    pubblicato  date,
+    scadenza    date,
+    cig         text,                 -- CIG del primo lotto, quando c'e'
+    stato       text,
+    link        text,
+    ingerito_il timestamptz DEFAULT now(),
+    verdetto        text,
+    verdetto_motivo text
+);
+CREATE INDEX IF NOT EXISTS ix_intercenter_scadenza ON radar.intercenter (scadenza);
+CREATE INDEX IF NOT EXISTS ix_intercenter_cf ON radar.intercenter (cf_ente);
+ALTER TABLE radar.intercenter ENABLE ROW LEVEL SECURITY;
+
+DROP VIEW IF EXISTS radar.v_intercenter_aperti;
+CREATE OR REPLACE VIEW radar.v_intercenter_aperti AS
+SELECT s.*,
+       (s.scadenza - current_date) AS giorni_alla_scadenza,
+       e.cf_ente IS NOT NULL       AS ente_noto
+FROM radar.intercenter s
+LEFT JOIN radar.ente e ON e.cf_ente = s.cf_ente
+WHERE s.scadenza >= current_date;
+ALTER VIEW radar.v_intercenter_aperti SET (security_invoker = on);
+
+-- R42: bandi sotto soglia su START (Toscana), stessa logica di R40/R41.
+-- Qui la scadenza non e' nella lista HTML e va risolta con due chiamate
+-- extra per bando alla REST API interna del portale (vedi start_toscana.py).
+CREATE TABLE IF NOT EXISTS radar.start_toscana (
+    codice      text PRIMARY KEY,     -- protocolId con "/" sostituito da "-"
+    ente        text,
+    cf_ente     text,
+    titolo      text,
+    tipo        text,                 -- Servizi / Lavori pubblici / Forniture
+    procedura   text,                 -- Aperta / Richiesta di preventivi / ...
+    importo     numeric,
+    pubblicato  date,
+    scadenza    date,
+    cig         text,
+    stato       text,
+    link        text,
+    ingerito_il timestamptz DEFAULT now(),
+    verdetto        text,
+    verdetto_motivo text
+);
+CREATE INDEX IF NOT EXISTS ix_start_scadenza ON radar.start_toscana (scadenza);
+CREATE INDEX IF NOT EXISTS ix_start_cf ON radar.start_toscana (cf_ente);
+ALTER TABLE radar.start_toscana ENABLE ROW LEVEL SECURITY;
+
+DROP VIEW IF EXISTS radar.v_start_aperti;
+CREATE OR REPLACE VIEW radar.v_start_aperti AS
+SELECT s.*,
+       (s.scadenza - current_date) AS giorni_alla_scadenza,
+       e.cf_ente IS NOT NULL       AS ente_noto
+FROM radar.start_toscana s
+LEFT JOIN radar.ente e ON e.cf_ente = s.cf_ente
+WHERE s.scadenza >= current_date;
+ALTER VIEW radar.v_start_aperti SET (security_invoker = on);

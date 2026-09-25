@@ -105,6 +105,20 @@ MAPPA = [
         "pubblicato", "scadenza", "cig", "stato", "link",
         "verdetto", "verdetto_motivo",
     ], None, ""),
+    # R41. Bandi sotto soglia su Intercenter Emilia-Romagna.
+    ("intercenter_avviso", "radar.intercenter", [
+        "codice", "ente", "cf_ente", "titolo", "tipo", "importo",
+        "pubblicato", "scadenza", "cig", "stato", "link",
+        "verdetto", "verdetto_motivo",
+    ], None, ""),
+    # R42. Bandi sotto soglia su START Toscana. "procedura" non ha una
+    # colonna gemella nelle altre due fonti (SUAM/Intercenter non la
+    # separano da "tipo"): resta locale a questa tabella.
+    ("start_avviso", "radar.start_toscana", [
+        "codice", "ente", "cf_ente", "titolo", "tipo", "procedura", "importo",
+        "pubblicato", "scadenza", "cig", "stato", "link",
+        "verdetto", "verdetto_motivo",
+    ], None, ""),
 ]
 
 # Colonne che in Postgres sono date: SQLite le tiene come testo ISO, e le

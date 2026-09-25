@@ -181,13 +181,15 @@ def raccogli(cur):
                                  ("Toscana", "radar.v_start_aperti")):
         cur.execute(f"""
             SELECT codice, titolo, ente, scadenza, giorni_alla_scadenza,
-                   importo, link, ente_noto, cf_ente, verdetto, verdetto_motivo
+                   importo, link, ente_noto, cf_ente, verdetto, verdetto_motivo,
+                   verificato_doc_il
             FROM {vista}
             ORDER BY scadenza LIMIT 200""")
         D["regionali"][nome_regione] = [
             dict(codice=a, titolo=b, ente=c, scad=str(d), gg=e,
-                 val=float(f or 0), link=g, noto=h, cf=i, verdetto=j, motivo=k)
-            for a, b, c, d, e, f, g, h, i, j, k in cur.fetchall()]
+                 val=float(f or 0), link=g, noto=h, cf=i, verdetto=j, motivo=k,
+                 verificato=bool(l))
+            for a, b, c, d, e, f, g, h, i, j, k, l in cur.fetchall()]
 
     # R38 — poche righe (decine, non migliaia), sta nel payload principale
     # senza bisogno di un endpoint a parte come /api/dominanti.

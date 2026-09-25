@@ -394,6 +394,12 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .motivo-verdetto{font-size:11px; color:var(--ink-3); line-height:1.4}
 .candidabile{font-size:11px; font-weight:600; color:var(--bassa)}
 
+/* Badge "letto il documento vero" — R43. Solo quando c'e': un parere non
+   verificato resta silenzioso (e' la norma, non l'eccezione), cosi' il
+   badge non diventa rumore su centinaia di righe identiche. */
+.verificato-doc{font-size:10.5px; font-weight:600; color:var(--accento);
+  margin:0 16px 6px; cursor:help}
+
 /* Filtro sì/forse/no per fonte (TED, o una regione) — R44, richiesta
    esplicita: senza, bisognava scorrere a mano decine di bandi per trovare
    i pochi con parere utile. Stessi colori di .verdetto-grande, cosi' il
@@ -1471,6 +1477,10 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '</div>'+
       (x.verdetto ? '<span class="verdetto-grande v-'+esc(x.verdetto)+'">'+esc(x.verdetto)+'</span>' : '')+
       '</div>'+
+      (x.verdetto && x.verificato
+        ? '<div class="verificato-doc" title="Il modello ha letto il documento vero del bando '+
+          '(capitolato, avviso o lettera d’invito), non solo titolo e importo">'+
+          '&#10003; verificato sul documento</div>' : '')+
       (x.verdetto && x.motivo ? '<div class="motivo-verdetto">'+esc(x.motivo)+'</div>' : '')+
       '<div class="piede"><div class="riga-dati">'+
         (gg != null ? '<span class="scad-pill '+cl+'">scade fra '+gg+' gg</span><span>'+dataIt(x.scad)+'</span>' : '')+

@@ -392,6 +392,10 @@ CREATE TABLE IF NOT EXISTS radar.suam (
 CREATE INDEX IF NOT EXISTS ix_suam_scadenza ON radar.suam (scadenza);
 CREATE INDEX IF NOT EXISTS ix_suam_cf ON radar.suam (cf_ente);
 ALTER TABLE radar.suam ENABLE ROW LEVEL SECURITY;
+-- Sempre NULL per questa fonte: SUAM non ha una verifica sul documento (R43),
+-- solo qui per uniformita' di colonne con intercenter/start_toscana — la
+-- query condivisa in console_live.py legge le tre regioni con lo stesso SELECT.
+ALTER TABLE radar.suam ADD COLUMN IF NOT EXISTS verificato_doc_il timestamptz;
 
 DROP VIEW IF EXISTS radar.v_suam_aperti;
 CREATE OR REPLACE VIEW radar.v_suam_aperti AS

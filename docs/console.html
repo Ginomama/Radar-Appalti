@@ -394,6 +394,22 @@ td.ogg{max-width:300px; color:var(--ink-2); font-size:11.5px}
 .motivo-verdetto{font-size:11px; color:var(--ink-3); line-height:1.4}
 .candidabile{font-size:11px; font-weight:600; color:var(--bassa)}
 
+/* Filtro sì/forse/no per fonte (TED, o una regione) — R44, richiesta
+   esplicita: senza, bisognava scorrere a mano decine di bandi per trovare
+   i pochi con parere utile. Stessi colori di .verdetto-grande, cosi' il
+   pulsante attivo richiama visivamente cosa sta filtrando. */
+.filtri-verdetto{display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap}
+.filtro-verdetto{font-size:11px; font-weight:600; padding:4px 10px;
+  border-radius:20px; border:1px solid var(--rule-forte); background:none;
+  color:var(--ink-3); cursor:pointer}
+.filtro-verdetto .n{font-weight:700}
+.filtro-verdetto:hover{border-color:var(--ink-3)}
+.filtro-verdetto.attivo{border-color:transparent}
+.filtro-verdetto.v-tutti.attivo{background:var(--ink); color:var(--surface)}
+.filtro-verdetto.v-si.attivo{background:var(--bassa-bg); color:var(--bassa)}
+.filtro-verdetto.v-forse.attivo{background:var(--media-bg); color:var(--media)}
+.filtro-verdetto.v-no.attivo{background:var(--alta-bg); color:var(--alta)}
+
 /* Una fonte di bandi (TED, o una regione) = una card .pan per intero
    apribile/chiudibile, non una sotto-sezione dentro un'altra. Trovato il
    2026-09-24: prima erano tutte annidate in un solo pannello condiviso e
@@ -501,6 +517,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   var scaricatore = null;
   var aperti = {};          // lotti aperti: stato di sola vista, non finisce nel documento
   var filtroProv = "";
+  // Filtro sì/forse/no per ogni fonte di bandi (TED, o una regione): senza,
+  // bisognava scorrere manualmente decine di bandi per trovare i pochi
+  // candidabili — richiesta esplicita dell'utente 2026-09-25. Chiave "" =
+  // tutti. Sola vista, come aperti: non finisce nel documento.
+  var filtroVerdetto = {};
   var domTimer = null;      // debounce della ricerca in "Chi presidia gli enti" (R36)
   // I filtri della tabella vivono qui, non solo nel DOM. disegna() ricostruisce
   // l'intera pagina, e prima bastava cambiare provincia nel pannello del
@@ -1499,6 +1520,17 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       // "vale la pena rispondere", non "candidati con un clic".
       var fattibili = f.candidabile
         ? f.righe.filter(function(x){ return x.verdetto === "si"; }).length : 0;
+      var conta = {si:0, forse:0, no:0};
+      f.righe.forEach(function(x){ if(x.verdetto) conta[x.verdetto] = (conta[x.verdetto]||0)+1; });
+      var filtro = filtroVerdetto[f.chiave] || "";
+      var righe = filtro ? f.righe.filter(function(x){ return x.verdetto === filtro; }) : f.righe;
+      var pulsanti = [["", "tutti", f.righe.length], ["si", "sì", conta.si],
+                      ["forse", "forse", conta.forse], ["no", "no", conta.no]]
+        .map(function(p){
+          return '<button type="button" class="filtro-verdetto v-'+esc(p[0]||"tutti")+
+            (filtro === p[0] ? ' attivo' : '')+'" data-filtro-lotto="'+esc(f.chiave)+
+            '" data-filtro-v="'+esc(p[0])+'">'+esc(p[1])+' <span class="n">'+p[2]+'</span></button>';
+        }).join("");
       return '<details class="pan lotto" data-lotto="'+esc(f.chiave)+'"'+
         (aperti[f.chiave] === false ? "" : " open") + '>'+
         '<summary>'+esc(f.nome)+
@@ -1507,10 +1539,14 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
               (fattibili === 1 ? ' candidabile' : ' candidabili') : '')+
           '</span></summary>'+
         '<div class="aiuto">'+f.aiuto+'</div>'+
-        '<div class="corpo">' + f.righe.map(function(x){
-          return rigaBando(x, {bottone:f.bottone, ariaLabel:f.ariaLabel,
-            candidabile:f.candidabile});
-        }).join("") + '</div></details>';
+        '<div class="filtri-verdetto">'+pulsanti+'</div>'+
+        '<div class="corpo">' + (righe.length
+          ? righe.map(function(x){
+              return rigaBando(x, {bottone:f.bottone, ariaLabel:f.ariaLabel,
+                candidabile:f.candidabile});
+            }).join("")
+          : '<p class="sotto" style="padding:8px 16px 16px">nessun bando con questo parere</p>')
+        + '</div></details>';
     }).join("");
   }
 
@@ -2261,6 +2297,11 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     if(g){ generaPec(g.getAttribute("data-genera"), g); return; }
     var b = e.target.closest("button[data-az]");
     if(b && !b.disabled) applica(b.getAttribute("data-k"), b.getAttribute("data-az"));
+    var fv = e.target.closest("button[data-filtro-lotto]");
+    if(fv){
+      filtroVerdetto[fv.getAttribute("data-filtro-lotto")] = fv.getAttribute("data-filtro-v");
+      disegna();
+    }
   });
 
   if(LOCALE){

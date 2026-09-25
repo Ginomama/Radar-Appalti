@@ -1357,6 +1357,31 @@ browser dopo il push su Supabase: quattro tendine indipendenti e non annidate ("
 aperti" 82, "Bandi Emilia-Romagna aperti" 200, "Bandi Toscana aperti" 130, "Bandi Marche
 aperti" 3), ciascuna apribile/chiudibile a parte.
 
+#### Parere AI troppo generoso — trovato e corretto, stesso giorno
+
+Lanciata la prima valutazione AI su Intercenter/START (257 + 130 bandi), il tasso di
+"si" era sospetto: 38/257 su Emilia-Romagna, 5/130 su Toscana — molto piu' alto del 0/3
+di SUAM Marche. Controllando i motivi, il modello ragionava quasi solo su
+importo/tipo di procedura, con frasi generiche ("tema core automazioni") anche su bandi
+palesemente fuori perimetro. Causa: a differenza di SUAM (dove il titolo e' quasi
+sempre gia' descrittivo, nota sopra), su Intercenter/START il "titolo" e' spesso un
+codice interno o "Senza Titolo" — il vero oggetto dell'appalto sta in un campo
+"description" che ne' `intercenter.py` ne' `start_toscana.py` catturavano. Esempio
+verificato dal vivo: un bando "Senza Titolo" giudicato 'si' era in realta'
+"LAVORI DI MANUTENZIONE STRAORDINARIA E MESSA IN SICUREZZA IMPIANTI DI PUBBLICA
+ILLUMINAZIONE" — opere edili, non IT.
+
+Corretto aggiungendo `descrizione` a entrambe le fonti: per Intercenter e' gia' nella
+stessa risposta `@search` (nessuna chiamata in piu'); per START e' nella stessa
+scheda `basic-info` gia' interrogata per la scadenza (stesso principio, zero
+richieste extra). Prompt di `verdetto_regionale.py` aggiornato per dare priorita' alla
+descrizione sul titolo quando c'e'. Rivalutato tutto da capo dopo il fix: **Emilia-
+Romagna da 38 a 3 "si"**, **Toscana da 5 a 2** — molto piu' coerente con un'agenzia di
+nicchia in mezzo a centinaia di bandi di ogni tipo (forniture mediche, opere
+pubbliche, servizi socio-assistenziali...). Verificato caso per caso: i 3 "si" restanti
+su Emilia-Romagna sono davvero IT (sviluppo software, marketplace digitale,
+adeguamento tecnico-normativo di un sito web).
+
 ### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
 `ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per

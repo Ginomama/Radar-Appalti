@@ -154,18 +154,27 @@ def pagina_totale(html):
     return int(m.group(1)) if m else None
 
 
-def scadenza_di(codice):
+def dettagli_di(codice):
     """Due chiamate: prima il tipo di procedura, poi la scheda con la
     scadenza. Se una fallisce (bando ritirato, formato id inatteso) si
-    rinuncia alla scadenza per questo bando soltanto — non deve bloccare
-    tutti gli altri, stesso principio del resto dell'ingestion."""
+    rinuncia ai dettagli per questo bando soltanto — non deve bloccare
+    tutti gli altri, stesso principio del resto dell'ingestion.
+
+    La scheda ("basic-info") porta anche "description": il "titolo" della
+    lista e' spesso il campo oggetto compilato dall'ente, che puo' essere
+    generico ("Senza Titolo", un codice interno) — la description e' il
+    testo lungo dell'avviso, molto piu' utile al parere AI
+    (verdetto_regionale.py) che al solo titolo. La si prende qui, stessa
+    chiamata gia' fatta per la scadenza: zero richieste in piu'."""
     try:
         tipo = richiesta_json(f"{BASE}/tendering-api/tenders/tenderType/{codice}")["type"]
         info = richiesta_json(f"{BASE}/tendering-api/tenders/{tipo}/{codice}/basic-info")
         ms = info.get("expirationDate")
-        return datetime.fromtimestamp(ms / 1000).date() if ms else None
+        scadenza = datetime.fromtimestamp(ms / 1000).date() if ms else None
+        descrizione = ((info.get("description") or {}).get("it_IT") or "").strip()[:600] or None
+        return scadenza, descrizione
     except (urllib.error.URLError, KeyError, ValueError, OSError):
-        return None
+        return None, None
 
 
 def cerca_tutti(opener):
@@ -185,7 +194,7 @@ def cerca_tutti(opener):
                   f"({TETTO_PAGINE} pagine) — potrebbero mancarne.")
             break
     for r in righe:
-        r["scadenza"] = scadenza_di(r["codice"])
+        r["scadenza"], r["descrizione"] = dettagli_di(r["codice"])
     return righe
 
 
@@ -230,6 +239,7 @@ CREATE TABLE IF NOT EXISTS start_avviso (
     ente          TEXT,
     cf_ente       TEXT,
     titolo        TEXT,
+    descrizione   TEXT,
     tipo          TEXT,
     procedura     TEXT,
     importo       REAL,
@@ -292,7 +302,7 @@ def ingest():
     cx = sqlite3.connect(DB)
     cx.executescript(DDL)
     n_agg = aggancia(righe, indice_enti(cx))
-    col = ["codice", "ente", "cf_ente", "titolo", "tipo", "procedura", "importo",
+    col = ["codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "procedura", "importo",
            "pubblicato", "scadenza", "cig", "stato", "link"]
     cx.executemany(
         f"INSERT INTO start_avviso ({', '.join(col)}) "

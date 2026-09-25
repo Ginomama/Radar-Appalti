@@ -97,6 +97,13 @@ def normalizza(item):
         codice=str(codice),
         ente=d.get("ente_appaltante"),
         titolo=d.get("title") or item.get("title"),
+        # "titolo" spesso e' un codice interno poco parlante ("RIA 843/2026",
+        # "APA 619"...) o addirittura "Senza Titolo": la "description"
+        # dell'API e' il vero oggetto dell'appalto, e senza usarla il parere
+        # AI (verdetto_regionale.py) ragiona quasi solo su importo/procedura
+        # e tende al "si" generico — verificato dal vivo confrontando i
+        # motivi con il tema reale del bando.
+        descrizione=(d.get("description") or "").strip()[:600] or None,
         tipo=d.get("procedura_gara") or d.get("tipo_bando_gara"),
         importo=importo_it(d.get("importo_appalto")),
         pubblicato=data_iso(d.get("pubdate")),
@@ -159,6 +166,7 @@ CREATE TABLE IF NOT EXISTS intercenter_avviso (
     ente          TEXT,
     cf_ente       TEXT,
     titolo        TEXT,
+    descrizione   TEXT,
     tipo          TEXT,
     importo       REAL,
     pubblicato    TEXT,
@@ -220,7 +228,7 @@ def ingest():
     cx = sqlite3.connect(DB)
     cx.executescript(DDL)
     n_agg = aggancia(righe, indice_enti(cx))
-    col = ["codice", "ente", "cf_ente", "titolo", "tipo", "importo",
+    col = ["codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "importo",
            "pubblicato", "scadenza", "cig", "stato", "link"]
     cx.executemany(
         f"INSERT INTO intercenter_avviso ({', '.join(col)}) "

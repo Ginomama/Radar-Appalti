@@ -426,6 +426,11 @@ CREATE TABLE IF NOT EXISTS radar.intercenter (
 CREATE INDEX IF NOT EXISTS ix_intercenter_scadenza ON radar.intercenter (scadenza);
 CREATE INDEX IF NOT EXISTS ix_intercenter_cf ON radar.intercenter (cf_ente);
 ALTER TABLE radar.intercenter ENABLE ROW LEVEL SECURITY;
+-- "titolo" e' spesso un codice interno poco parlante, o "Senza Titolo": il
+-- vero oggetto dell'appalto sta nella "description" dell'API, usata dal
+-- parere AI (verdetto_regionale.py) — senza, il parere ragionava quasi solo
+-- su importo/procedura, verificato dal vivo su bandi come "Licenze Bosch".
+ALTER TABLE radar.intercenter ADD COLUMN IF NOT EXISTS descrizione text;
 
 DROP VIEW IF EXISTS radar.v_intercenter_aperti;
 CREATE OR REPLACE VIEW radar.v_intercenter_aperti AS
@@ -460,6 +465,10 @@ CREATE TABLE IF NOT EXISTS radar.start_toscana (
 CREATE INDEX IF NOT EXISTS ix_start_scadenza ON radar.start_toscana (scadenza);
 CREATE INDEX IF NOT EXISTS ix_start_cf ON radar.start_toscana (cf_ente);
 ALTER TABLE radar.start_toscana ENABLE ROW LEVEL SECURITY;
+-- Stesso motivo di radar.intercenter: la "description" della scheda
+-- tendering-api (gia' interrogata per la scadenza, zero chiamate in piu')
+-- da' al parere AI il vero oggetto dell'appalto, non solo il titolo.
+ALTER TABLE radar.start_toscana ADD COLUMN IF NOT EXISTS descrizione text;
 
 DROP VIEW IF EXISTS radar.v_start_aperti;
 CREATE OR REPLACE VIEW radar.v_start_aperti AS

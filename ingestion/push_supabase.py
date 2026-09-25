@@ -107,7 +107,7 @@ MAPPA = [
     ], None, ""),
     # R41. Bandi sotto soglia su Intercenter Emilia-Romagna.
     ("intercenter_avviso", "radar.intercenter", [
-        "codice", "ente", "cf_ente", "titolo", "tipo", "importo",
+        "codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "importo",
         "pubblicato", "scadenza", "cig", "stato", "link",
         "verdetto", "verdetto_motivo",
     ], None, ""),
@@ -115,7 +115,7 @@ MAPPA = [
     # colonna gemella nelle altre due fonti (SUAM/Intercenter non la
     # separano da "tipo"): resta locale a questa tabella.
     ("start_avviso", "radar.start_toscana", [
-        "codice", "ente", "cf_ente", "titolo", "tipo", "procedura", "importo",
+        "codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "procedura", "importo",
         "pubblicato", "scadenza", "cig", "stato", "link",
         "verdetto", "verdetto_motivo",
     ], None, ""),

@@ -39,16 +39,12 @@ DB = os.path.join(QUI, "radar.db")
 API = "https://api.anthropic.com/v1/messages"
 MODELLO = "claude-haiku-4-5-20251001"
 
-# Una riga per fonte: tabella sqlite, nome per i messaggi, e se la tabella
-# ha una colonna "procedura" distinta da "tipo" (solo START Toscana ce l'ha
-# — SUAM/Intercenter mettono la tipologia di procedura dentro "tipo").
+# Una riga per fonte: tabella sqlite e nome per i messaggi Telegram.
 FONTI = {
     "intercenter": dict(tabella="intercenter_avviso",
-                         etichetta="Intercenter Emilia-Romagna",
-                         col_procedura=None),
+                         etichetta="Intercenter Emilia-Romagna"),
     "start_toscana": dict(tabella="start_avviso",
-                           etichetta="START Toscana",
-                           col_procedura="procedura"),
+                           etichetta="START Toscana"),
 }
 
 # Stessa identica descrizione di ted_verdetto.py/suam_verdetto.py: e' lo
@@ -78,8 +74,13 @@ Valuta se vale la pena rispondere a questo bando, con un parere netto.
 
 Ente: {ente}
 Titolo: {titolo}
+Descrizione: {descrizione}
 Tipologia appalto: {tipo}
 Valore stimato: {valore}
+
+Il titolo puo' essere un codice interno poco parlante o mancante — se la
+descrizione c'e', e' quella il vero oggetto dell'appalto: basa il parere su
+quella, non solo su importo e tipo di procedura.
 
 Rispondi ESATTAMENTE in questo formato, due righe, niente altro prima o dopo:
 VERDETTO: si|forse|no
@@ -96,6 +97,7 @@ def valuta(bando, chiave):
         chi_siamo=CHI_SIAMO,
         ente=bando["ente"] or "non indicato",
         titolo=bando["titolo"] or "non indicato",
+        descrizione=bando["descrizione"] or "non disponibile",
         tipo=bando["tipo"] or "non indicata",
         valore=euro(bando["importo"]),
     )
@@ -188,7 +190,7 @@ def main():
     allinea_schema(cx, tabella)
 
     righe = cx.execute(
-        f"SELECT codice, ente, titolo, tipo, importo FROM {tabella} "
+        f"SELECT codice, ente, titolo, descrizione, tipo, importo FROM {tabella} "
         f"WHERE scadenza >= date('now') AND verdetto IS NULL "
         f"ORDER BY scadenza LIMIT ?", (a.tetto,)).fetchall()
 

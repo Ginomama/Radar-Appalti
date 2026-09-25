@@ -451,6 +451,18 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       .p-medio{background:#334155;color:#e2e8f0}
       .p-basso{background:#1e293b;color:#94a3b8}
     }
+
+    /* Fasce di punteggio cliccabili sopra la tabella scadenze — stesso
+       pattern e stesso motivo di .filtri-verdetto sui bandi. Il pallino
+       dentro il pulsante riusa i colori .p-alto/.p-buono/... gia' definiti
+       sopra, cosi' i due posti (qui e la colonna Punti) restano coerenti. */
+    .filtri-fascia{display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap}
+    .filtro-fascia{display:inline-flex; align-items:center; gap:6px; font-size:11px;
+      font-weight:600; padding:4px 10px; border-radius:20px;
+      border:1px solid var(--rule-forte); background:none; color:var(--ink-3); cursor:pointer}
+    .filtro-fascia .n{font-weight:700}
+    .filtro-fascia:hover{border-color:var(--ink-3)}
+    .filtro-fascia.attivo{border-color:var(--ink); color:var(--ink); background:var(--surface-2)}
   
     /* R19 — scheda ente */
     .link-ente{background:none;border:none;padding:0;font:inherit;text-align:left;
@@ -530,7 +542,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
   // l'elenco completo e non capiva perche'.
   // Ordine iniziale: punteggio, dal migliore. Non la data: una scadenza
   // vicina che verra' rinnovata in silenzio non e' un buon lead.
-  var tab = {testo:"", cat:"", prov:"", urg:"", ordine:"pt", verso:-1};
+  var tab = {testo:"", cat:"", prov:"", urg:"", fascia:"", ordine:"pt", verso:-1};
 
   // Nomi brevi degli stadi. Sono gli stage di GoHighLevel ("Discovery Call
   // Fissata" diventa "call fissata"): nel database e nel CRM restano quelli,
@@ -1574,6 +1586,21 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
 
   function selezionato(v, atteso){ return v === atteso ? " selected" : ""; }
 
+  // Fasce di punteggio come pulsanti cliccabili — richiesta esplicita
+  // dell'utente 2026-09-25, stesso motivo dei filtri sì/forse/no sui bandi:
+  // prima la legenda "60+ eccezionale…" era solo colore, non un filtro, e
+  // bisognava scorrere le 400 righe a mano per trovare quelle buone.
+  var FASCE_PUNTEGGIO = [["", "tutti", ""], ["60", "eccezionale", "p-alto"],
+    ["35", "ottimo", "p-buono"], ["18", "buono", "p-medio"], ["0", "marginale", "p-basso"]];
+  function inFascia(pt, soglia){
+    if(!soglia) return true;
+    var p = pt == null ? -1 : pt;
+    if(soglia === "60") return p >= 60;
+    if(soglia === "35") return p >= 35 && p < 60;
+    if(soglia === "18") return p >= 18 && p < 35;
+    return p < 18;                    // "0" = marginale
+  }
+
   function tabella(){
     function th(chiave, testo, stile){
       return '<th class="ord" data-ord="'+chiave+'" tabindex="0" role="button"'+
@@ -1600,11 +1627,20 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         '<button class="btn" id="b-azzera">Azzera filtri</button>'+
         '<button class="btn" id="b-csv" hidden>Esporta CSV</button>'+
       '</div>'+
-      '<div class="legenda"><span>Punteggio:</span>'+
-        '<span class="v"><b class="pallino p-alto">60+</b> eccezionale</span>'+
-        '<span class="v"><b class="pallino p-buono">35+</b> ottimo</span>'+
-        '<span class="v"><b class="pallino p-medio">18+</b> buono</span>'+
-        '<span class="v"><b class="pallino p-basso">&lt;18</b> marginale</span></div>'+
+      '<div class="filtri-fascia">'+ (function(){
+        var base = baseFiltrate();
+        var conta = {"":base.length, "60":0, "35":0, "18":0, "0":0};
+        base.forEach(function(l){
+          var p = l.pt == null ? -1 : l.pt;
+          conta[p >= 60 ? "60" : p >= 35 ? "35" : p >= 18 ? "18" : "0"]++;
+        });
+        return FASCE_PUNTEGGIO.map(function(f){
+          return '<button type="button" class="filtro-fascia'+
+            (tab.fascia === f[0] ? ' attivo' : '')+'" data-fascia="'+esc(f[0])+'">'+
+            (f[2] ? '<b class="pallino '+f[2]+'"></b> ' : '')+esc(f[1])+
+            ' <span class="n">'+conta[f[0]]+'</span></button>';
+        }).join("");
+      })() + '</div>'+
       '<div class="legenda"><span>Quanto manca alla scadenza:</span>'+
         '<span class="v l-alta">meno di 30 giorni</span>'+
         '<span class="v l-media">da 1 a 3 mesi</span>'+
@@ -1617,11 +1653,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       '</tr></thead><tbody id="righe-lead"></tbody></table></div></div>';
   }
 
-  function filtrate(){
+  // Tutti i criteri tranne la fascia di punteggio: serve anche da sola a
+  // tabella() per contare quante righe cadono in ogni fascia SUL risultato
+  // gia' filtrato da testo/categoria/provincia/urgenza, non sul totale.
+  function baseFiltrate(){
     // I criteri si leggono da tab, non dal DOM: cosi' sopravvivono a disegna().
     var testo = tab.testo.toLowerCase();
     var urg = parseInt(tab.urg || "0", 10);
-    var chiave = ORDINI[tab.ordine] || ORDINI.gg;
 
     return DATI.lead.filter(function(l){
       var gg = giorni(l.scad);
@@ -1634,6 +1672,13 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
         if(blob.indexOf(testo) === -1) return false;
       }
       return true;
+    });
+  }
+
+  function filtrate(){
+    var chiave = ORDINI[tab.ordine] || ORDINI.gg;
+    return baseFiltrate().filter(function(l){
+      return inFascia(l.pt, tab.fascia);
     }).sort(function(a,b){
       var x = chiave(a), y = chiave(b);
       if(x === y) return 0;
@@ -1891,7 +1936,7 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
 
     var az = document.getElementById("b-azzera");
     if(az) az.addEventListener("click", function(){
-      tab.testo = tab.cat = tab.prov = tab.urg = "";
+      tab.testo = tab.cat = tab.prov = tab.urg = tab.fascia = "";
       disegna();
     });
 
@@ -2302,6 +2347,8 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
       filtroVerdetto[fv.getAttribute("data-filtro-lotto")] = fv.getAttribute("data-filtro-v");
       disegna();
     }
+    var fp = e.target.closest("button[data-fascia]");
+    if(fp){ tab.fascia = fp.getAttribute("data-fascia"); disegna(); }
   });
 
   if(LOCALE){

@@ -466,7 +466,12 @@ def crea_handler(dsn):
             self.send_header("Content-Length", str(len(b)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            self.wfile.write(b)
+            # self.wfile e' un socket "grezzo" non bufferizzato (wbufsize=0):
+            # .write() equivale a una singola socket.send(), che su risposte
+            # grandi puo' inviare solo una parte senza segnalare errore
+            # (troncamento silenzioso, sempre alla stessa soglia). sendall()
+            # ripete finche' non e' tutto trasmesso.
+            self.connection.sendall(b)
 
         def do_GET(self):
             try:

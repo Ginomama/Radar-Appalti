@@ -175,10 +175,20 @@ PIANI = {
              descr="parere AI + avviso Telegram sui bandi Intercenter fattibili",
              minuti=15, dipende="intercenter",
              richiede=("ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+        # R43 — secondo stadio: legge il documento vero (capitolato/avviso)
+        # dei soli bandi 'si'/'forse' del passo precedente, per un parere
+        # molto piu' affidabile del solo titolo. Va DOPO il verdetto (si
+        # appoggia sulla sua selezione) e PRIMA del push (cosi' Supabase e
+        # la console vedono gia' il verdetto corretto).
+        dict(id="intercenter-doc",
+             argv=["verdetto_documento.py", "--fonte", "intercenter"],
+             descr="parere AI sul documento vero dei bandi Intercenter 'si'/'forse' (R43)",
+             minuti=15, dipende="intercenter-verdetto",
+             richiede=("ANTHROPIC_API_KEY",)),
         dict(id="intercenter-push",
              argv=["push_supabase.py", "--solo", "intercenter_avviso"],
              descr="pubblica i bandi Intercenter su Supabase (R41)", minuti=5,
-             dipende="intercenter", richiede=("DSN",)),
+             dipende="intercenter-doc", richiede=("DSN",)),
         dict(id="telegram", argv=["notifica.py", "--telegram"],
              descr="notifica lead nuovi", minuti=5,
              richiede=("DSN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
@@ -198,10 +208,16 @@ PIANI = {
              descr="parere AI + avviso Telegram sui bandi START Toscana fattibili",
              minuti=15, dipende="start-toscana",
              richiede=("ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")),
+        # R43 — stessa logica di intercenter-doc sopra, altra fonte.
+        dict(id="start-toscana-doc",
+             argv=["verdetto_documento.py", "--fonte", "start_toscana"],
+             descr="parere AI sul documento vero dei bandi START Toscana 'si'/'forse' (R43)",
+             minuti=15, dipende="start-toscana-verdetto",
+             richiede=("ANTHROPIC_API_KEY",)),
         dict(id="start-toscana-push",
              argv=["push_supabase.py", "--solo", "start_avviso"],
              descr="pubblica i bandi START Toscana su Supabase (R42)", minuti=5,
-             dipende="start-toscana", richiede=("DSN",)),
+             dipende="start-toscana-doc", richiede=("DSN",)),
     ],
     "feriale": [
         # Timeout largo apposta: 25 minuti di finestra STOP (default) piu'

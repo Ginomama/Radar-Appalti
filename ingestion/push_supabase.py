@@ -109,7 +109,7 @@ MAPPA = [
     ("intercenter_avviso", "radar.intercenter", [
         "codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "importo",
         "pubblicato", "scadenza", "cig", "stato", "link",
-        "verdetto", "verdetto_motivo",
+        "verdetto", "verdetto_motivo", "verificato_doc_il",
     ], None, ""),
     # R42. Bandi sotto soglia su START Toscana. "procedura" non ha una
     # colonna gemella nelle altre due fonti (SUAM/Intercenter non la
@@ -117,7 +117,7 @@ MAPPA = [
     ("start_avviso", "radar.start_toscana", [
         "codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "procedura", "importo",
         "pubblicato", "scadenza", "cig", "stato", "link",
-        "verdetto", "verdetto_motivo",
+        "verdetto", "verdetto_motivo", "verificato_doc_il",
     ], None, ""),
 ]
 

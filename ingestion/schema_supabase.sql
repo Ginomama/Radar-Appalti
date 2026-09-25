@@ -431,6 +431,10 @@ ALTER TABLE radar.intercenter ENABLE ROW LEVEL SECURITY;
 -- parere AI (verdetto_regionale.py) — senza, il parere ragionava quasi solo
 -- su importo/procedura, verificato dal vivo su bandi come "Licenze Bosch".
 ALTER TABLE radar.intercenter ADD COLUMN IF NOT EXISTS descrizione text;
+-- Quando verdetto_documento.py (R43) ha letto il documento vero del bando
+-- invece di fidarsi solo di titolo/descrizione — null finche' non e' stato
+-- controllato, o il bando non aveva un PDF utile tra gli allegati.
+ALTER TABLE radar.intercenter ADD COLUMN IF NOT EXISTS verificato_doc_il timestamptz;
 
 DROP VIEW IF EXISTS radar.v_intercenter_aperti;
 CREATE OR REPLACE VIEW radar.v_intercenter_aperti AS
@@ -469,6 +473,8 @@ ALTER TABLE radar.start_toscana ENABLE ROW LEVEL SECURITY;
 -- tendering-api (gia' interrogata per la scadenza, zero chiamate in piu')
 -- da' al parere AI il vero oggetto dell'appalto, non solo il titolo.
 ALTER TABLE radar.start_toscana ADD COLUMN IF NOT EXISTS descrizione text;
+-- Stesso motivo di radar.intercenter sopra.
+ALTER TABLE radar.start_toscana ADD COLUMN IF NOT EXISTS verificato_doc_il timestamptz;
 
 DROP VIEW IF EXISTS radar.v_start_aperti;
 CREATE OR REPLACE VIEW radar.v_start_aperti AS

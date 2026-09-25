@@ -93,6 +93,14 @@ def normalizza(item):
         return None
     cig_lista = d.get("cig") or []
     cig = cig_lista[0].get("codice") if cig_lista else None
+    # Gli allegati (capitolato, lettera d'invito, avviso...) sono gia' qui,
+    # con url di download diretto — salvati per la verifica approfondita
+    # (verdetto_documento.py), che legge il PDF vero invece di titolo/
+    # descrizione soltanto. Zero richieste in piu': e' la stessa risposta
+    # @search che si scarica comunque per tutto il resto.
+    allegati = [dict(descrizione=a.get("descrizione"), nome=a.get("nome"),
+                      ext=a.get("ext"), url=a.get("url"))
+                for a in (d.get("allegati") or [])]
     return dict(
         codice=str(codice),
         ente=d.get("ente_appaltante"),
@@ -111,6 +119,7 @@ def normalizza(item):
         cig=cig,
         stato=d.get("stato_procedura"),
         link=item.get("@id"),
+        allegati=json.dumps(allegati, ensure_ascii=False) if allegati else None,
     )
 
 
@@ -174,9 +183,11 @@ CREATE TABLE IF NOT EXISTS intercenter_avviso (
     cig           TEXT,
     stato         TEXT,
     link          TEXT,
+    allegati      TEXT,
     ingerito_il   TEXT DEFAULT CURRENT_TIMESTAMP,
     verdetto        TEXT,
     verdetto_motivo TEXT,
+    verificato_doc_il TEXT,
     notificato_il   TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_intercenter_scadenza ON intercenter_avviso (scadenza);
@@ -223,13 +234,29 @@ def gate():
     return 0
 
 
+def allinea_schema(cx):
+    # CREATE TABLE IF NOT EXISTS non aggiunge colonne a una tabella gia'
+    # esistente (creata prima di descrizione/allegati/verificato_doc_il):
+    # SQLite non ha 'ADD COLUMN IF NOT EXISTS', si ignora l'errore se c'e' gia'.
+    for stmt in ("ALTER TABLE intercenter_avviso ADD COLUMN descrizione TEXT",
+                 "ALTER TABLE intercenter_avviso ADD COLUMN allegati TEXT",
+                 "ALTER TABLE intercenter_avviso ADD COLUMN verificato_doc_il TEXT"):
+        try:
+            cx.execute(stmt)
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e):
+                raise
+    cx.commit()
+
+
 def ingest():
     righe = cerca_tutti()
     cx = sqlite3.connect(DB)
     cx.executescript(DDL)
+    allinea_schema(cx)
     n_agg = aggancia(righe, indice_enti(cx))
     col = ["codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "importo",
-           "pubblicato", "scadenza", "cig", "stato", "link"]
+           "pubblicato", "scadenza", "cig", "stato", "link", "allegati"]
     cx.executemany(
         f"INSERT INTO intercenter_avviso ({', '.join(col)}) "
         f"VALUES ({', '.join('?' * len(col))}) "

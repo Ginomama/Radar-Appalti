@@ -160,21 +160,31 @@ def dettagli_di(codice):
     rinuncia ai dettagli per questo bando soltanto — non deve bloccare
     tutti gli altri, stesso principio del resto dell'ingestion.
 
-    La scheda ("basic-info") porta anche "description": il "titolo" della
-    lista e' spesso il campo oggetto compilato dall'ente, che puo' essere
-    generico ("Senza Titolo", un codice interno) — la description e' il
-    testo lungo dell'avviso, molto piu' utile al parere AI
-    (verdetto_regionale.py) che al solo titolo. La si prende qui, stessa
-    chiamata gia' fatta per la scadenza: zero richieste in piu'."""
+    La scheda ("basic-info") porta anche "description" e gli "attachments"
+    (avviso, capitolato...): il "titolo" della lista e' spesso il campo
+    oggetto compilato dall'ente, che puo' essere generico ("Senza Titolo",
+    un codice interno) — la description e' il testo lungo dell'avviso, e
+    gli allegati permettono la verifica approfondita sul documento vero
+    (verdetto_documento.py). Tutto dalla stessa chiamata gia' fatta per la
+    scadenza: zero richieste in piu'. "tipo" (market_survey/open_procedure/
+    ...) va salvato anche lui: serve per ricostruire l'URL di download di
+    un allegato piu' avanti, e non si puo' riderivare dal solo codice."""
     try:
         tipo = richiesta_json(f"{BASE}/tendering-api/tenders/tenderType/{codice}")["type"]
         info = richiesta_json(f"{BASE}/tendering-api/tenders/{tipo}/{codice}/basic-info")
         ms = info.get("expirationDate")
         scadenza = datetime.fromtimestamp(ms / 1000).date() if ms else None
         descrizione = ((info.get("description") or {}).get("it_IT") or "").strip()[:600] or None
-        return scadenza, descrizione
+        allegati = [
+            dict(id=a.get("id"),
+                 descrizione=(a.get("description") or {}).get("it_IT"),
+                 nome=(a.get("file") or {}).get("fileName"))
+            for a in (info.get("attachments") or [])
+            if a.get("whoCanDownload") == "anyone" and (a.get("file") or {}).get("fileName")
+        ]
+        return scadenza, descrizione, tipo, allegati
     except (urllib.error.URLError, KeyError, ValueError, OSError):
-        return None, None
+        return None, None, None, []
 
 
 def cerca_tutti(opener):
@@ -194,7 +204,9 @@ def cerca_tutti(opener):
                   f"({TETTO_PAGINE} pagine) — potrebbero mancarne.")
             break
     for r in righe:
-        r["scadenza"], r["descrizione"] = dettagli_di(r["codice"])
+        scadenza, descrizione, tipo_api, allegati = dettagli_di(r["codice"])
+        r["scadenza"], r["descrizione"], r["tipo_api"] = scadenza, descrizione, tipo_api
+        r["allegati"] = json.dumps(allegati, ensure_ascii=False) if allegati else None
     return righe
 
 
@@ -248,9 +260,12 @@ CREATE TABLE IF NOT EXISTS start_avviso (
     cig           TEXT,
     stato         TEXT,
     link          TEXT,
+    tipo_api      TEXT,
+    allegati      TEXT,
     ingerito_il   TEXT DEFAULT CURRENT_TIMESTAMP,
     verdetto        TEXT,
     verdetto_motivo TEXT,
+    verificato_doc_il TEXT,
     notificato_il   TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_start_scadenza ON start_avviso (scadenza);
@@ -297,13 +312,29 @@ def gate():
     return 0
 
 
+def allinea_schema(cx):
+    # Stesso motivo di intercenter.py: CREATE TABLE IF NOT EXISTS non
+    # aggiunge colonne a una tabella gia' esistente.
+    for stmt in ("ALTER TABLE start_avviso ADD COLUMN descrizione TEXT",
+                 "ALTER TABLE start_avviso ADD COLUMN tipo_api TEXT",
+                 "ALTER TABLE start_avviso ADD COLUMN allegati TEXT",
+                 "ALTER TABLE start_avviso ADD COLUMN verificato_doc_il TEXT"):
+        try:
+            cx.execute(stmt)
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e):
+                raise
+    cx.commit()
+
+
 def ingest():
     righe = cerca_tutti(sessione())
     cx = sqlite3.connect(DB)
     cx.executescript(DDL)
+    allinea_schema(cx)
     n_agg = aggancia(righe, indice_enti(cx))
     col = ["codice", "ente", "cf_ente", "titolo", "descrizione", "tipo", "procedura", "importo",
-           "pubblicato", "scadenza", "cig", "stato", "link"]
+           "pubblicato", "scadenza", "cig", "stato", "link", "tipo_api", "allegati"]
     cx.executemany(
         f"INSERT INTO start_avviso ({', '.join(col)}) "
         f"VALUES ({', '.join('?' * len(col))}) "

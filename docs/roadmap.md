@@ -1382,6 +1382,80 @@ pubbliche, servizi socio-assistenziali...). Verificato caso per caso: i 3 "si" r
 su Emilia-Romagna sono davvero IT (sviluppo software, marketplace digitale,
 adeguamento tecnico-normativo di un sito web).
 
+#### Secondo falso positivo — studio di fattibilità confuso con sviluppo software
+
+Segnalato dall'utente su un bando specifico: *"INDAGINE DI MERCATO PER L'AFFIDAMENTO
+DIRETTO DELLA REALIZZAZIONE DELLO STUDIO DI FATTIBILITÀ TECNICO-ECONOMICA DELLA
+PIATTAFORMA WEB PER LA GESTIONE DEL BONUS SOCIALE IDRICO INTEGRATIVO"* (Autorità
+Idrica Toscana, `035870-2026`) giudicato 'si', ma il bando chiede un documento/report
+di fattibilità, non lo sviluppo della piattaforma — un prodotto diverso, che richiede
+competenze economiche/normative di settore che un'agenzia di sviluppo non ha. Il
+modello si era fatto ingannare da "piattaforma web" nel titolo, aggravato dal fatto
+che quel bando aveva `descrizione=None` (una delle ~20/140 schede START senza
+description popolata). Corretto aggiungendo un paragrafo esplicito a `CHI_SIAMO` in
+`verdetto_regionale.py` **e** `suam_verdetto.py` (stesso "chi siamo" in entrambi,
+per non far divergere i criteri) che distingue studio/report da sviluppo/prototipo.
+Rivalutato tutto da capo: Emilia-Romagna `[('forse', 2), ('no', 254), ('si', 1)]`,
+Toscana tutti e 124 i valutati a 'no' (0 "si" — corretto, era proprio quel bando a
+inquinare il conteggio).
+
+### R43 — Verifica sul documento vero, non solo sui metadati · ✅ FATTO 2026-09-25
+
+Richiesta esplicita dell'utente dopo il caso sopra: *"se c'è un modo per far che
+l'intelligenza artificiale mi controlli direttamente ogni bando presente, scaricando
+ogni file per ogni bando, sarebbe molto più comodo"*. Ambito confermato dall'utente:
+solo Emilia-Romagna e Toscana (non Marche/TED, per ora).
+
+**Architettura a imbuto, non un controllo su tutti i bandi.** `verdetto_regionale.py`
+resta il primo stadio, economico (solo titolo/descrizione/importo): su ~400 bandi
+scarta la grande maggioranza come 'no' in pochi secondi. Il nuovo `verdetto_documento.py`
+è il secondo stadio, e gira **solo** sui sopravvissuti (`verdetto IN ('si','forse')`) —
+tipicamente una manciata, non centinaia. Su quelli scarica il documento vero (capitolato,
+avviso, lettera d'invito — un solo PDF per bando, non tutta la modulistica) e lo fa
+leggere al modello con un blocco `"type": "document"` nell'API Messages di Claude:
+molto più affidabile del solo titolo, ma troppo caro/lento per farlo su tutto.
+
+**Selezione del documento**: tra gli allegati, si escludono per parola chiave quelli
+che sono moduli da compilare (DGUE, dichiarazioni, tracciabilità flussi, scheda
+offerta, privacy, CCNL...), poi si sceglie il primo che matcha una parola chiave di
+priorità (capitolato, avviso, lettera d'invito, disciplinare, bando, relazione,
+progetto), altrimenti il primo PDF rimasto. Solo PDF: l'unico formato che l'API legge
+nativamente.
+
+**Download**: due meccanismi diversi per fonte, entrambi verificati dal vivo scaricando
+PDF reali e confrontando i byte con la dimensione dichiarata nei metadati.
+Intercenter: URL diretto negli allegati, ma con spazi letterali che `http.client`
+rifiuta — serve ri-quotarlo (`urllib.parse.quote(url, safe=':/?&=%*')`). START
+Toscana: due chiamate, `attachments/{id}/template` → redirect con un `access-code`,
+poi il redirect stesso — l'`access-code` è legato alla sessione: fallisce con 500 se
+le due chiamate non condividono lo stesso cookiejar.
+
+**Risultato verificato dal vivo su Intercenter** (3 bandi 'si'/'forse' in coda):
+tutti e 3 confermati o promossi a 'si', con motivazioni concrete basate sul contenuto
+reale del documento (stack tecnico, integrazioni richieste, durata, importo/team-size)
+invece che sul solo titolo — es. *"Sistema informativo su misura per gestione schede
+dosimetriche; integrazioni con GRU/Biblos e firma digitale... rientrano nelle nostre
+competenze"*.
+
+**START Toscana, stesso giorno**: 0 bandi in coda al secondo stadio (i 124 già
+valutati erano tutti 'no' dopo il fix dello studio di fattibilità sopra; i 140-124=16
+non ancora valutati hanno scadenza NULL o passata — schede storiche ancora presenti
+nel portale, correttamente escluse dal verdetto). Il secondo stadio è pronto e
+verificato — semplicemente non c'era nulla da approfondire in questo giro; entrerà
+in azione al primo 'si'/'forse' del primo stadio.
+
+**Non notifica su Telegram**: quello resta compito esclusivo di
+`verdetto_regionale.py --telegram` (deciso per non avere due punti di notifica sullo
+stesso bando) — `verdetto_documento.py` corregge solo `verdetto`/`verdetto_motivo` e
+imposta `verificato_doc_il` (anche quando non trova un PDF utile, per non
+ricontrollare lo stesso bando ogni giorno).
+
+**Schema**: aggiunte le colonne `allegati` (locali, solo sqlite — servono solo a
+`verdetto_documento.py` per scegliere il file) e `verificato_doc_il` (spedita anche
+su Supabase, per audit) a `intercenter_avviso`/`start_avviso`. `job.py` inserisce
+`intercenter-doc`/`start-toscana-doc` tra il verdetto e il push, negli stessi due
+piani (`giornaliero`/`notturno`) già usati da R41/R42.
+
 ### R27 — Copertura territoriale a rotazione · ✅ FATTO 2026-09-07
 
 `ingestion/territorio.py`. Due lotti scelti a mano vanno bene per provare, non per

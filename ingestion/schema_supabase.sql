@@ -80,6 +80,13 @@ ALTER TABLE radar.invio
 -- Il message_id e' la chiave con cui le ricevute ritrovano la riga.
 CREATE INDEX IF NOT EXISTS ix_invio_msgid ON radar.invio (message_id);
 
+-- cf_ente: gia' noto a genera_pec.py nel momento in cui scrive la riga
+-- (viene da v_scadenze o da ente_contatti), semplicemente non veniva
+-- salvato. Serve per riaprire la "scheda ente" dalla pagina "Da fare"
+-- senza dover ricercare il lotto a mano (trovato il 2026-09-26).
+ALTER TABLE radar.invio ADD COLUMN IF NOT EXISTS cf_ente text;
+CREATE INDEX IF NOT EXISTS ix_invio_cf ON radar.invio (cf_ente);
+
 -- RLS anche qui. Le quattro tabelle del primo setup ce l'hanno, invio e
 -- notificato sono nate dopo e ne erano rimaste scoperte: non sfruttabile
 -- finche' lo schema radar resta fuori da PostgREST, ma e' una difesa che

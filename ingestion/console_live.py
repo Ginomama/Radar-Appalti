@@ -80,10 +80,11 @@ def raccogli(cur):
            "consegnata_il", "errore_consegna", "sollecitata_il",
            "discovery_fissata_il", "discovery_fatta_il", "offerta_il",
            "vendita_il", "persa_il", "motivo_perdita",
-           "valore_offerta", "valore_vendita", "esito_risposta"]
+           "valore_offerta", "valore_vendita", "esito_risposta", "cf_ente"]
     RINOMINA = {"progressivo": "n", "provincia": "prov", "n_contratti": "contratti",
                 "cig_inclusi": "cig", "errore_consegna": "errore",
-                "motivo_perdita": "motivo", "esito_risposta": "esito"}
+                "motivo_perdita": "motivo", "esito_risposta": "esito",
+                "cf_ente": "cf"}
     cur.execute(f"SELECT {', '.join(COL)} FROM radar.invio "
                 f"ORDER BY lotto, progressivo")
     D["invii"] = []

@@ -862,13 +862,17 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     function eta(i){ var d = dataDi(i, "inviata"); return d ? -giorni(d) : 0; }
     var voci = [];
 
-    // Ogni ente e' anche un tasto: click apre subito il lotto giusto nella
-    // tab Invii, invece di doverlo ricercare a mano tra 60+ lotti (trovato
-    // il 2026-09-26 \u2014 prima erano solo nomi in un elenco statico).
+    // Ogni ente e' anche un tasto. Preferenza (trovato il 2026-09-26): un
+    // click deve aprire un'informazione, non portare via dalla pagina \u2014
+    // se conosciamo il CF si apre la stessa "scheda ente" gia' usata in
+    // Opportunita'/Invii (riusa data-ente, gestito altrove); solo se il CF
+    // non e' agganciato si cade sul vecchio comportamento, aprire il lotto.
     function chipVai(righe, max){
       var mostrare = righe.slice(0, max), html = mostrare.map(function(i){
-        return '<button class="chip chip-link" data-vai-lotto="' + esc(i.lotto) + '">' +
-          esc(titolo(i.ente || "?")) + '</button>';
+        var nome = esc(titolo(i.ente || "?"));
+        return (LOCALE && i.cf)
+          ? '<button class="chip chip-link" data-ente="' + esc(i.cf) + '">' + nome + '</button>'
+          : '<button class="chip chip-link" data-vai-lotto="' + esc(i.lotto) + '">' + nome + '</button>';
       }).join("");
       if(righe.length > max) html += '<span class="chip-resto">e altri ' +
         (righe.length - max) + '</span>';

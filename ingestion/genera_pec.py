@@ -422,7 +422,7 @@ Cordiali saluti
 P.IVA {MITTENTE['piva']}
 tel. {MITTENTE['telefono']} — {MITTENTE['email']}
 """
-    return pec, oggetto, corpo, ente, prov, n, prima
+    return pec, oggetto, corpo, ente, prov, n, prima, cf
 
 
 def genera_singolo(cur, cf, lotto="pec-auto",
@@ -451,7 +451,9 @@ def genera_singolo(cur, cf, lotto="pec-auto",
                           f"{gg_max} giorni, importo {imp_min}-{imp_max}"}
 
     contratti = gruppi[0]
-    pec, oggetto, corpo, ente, prov, n, prima = componi(contratti)
+    # cf e' gia' il parametro della funzione (destinatari() e' filtrata
+    # con solo_cf=[cf]): si ignora quello restituito da componi(), identico.
+    pec, oggetto, corpo, ente, prov, n, prima, _ = componi(contratti)
     cig_inclusi = ",".join(c[4] for c in contratti)
 
     cartella = os.path.join(QUI, "..", "docs", lotto)
@@ -468,9 +470,9 @@ def genera_singolo(cur, cf, lotto="pec-auto",
 
     cur.execute(
         "INSERT INTO radar.invio (lotto, progressivo, file, ente, "
-        "provincia, pec, cig_inclusi, n_contratti) "
-        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-        (lotto, progressivo, nome, ente, prov, pec, cig_inclusi, n))
+        "provincia, pec, cig_inclusi, n_contratti, cf_ente) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (lotto, progressivo, nome, ente, prov, pec, cig_inclusi, n, cf))
 
     return {"generato": True, "ente": ente, "pec": pec, "lotto": lotto,
             "progressivo": progressivo, "file": nome, "n_contratti": n}
@@ -566,7 +568,7 @@ Cordiali saluti
 P.IVA {MITTENTE['piva']}
 tel. {MITTENTE['telefono']} — {MITTENTE['email']}
 """
-    return pec, oggetto, corpo, ente, prov, 0, None
+    return pec, oggetto, corpo, ente, prov, 0, None, cf
 
 
 # -------------------------------------------------------------- solleciti
@@ -749,7 +751,7 @@ def main():
 
     registro = []
     for i, gruppo in enumerate(gruppi, 1):
-        pec, oggetto, corpo, ente, prov, n, prima = (
+        pec, oggetto, corpo, ente, prov, n, prima, cf = (
             componi_generico(gruppo, a.regione) if a.generico else componi(gruppo))
         nome = f"{i:02d}-{slug(ente)}.txt"
         with open(os.path.join(OUT, nome), "w", encoding="utf-8") as f:
@@ -757,7 +759,7 @@ def main():
         indice.append(f"| {i} | {ente[:44]} | {prov or '?'} | {n} | "
                       f"{data_it(prima) if prima else '—'} | `{pec}` | `{nome}` |")
         registro.append((a.cartella, i, nome, ente, prov, pec,
-                         "" if a.generico else ",".join(c[4] for c in gruppo), n))
+                         "" if a.generico else ",".join(c[4] for c in gruppo), n, cf))
         print(f"  {i:2d}. {ente[:46]:48s} {n} contr.  -> {nome}")
 
     # Rigenerare cambia la numerazione quando cambiano gli enti in finestra, e
@@ -803,8 +805,8 @@ def main():
 
                 cur.executemany(
                     "INSERT INTO radar.invio (lotto, progressivo, file, ente, "
-                    "provincia, pec, cig_inclusi, n_contratti) "
-                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                    "provincia, pec, cig_inclusi, n_contratti, cf_ente) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                     "ON CONFLICT (lotto, progressivo) DO UPDATE SET "
                     "file=excluded.file, ente=excluded.ente, pec=excluded.pec, "
                     # provincia mancava: rigenerando, l'ente cambiava e la
@@ -812,7 +814,8 @@ def main():
                     # "COMUNE DI FERMO - ANCONA".
                     "provincia=excluded.provincia, "
                     "cig_inclusi=excluded.cig_inclusi, "
-                    "n_contratti=excluded.n_contratti", registro)
+                    "n_contratti=excluded.n_contratti, "
+                    "cf_ente=excluded.cf_ente", registro)
             pg.commit()
         print(f"\nlotto '{a.cartella}' registrato per il tracciamento "
               f"(python invii.py --lotto {a.cartella})")

@@ -200,6 +200,18 @@ button{font:inherit; cursor:pointer}
   padding:3px 10px; border-radius:20px; background:var(--surface-2);
   border:1px solid var(--rule); color:var(--ink-2)}
 .chip b{color:var(--accento); font-weight:700; font-family:"IBM Plex Mono",monospace}
+.chip-link{cursor:pointer}
+.chip-link:hover{border-color:var(--accento); color:var(--ink)}
+.chip-resto{font-size:11.5px; color:var(--ink-3); padding:3px 2px}
+/* Stato dei job separato dai "compiti" veri: niente numero grande, un
+   pallino e testo piccolo — trovato il 2026-09-26, un job sempre uguale
+   ogni giorno non deve pesare come una call da fissare. */
+.stato-sistema{margin-top:10px; padding-top:8px; border-top:1px dashed var(--rule)}
+.riga-stato{display:flex; align-items:baseline; gap:8px; font-size:12px;
+  color:var(--ink-2); padding:3px 0}
+.riga-stato b{color:var(--ink); font-weight:600}
+.pallino-stato{width:6px; height:6px; border-radius:50%; background:var(--alta);
+  flex:none; align-self:center}
 .oggi .niente{font-size:13.5px; color:var(--ink-2); margin:12px 0 10px}
 code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--surface-2);
   padding:1px 4px; border-radius:3px}
@@ -834,11 +846,6 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     DATI.invii.forEach(function(i){ (g[i.lotto] = g[i.lotto] || []).push(i); });
     return g;
   }
-  function nomiEnti(righe, max){
-    var n = righe.map(function(i){ return titolo(i.ente || "?"); });
-    return n.length > max ? n.slice(0, max).join(", ") + " e altri " + (n.length - max)
-                          : n.join(", ");
-  }
   function ultimoInvio(righe){
     return righe.reduce(function(m, i){
       var d = dataDi(i, "inviata") || ""; return d > m ? d : m;
@@ -855,22 +862,35 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     function eta(i){ var d = dataDi(i, "inviata"); return d ? -giorni(d) : 0; }
     var voci = [];
 
+    // Ogni ente e' anche un tasto: click apre subito il lotto giusto nella
+    // tab Invii, invece di doverlo ricercare a mano tra 60+ lotti (trovato
+    // il 2026-09-26 \u2014 prima erano solo nomi in un elenco statico).
+    function chipVai(righe, max){
+      var mostrare = righe.slice(0, max), html = mostrare.map(function(i){
+        return '<button class="chip chip-link" data-vai-lotto="' + esc(i.lotto) + '">' +
+          esc(titolo(i.ente || "?")) + '</button>';
+      }).join("");
+      if(righe.length > max) html += '<span class="chip-resto">e altri ' +
+        (righe.length - max) + '</span>';
+      return '<div class="chips">' + html + '</div>';
+    }
+
     var call = con("discovery_fissata");
     if(call.length) voci.push(["t-alta", call.length,
       '<b>' + (call.length === 1 ? 'call fissata' : 'call fissate') + '</b>' +
-      (LOCALE ? ' \u2014 preparala: la scheda dell\u2019ente dice come compra e chi lo serve oggi.' : ''),
-      nomiEnti(call, 4) + (call.length === 1 && call[0].note
-        ? ' \u00b7 ' + taglia(call[0].note, 170) : '')]);
+      (LOCALE ? ' \u2014 preparala: la scheda dell\u2019ente dice come compra e chi lo serve oggi.' : '') +
+      chipVai(call, 4),
+      (call.length === 1 && call[0].note) ? taglia(call[0].note, 170) : ""]);
 
     var fatte = con("discovery_fatta");
     if(fatte.length) voci.push(["t-alta", fatte.length,
-      '<b>' + (fatte.length === 1 ? 'call fatta' : 'call fatte') + ', offerta da mandare</b>',
-      nomiEnti(fatte, 4)]);
+      '<b>' + (fatte.length === 1 ? 'call fatta' : 'call fatte') + ', offerta da mandare</b>' +
+      chipVai(fatte, 4), ""]);
 
     var off = con("offerta");
     if(off.length) voci.push(["", off.length,
-      '<b>' + (off.length === 1 ? 'offerta in attesa di risposta' : 'offerte in attesa di risposta') + '</b>',
-      nomiEnti(off, 4)]);
+      '<b>' + (off.length === 1 ? 'offerta in attesa di risposta' : 'offerte in attesa di risposta') + '</b>' +
+      chipVai(off, 4), ""]);
 
     // Trovato il 2026-09-24 con Regione Toscana: prima ogni 'risposta'
     // finiva qui con lo stesso "ricontatta per una call", ma leggendo le
@@ -889,49 +909,51 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
 
     if(risChiama.length) voci.push(["t-alta", risChiama.length,
       '<b>' + (risChiama.length === 1 ? 'ha risposto' : 'hanno risposto') + '</b> \u2014 ' +
-      'ricontatta per fissare una call: \u00e8 la cosa che vale di pi\u00f9.',
-      nomiEnti(risChiama, 4)]);
+      'ricontatta per fissare una call: \u00e8 la cosa che vale di pi\u00f9.' +
+      chipVai(risChiama, 4), ""]);
 
     if(risTiepide.length) voci.push(["", risTiepide.length,
       '<b>' + (risTiepide.length === 1 ? 'risposta tiepida' : 'risposte tiepide') + '</b> \u2014 ' +
-      '"vi terremo in considerazione": nessuna azione da fare ora, non forzare un contatto.',
-      nomiEnti(risTiepide, 4)]);
+      '"vi terremo in considerazione": nessuna azione da fare ora, non forzare un contatto.' +
+      chipVai(risTiepide, 4), ""]);
 
     if(risDaClassificare.length) voci.push(["", risDaClassificare.length,
       '<b>' + (risDaClassificare.length === 1 ? 'risposta da classificare'
                                                : 'risposte da classificare') + '</b> \u2014 ' +
-      'apri la riga e segna cosa hanno detto davvero, prima di richiamare a caso.',
-      nomiEnti(risDaClassificare, 4)]);
+      'apri la riga e segna cosa hanno detto davvero, prima di richiamare a caso.' +
+      chipVai(risDaClassificare, 4), ""]);
 
     var ko = tutte.filter(function(i){
       var st = statoDi(i); return st === "non_consegnata" || (st === "inviata" && i.errore);
     });
     if(ko.length) voci.push(["t-err", ko.length,
       '<b>' + (ko.length === 1 ? 'PEC non arrivata' : 'PEC non arrivate') + '</b> \u2014 ' +
-      'casella piena o indirizzo dismesso: verifica il recapito prima di riprovare.',
-      nomiEnti(ko, 4)]);
+      'casella piena o indirizzo dismesso: verifica il recapito prima di riprovare.' +
+      chipVai(ko, 4), ""]);
 
     var soll = con("inviata").filter(function(i){
       return i.consegnata && !i.sollecitata && eta(i) >= 12 && eta(i) <= GIORNI_ATTESA;
     });
     if(soll.length) voci.push(["", soll.length,
       '<b>da sollecitare</b> \u2014 consegnate da oltre 12 giorni, nessuna risposta.' +
-      (LOCALE ? ' Apri il lotto: la riga ha il bottone <b>Sollecita</b>.' : ''),
-      nomiEnti(soll, 4)]);
+      (LOCALE ? ' Apri il lotto: la riga ha il bottone <b>Sollecita</b>.' : '') +
+      chipVai(soll, 4), ""]);
 
     // Con un lotto o due un elenco unito da puntini si legge bene; con 19
     // (il giro nazionale di R27) diventava una riga sola di 400 caratteri,
     // illeggibile \u2014 trovato controllando la console con la coda reale
-    // piena. Ogni lotto e' un chip a se', non testo che scorre.
+    // piena. Ogni lotto e' un chip a se', non testo che scorre \u2014 ed e' anche
+    // un tasto: click apre subito quel lotto in Invii.
     var gruppi = perLotto(), pronte = [], nPronte = 0;
     Object.keys(gruppi).forEach(function(l){
       var q = gruppi[l].filter(function(i){ return statoDi(i) === "da_inviare"; }).length;
       if(q){ nPronte += q; pronte.push(
-        '<span class="chip"><b>' + q + '</b> ' + esc(nomeLotto(l)) + '</span>'); }
+        '<button class="chip chip-link" data-vai-lotto="' + esc(l) + '"><b>' + q +
+        '</b> ' + esc(nomeLotto(l)) + '</button>'); }
     });
     if(nPronte) voci.push(["", nPronte,
       '<b>' + (nPronte === 1 ? 'PEC pronta da inviare' : 'PEC pronte da inviare') + '</b>' +
-      (LOCALE ? ' \u2014 apri il lotto e premi Invia PEC su ogni riga.' : '') +
+      (LOCALE ? ' \u2014 clicca un lotto per aprirlo e inviare le PEC.' : '') +
       '<div class="chips">' + pronte.join("") + '</div>',
       ""]);
 
@@ -949,30 +971,6 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
             ' di ' + auto.tetto + ' bozze generate (soglia ' + auto.soglia + '+).'),
         ""]);
     }
-
-    // R9 — i log dicono se lo script e' andato a buon fine; schtasks dice se
-    // Windows lo ha lanciato per niente. E' la distinzione che ha trovato il
-    // guasto del 16/09: il task 'console-locale' esisteva ma girava solo con
-    // l'utente collegato. Qui si avvisa solo se c'e' un problema — un job
-    // che gira bene non ha bisogno di essere ripetuto ogni giorno.
-    (DATI.task || []).forEach(function(t){
-      if(!LOCALE) return;
-      var problema = !t.installata ? 'non risulta installato'
-        : t.solo_interattivo ? 'gira solo con l’utente collegato: si ferma al logout'
-        : (t.esito && t.esito !== 'ok' && t.esito !== 'mai eseguita')
-          ? 'l’ultimo giro e’ fallito (esito ' + t.esito + ')'
-        // 'mai eseguita' e' normale per il mensile appena installato (la
-        // prima corsa e' il 3 del mese prossimo): un allarme solo per il
-        // giornaliero, che dovrebbe essere gia' partito almeno una volta.
-        : (t.esito === 'mai eseguita' && t.ritmo === 'giornaliero')
-          ? 'non e’ mai partito' : '';
-      if(problema) voci.push(["t-err", 1,
-        '<b>job ‘' + t.ritmo + '’</b> — ' + problema + '.' +
-        (LOCALE ? (t.installata
-          ? ' Controlla con <code>python job.py --stato</code>.'
-          : ' Installalo con <code>python job.py --installa</code>.') : ''),
-        t.installata ? 'ultima esecuzione: ' + t.ultima : ""]);
-    });
 
     var ferme = con("inviata").filter(function(i){ return eta(i) > GIORNI_ATTESA; });
     if(ferme.length) voci.push(["t-quiet", ferme.length,
@@ -1000,8 +998,33 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
           ? ' Il prossimo territorio lo dice <code>python ingestion/territorio.py --prossimo</code>.'
           : '') + '</p>';
 
+    // R9 — i log dicono se lo script e' andato a buon fine; schtasks dice se
+    // Windows lo ha lanciato per niente. Separato dalla lista "compiti"
+    // (trovato il 2026-09-26: uno stato permanente — un job che gira solo
+    // con l'utente collegato non cambia mai — mescolato alla lista con lo
+    // stesso numerone rosso diventa rumore di fondo invece che un allarme).
+    var vociStato = [];
+    (DATI.task || []).forEach(function(t){
+      if(!LOCALE) return;
+      var problema = !t.installata ? 'non risulta installato'
+        : t.solo_interattivo ? 'gira solo con l’utente collegato: si ferma al logout'
+        : (t.esito && t.esito !== 'ok' && t.esito !== 'mai eseguita')
+          ? 'l’ultimo giro e’ fallito (esito ' + t.esito + ')'
+        // 'mai eseguita' e' normale per il mensile appena installato (la
+        // prima corsa e' il 3 del mese prossimo): un allarme solo per il
+        // giornaliero, che dovrebbe essere gia' partito almeno una volta.
+        : (t.esito === 'mai eseguita' && t.ritmo === 'giornaliero')
+          ? 'non e’ mai partito' : '';
+      if(problema) vociStato.push('<div class="riga-stato"><span class="pallino-stato"></span>' +
+        '<b>job ‘' + t.ritmo + '’</b> — ' + problema + '.' +
+        (t.installata ? ' Controlla con <code>python job.py --stato</code>.'
+                      : ' Installalo con <code>python job.py --installa</code>.') + '</div>');
+    });
+    var statoBlocco = vociStato.length
+      ? '<div class="stato-sistema">' + vociStato.join("") + '</div>' : '';
+
     return '<section class="oggi" aria-labelledby="t-oggi"><h2 id="t-oggi">Da fare</h2>' +
-      '<div class="finora">' + finora + '</div>' + corpo + '</section>';
+      '<div class="finora">' + finora + '</div>' + corpo + statoBlocco + '</section>';
   }
 
   // Un riquadro per lotto, chiuso: 63 righe aperte con quattro controlli
@@ -2359,6 +2382,18 @@ footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--rule);
     }
     var fp = e.target.closest("button[data-fascia]");
     if(fp){ tab.fascia = fp.getAttribute("data-fascia"); disegna(); }
+    var vl = e.target.closest("button[data-vai-lotto]");
+    if(vl){
+      var lot = vl.getAttribute("data-vai-lotto");
+      aperti[lot] = true;
+      var giaLi = (location.hash || "").replace(/^#\/?/, "") === "invii";
+      if(giaLi) disegna(); else location.hash = "#/invii";
+      setTimeout(function(){
+        var el = app.querySelector('details.lotto[data-lotto="' + CSS.escape(lot) + '"]');
+        if(el) el.scrollIntoView({block: "center"});
+      }, 0);
+      return;
+    }
   });
 
   if(LOCALE){
